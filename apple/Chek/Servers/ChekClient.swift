@@ -149,8 +149,17 @@ nonisolated struct ChekClient: Sendable {
 
     /// A request for an image a source route returned, which is a path on
     /// this server rather than on the source's site.
+    ///
+    /// The path comes from an extension, so it's only followed when it
+    /// stays on this server; anything else would carry the session token
+    /// to whatever host the extension named.
     func imageRequest(_ path: String) -> URLRequest? {
-        guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else { return nil }
+        guard path.hasPrefix("/"), !path.hasPrefix("//"),
+              let url = URL(string: path, relativeTo: baseURL)?.absoluteURL,
+              url.scheme?.lowercased() == baseURL.scheme?.lowercased(),
+              url.host()?.lowercased() == baseURL.host()?.lowercased(),
+              url.port == baseURL.port
+        else { return nil }
         return authorize(URLRequest(url: url, timeoutInterval: 60))
     }
 
