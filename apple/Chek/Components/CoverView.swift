@@ -17,25 +17,24 @@ enum CoverSource: Hashable {
     }
 }
 
-/// A publication's cover in its own proportions, sitting on the bottom
-/// of a 2:3 slot so a row of covers shares one baseline, as on a shelf.
-/// A quiet stand-in shows while it loads or when there isn't one.
+/// A publication's cover filling a 2:3 frame, so grids line up, with a
+/// quiet stand-in while it loads or when there isn't one.
 struct CoverView: View {
     let source: CoverSource
     let title: String
-    var cornerRadius: CGFloat = 4
+    var cornerRadius: CGFloat = 6
 
     @State private var image: UIImage?
 
     var body: some View {
         Color.clear
             .aspectRatio(2 / 3, contentMode: .fit)
-            .overlay(alignment: .bottom) {
+            .overlay {
                 Group {
                     if let image {
                         Image(uiImage: image)
                             .resizable()
-                            .scaledToFit()
+                            .scaledToFill()
                             .transition(.opacity)
                     } else {
                         CoverPlaceholder(title: title)

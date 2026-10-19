@@ -7,49 +7,43 @@ enum Metrics {
     /// Between covers in grids and shelves.
     static let coverSpacing: CGFloat = 16
     /// Between rows of covers in a grid.
-    static let gridRowSpacing: CGFloat = 24
+    static let gridRowSpacing: CGFloat = 20
     /// Between sections on a page.
     static let sectionSpacing: CGFloat = 32
     /// A cover's width in a shelf.
-    static let shelfCoverWidth: CGFloat = 112
+    static let shelfCoverWidth: CGFloat = 108
     /// A cover's width in the Continue Reading carousel.
-    static let featuredCoverWidth: CGFloat = 172
+    static let featuredCoverWidth: CGFloat = 150
     /// A cover's width in a list row.
     static let rowCoverWidth: CGFloat = 44
 
-    /// Two covers across on iPhone, as in Books, more on wider screens.
-    static let gridColumns = [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 24, alignment: .bottom)]
+    /// Three covers across on iPhone, as in Panels, more on wider screens.
+    static let gridColumns = [GridItem(.adaptive(minimum: 100, maximum: 150), spacing: 12, alignment: .top)]
 }
 
-/// A cover with one quiet line under it. The cover carries the title, as
-/// on a shelf; VoiceOver reads it. Used in every grid and shelf.
+/// A cover with a one-line title and a small status under it, as in Panels.
+/// Used in every grid and shelf.
 struct PublicationCell: View {
     let item: PublicationItem
-    /// Shows the title under the cover too, for the larger Continue Reading
-    /// covers where a glance should be enough.
-    var showsTitle = false
 
     var body: some View {
         OpenPublicationButton(item: item) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 CoverView(source: item.cover, title: item.title)
                     .overlay {
                         OpeningIndicator(ref: item.id)
                     }
                     .readerTransitionSource(item.id)
                 VStack(alignment: .leading, spacing: 1) {
-                    if showsTitle {
-                        Text(item.title)
-                            .font(.subheadline.weight(.semibold))
-                            .lineLimit(1)
-                    }
-                    StatusText(status: item.status, fallback: nil)
+                    Text(item.title)
+                        .font(.footnote.weight(.semibold))
+                        .lineLimit(1)
+                    StatusText(status: item.status, fallback: nil, font: .caption2)
                 }
             }
             .contentShape(.rect)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(Text(item.title))
     }
 }
 
@@ -91,6 +85,7 @@ struct PublicationRow: View {
 struct StatusText: View {
     let status: ReadingStatus
     let fallback: String?
+    var font: Font = .caption
 
     var body: some View {
         Group {
@@ -113,7 +108,7 @@ struct StatusText: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .font(.caption)
+        .font(font)
         .lineLimit(1)
     }
 }
@@ -173,7 +168,7 @@ struct Shelf: View {
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .bottom, spacing: isFeatured ? 20 : Metrics.coverSpacing) {
                     ForEach(items) { item in
-                        PublicationCell(item: item, showsTitle: isFeatured)
+                        PublicationCell(item: item)
                             .frame(width: isFeatured ? Metrics.featuredCoverWidth : Metrics.shelfCoverWidth)
                     }
                 }

@@ -10,7 +10,7 @@ struct HomeView: View {
         @Bindable var router = router
         NavigationStack(path: $router.homePath) {
             HomeContent()
-                .navigationTitle("Home")
+                .navigationTitle("Reading Now")
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Settings", systemImage: "gearshape") {
@@ -44,7 +44,7 @@ private struct HomeContent: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
                         if !continueReading.isEmpty {
-                            Shelf(title: "Continue Reading", items: continueReading, isFeatured: true)
+                            Shelf(title: "Continue", items: continueReading, isFeatured: true)
                         }
                         if !newBooks.isEmpty {
                             Shelf(title: "Recently Added", items: newBooks.prefix(20).map(PublicationItem.init))
