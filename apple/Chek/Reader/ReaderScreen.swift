@@ -6,21 +6,25 @@ import SwiftUI
 /// and your place in the book at the bottom.
 struct ReaderScreen: View {
     @State private var session: ReaderSession
+    /// Where the page's content sits, worked out once per screen size so
+    /// showing and hiding the controls or the status bar never moves it.
+    @State private var contentInsets = EdgeInsets()
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         _session = State(initialValue: ReaderSession(item: item, preferences: preferences))
     }
 
     var body: some View {
-        // Read outside the navigation stack, the insets are the device's
-        // alone, so showing the toolbars never lays the page out again.
         GeometryReader { proxy in
             NavigationStack {
                 ZStack {
                     ReaderCanvas(kind: session.item.kind)
-                    ReaderContent(session: session, insets: proxy.safeAreaInsets)
+                    ReaderContent(session: session, insets: contentInsets)
                 }
                 .readerToolbars(session: session, width: proxy.size.width)
+            }
+            .onChange(of: proxy.size, initial: true) {
+                contentInsets = Self.deviceInsets(fallback: proxy.safeAreaInsets)
             }
         }
         .statusBarHidden(!session.isShowingControls)
@@ -31,6 +35,19 @@ struct ReaderScreen: View {
         .task {
             await session.open()
         }
+    }
+}
+
+extension ReaderScreen {
+    /// The screen's own insets, for the sensor housing and the home
+    /// indicator, which don't change when bars come and go.
+    static func deviceInsets(fallback: EdgeInsets) -> EdgeInsets {
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .flatMap(\.windows)
+            .first(where: \.isKeyWindow)
+        guard let insets = window?.safeAreaInsets else { return fallback }
+        return EdgeInsets(top: insets.top, leading: insets.left, bottom: insets.bottom, trailing: insets.right)
     }
 }
 

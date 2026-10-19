@@ -4,10 +4,11 @@ import SwiftUI
 /// Text size, theme, font, spacing and margins, changed while you read.
 struct AppearancePanel: View {
     var showsTextSettings = true
+    var showsComicSettings = false
 
     var body: some View {
         NavigationStack {
-            ReaderAppearanceForm(showsTextSettings: showsTextSettings)
+            ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsComicSettings: showsComicSettings)
                 .navigationTitle("Appearance")
                 .navigationBarTitleDisplayMode(.inline)
         }
@@ -23,6 +24,8 @@ struct ReaderAppearanceForm: View {
     /// Whether the settings for reflowing text apply, which they don't to
     /// comics and PDFs.
     var showsTextSettings = true
+    /// Whether comic layouts apply, which they do to comics and Settings.
+    var showsComicSettings = true
     @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
@@ -32,6 +35,21 @@ struct ReaderAppearanceForm: View {
                 Section {
                     TextSizeControl()
                     ThemePicker(selection: $settings.theme)
+                }
+            }
+            if showsComicSettings {
+                Section {
+                    Picker("Layout", selection: $settings.comicFlow) {
+                        Text("Automatic").tag(ReaderPreferences.ComicFlow.automatic)
+                        Text("Pages").tag(ReaderPreferences.ComicFlow.paged)
+                        Text("Vertical Scroll").tag(ReaderPreferences.ComicFlow.scrolled)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                } header: {
+                    Text("Comic Layout")
+                } footer: {
+                    Text("Automatic scrolls webtoons and other tall-strip comics, and turns pages for the rest.")
                 }
             }
             Section("Page Turn") {

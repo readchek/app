@@ -47,7 +47,7 @@ private struct ReaderToolbars: ViewModifier {
                 case .contents:
                     ContentsPanel(session: session)
                 case .appearance:
-                    AppearancePanel(showsTextSettings: session.showsTextSettings)
+                    AppearancePanel(showsTextSettings: session.showsTextSettings, showsComicSettings: session.item.kind == .comic)
                 }
             }
     }
