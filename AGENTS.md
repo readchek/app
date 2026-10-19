@@ -10,7 +10,7 @@ The native Chek apps, starting with iPhone and iPad. Chek is a reader for books 
 
 - **Reading goes through Chek Reader.** Opening, laying out and paging publications belong to [readchek/chek-reader](https://github.com/readchek/chek-reader). When the app needs something the reader can't do, change the package rather than working around it here, since other apps use it too.
 - **Local reading needs no account or server.** Server sources are added alongside the on-device library, not in place of it.
-- **App identity.** Chek replaces Chibi Manga on the App Store, so it keeps Chibi Manga's bundle id `run.chibi.manga` and team `KZX5HZ32P9`, and its version and build stay above Chibi Manga's last release (1.5, build 11). Chek's SwiftData store is named `Chek` so it never opens the default store Chibi Manga left on updated devices.
+- **App identity.** Chek replaces Chibi Manga on the App Store, so it keeps Chibi Manga's bundle id `run.chibi.manga` and team `KZX5HZ32P9`, and its version and build stay above Chibi Manga's last release (1.5, build 11). Chek's SwiftData store is named `Chek` so it never opens the default store Chibi Manga left on updated devices. The books Chibi Manga imported (`Documents/imports`, listed in `.library.json`) move into Chek's library on first launch, keeping each one's page.
 - **Platforms.** Build with Xcode 27 and Swift 6.4, and deploy to iOS and iPadOS 26 or later. Put 27-only APIs behind `if #available`.
 - **SwiftUI and SwiftData.** Books are `Book` models; each book's file and cover live in their own folder under Application Support, found by the book's id, because the app container's path changes between installs.
 - **Positions** are Chek Reader `Locator` values, stored as their Readium-compatible JSON.
