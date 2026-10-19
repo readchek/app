@@ -19,6 +19,9 @@ struct ReadingItem: Identifiable {
     let kind: PublicationKind
     let content: Content
     let startLocation: Locator?
+    /// The chapter this is, when it's read straight from a source, so the
+    /// reader can offer the one after it.
+    var sourceChapter: SourceChapterRef?
 
     var id: PublicationRef { ref }
 

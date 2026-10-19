@@ -86,7 +86,7 @@ final class ServerSync {
             throw DisplayError(ChekError.unauthorized)
         }
         let state = progress.sourceState(for: chapter)
-        return ReadingItem(
+        var item = ReadingItem(
             ref: chapter.ref,
             title: chapter.chapterTitle,
             subtitle: chapter.seriesTitle,
@@ -97,6 +97,29 @@ final class ServerSync {
                 readingProgression: chapter.isRightToLeft ? .rightToLeft : .auto
             ))),
             startLocation: state.savedLocation
+        )
+        item.sourceChapter = chapter
+        return item
+    }
+
+    /// The chapter after `chapter` in its series, in reading order, or nil
+    /// at the last one or when the list can't be read.
+    func chapter(after chapter: SourceChapterRef) async -> SourceChapterRef? {
+        guard let chapters = try? await servers.request(chapter.server, { client throws(ChekError) in
+            try await client.chapters(ofSeries: chapter.seriesID, inSource: chapter.source)
+        }), let index = chapters.firstIndex(where: { $0.id == chapter.chapterID }), chapters.indices.contains(index + 1) else {
+            return nil
+        }
+        let next = chapters[index + 1]
+        return SourceChapterRef(
+            server: chapter.server,
+            source: chapter.source,
+            seriesID: chapter.seriesID,
+            seriesTitle: chapter.seriesTitle,
+            chapterID: next.id,
+            chapterTitle: next.displayTitle,
+            isRightToLeft: chapter.isRightToLeft,
+            seriesCoverPath: chapter.seriesCoverPath
         )
     }
 

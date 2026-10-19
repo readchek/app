@@ -12,6 +12,7 @@ struct ReaderScreen: View {
     /// How far the reader has been pulled down to close it.
     @State private var pull: CGFloat = 0
     @Environment(AppRouter.self) private var router
+    @Environment(ReaderSettings.self) private var settings
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         _session = State(initialValue: ReaderSession(item: item, preferences: preferences))
@@ -23,7 +24,15 @@ struct ReaderScreen: View {
                 ZStack {
                     ReaderCanvas(kind: session.item.kind)
                     ReaderContent(session: session, insets: contentInsets)
+                    if let chapter = session.item.sourceChapter {
+                        NextChapterButton(session: session, chapter: chapter) { next in
+                            continueReading(next)
+                        }
+                    }
                 }
+                // A new chapter is a new page view, not the last one's
+                // reused with its old pages.
+                .id(session.item.id)
                 .readerToolbars(session: session, width: proxy.size.width)
                 // The bars' edge effect darkens the page's top and bottom
                 // even with the bars hidden; the page should run clean.
@@ -56,9 +65,17 @@ struct ReaderScreen: View {
         .readerEffects(session: session)
         .otherDevicePrompt(session: session)
         .modifier(ReaderColorScheme(kind: session.item.kind))
-        .task {
+        // Opens again for the next chapter, which replaces the session.
+        .task(id: session.item.id) {
             await session.open()
         }
+    }
+
+    /// Goes on to the next chapter in place, without closing the reader.
+    private func continueReading(_ item: ReadingItem) {
+        let finished = session
+        Task { await finished.controller.close() }
+        session = ReaderSession(item: item, preferences: settings.preferences)
     }
 }
 
