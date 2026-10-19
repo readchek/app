@@ -38,3 +38,8 @@ struct DisplayError: Error, Hashable, Sendable {
         }
     }
 }
+
+extension DisplayError: LocalizedError {
+    var errorDescription: String? { title }
+    var recoverySuggestion: String? { message }
+}

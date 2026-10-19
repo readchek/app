@@ -7,6 +7,7 @@ struct NowReading {
     enum Source {
         case local(Book)
         case remote(RemotePublication)
+        case chapter(SourceChapterRef)
     }
 
     let source: Source
@@ -18,13 +19,23 @@ struct NowReading {
         switch source {
         case .local(let book): book.ref
         case .remote(let publication): publication.ref
+        case .chapter(let chapter): chapter.ref
         }
     }
 
-    /// The newer of the latest book and the latest server publication.
-    static func latest(book: Book?, remote: RemoteReadingState?, servers: ServerStore) -> NowReading? {
+    /// The newest of the latest book, server publication and source chapter.
+    static func latest(book: Book?, remote: RemoteReadingState?, chapter: SourceReadingState?, servers: ServerStore) -> NowReading? {
         let bookDate = book?.lastOpenedAt ?? .distantPast
         let remoteDate = remote?.lastOpenedAt ?? .distantPast
+        let chapterDate = chapter?.lastOpenedAt ?? .distantPast
+        if let chapter, chapterDate > bookDate, chapterDate > remoteDate {
+            return NowReading(
+                source: .chapter(SourceChapterRef(chapter)),
+                title: chapter.seriesTitle,
+                progress: chapter.progress,
+                cover: servers.sourceImage(chapter.seriesCoverPath, on: chapter.serverID)
+            )
+        }
         if let book, bookDate >= remoteDate {
             return NowReading(source: .local(book), title: book.title, progress: book.progress, cover: book.coverURL.map(CoverSource.file) ?? .none)
         }
@@ -54,12 +65,15 @@ private struct NowReadingAccessoryModifier: ViewModifier {
     private var books: [Book]
     @Query(filter: #Predicate<RemoteReadingState> { $0.lastOpenedAt != nil }, sort: \RemoteReadingState.lastOpenedAt, order: .reverse)
     private var remote: [RemoteReadingState]
+    @Query(filter: #Predicate<SourceReadingState> { $0.lastOpenedAt != nil }, sort: \SourceReadingState.lastOpenedAt, order: .reverse)
+    private var chapters: [SourceReadingState]
     @Environment(ServerStore.self) private var servers
 
     func body(content: Content) -> some View {
         let current = NowReading.latest(
             book: books.first,
             remote: remote.first { $0.readingStatus != .finished },
+            chapter: chapters.first { $0.readingStatus != .finished },
             servers: servers
         )
         if #available(iOS 26.1, *) {
@@ -116,6 +130,7 @@ private struct NowReadingBar: View {
         switch current.source {
         case .local(let book): router.open(ReadingItem(book))
         case .remote(let publication): router.open(publication, using: sync)
+        case .chapter(let chapter): router.open(chapter, using: sync)
         }
     }
 }

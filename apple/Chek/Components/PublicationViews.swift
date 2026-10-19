@@ -47,7 +47,24 @@ struct PublicationCell: View {
                     Text(item.title)
                         .font(.footnote.weight(.semibold))
                         .lineLimit(1)
-                    StatusText(status: item.status, fallback: nil, font: .caption2)
+                    if case .chapter = item.source, let chapter = item.subtitle {
+                        // A source chapter's cell is its series, so which
+                        // chapter you're on goes with how far you are.
+                        HStack(spacing: 3) {
+                            Text(chapter)
+                                .foregroundStyle(.secondary)
+                                .layoutPriority(-1)
+                            if item.status != .started {
+                                Text(verbatim: "·")
+                                    .foregroundStyle(.tertiary)
+                                StatusText(status: item.status, fallback: nil, font: .caption2)
+                            }
+                        }
+                        .font(.caption2)
+                        .lineLimit(1)
+                    } else {
+                        StatusText(status: item.status, fallback: nil, font: .caption2)
+                    }
                 }
             }
             .contentShape(.rect)

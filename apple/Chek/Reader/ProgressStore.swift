@@ -95,6 +95,9 @@ final class ProgressStore {
     /// The device's record of a source chapter, made the first time it opens.
     func sourceState(for chapter: SourceChapterRef) -> SourceReadingState {
         if let state = sourceState(chapter.ref) {
+            if state.seriesCoverPath == nil, chapter.seriesCoverPath != nil {
+                state.seriesCoverPath = chapter.seriesCoverPath
+            }
             return state
         }
         let state = SourceReadingState(
@@ -103,7 +106,9 @@ final class ProgressStore {
             seriesID: chapter.seriesID,
             seriesTitle: chapter.seriesTitle,
             chapterID: chapter.chapterID,
-            chapterTitle: chapter.chapterTitle
+            chapterTitle: chapter.chapterTitle,
+            seriesCoverPath: chapter.seriesCoverPath,
+            isRightToLeft: chapter.isRightToLeft
         )
         context.insert(state)
         save()

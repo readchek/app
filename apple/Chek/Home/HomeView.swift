@@ -30,6 +30,8 @@ private struct HomeContent: View {
     private var newBooks: [Book]
     @Query(filter: #Predicate<RemoteReadingState> { $0.lastOpenedAt != nil }, sort: \RemoteReadingState.updatedAt, order: .reverse)
     private var remoteStates: [RemoteReadingState]
+    @Query(filter: #Predicate<SourceReadingState> { $0.lastOpenedAt != nil }, sort: \SourceReadingState.lastOpenedAt, order: .reverse)
+    private var sourceStates: [SourceReadingState]
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
     @Environment(ServerStore.self) private var servers
     @State private var model = HomeServersModel()
@@ -81,6 +83,16 @@ private struct HomeContent: View {
             let publication = RemotePublication(state)
             let cover = servers.cover(of: publication.id, on: publication.server)
             dated.append((PublicationItem(publication, status: state.readingStatus, cover: cover), state.lastOpenedAt ?? state.updatedAt))
+        }
+        // One entry per series, its latest chapter: the next chapter is a
+        // tap away in the series, and a shelf of one series' chapters
+        // would crowd out everything else.
+        var seriesShown = Set<String>()
+        for state in sourceStates {
+            let series = "\(state.serverID)/\(state.sourceID)/\(state.seriesID)"
+            guard seriesShown.insert(series).inserted, state.readingStatus != .finished else { continue }
+            let cover = servers.sourceImage(state.seriesCoverPath, on: state.serverID)
+            dated.append((PublicationItem(state, cover: cover), state.lastOpenedAt ?? .distantPast))
         }
         for elsewhere in model.elsewhere where !seen.contains(elsewhere.publication.ref) {
             let publication = elsewhere.publication

@@ -7,6 +7,8 @@ struct PublicationItem: Identifiable {
     enum Source {
         case local(Book)
         case remote(RemotePublication)
+        /// A chapter read straight from a server's source.
+        case chapter(SourceChapterRef)
     }
 
     let source: Source
@@ -20,6 +22,7 @@ struct PublicationItem: Identifiable {
         switch source {
         case .local(let book): book.ref
         case .remote(let publication): publication.ref
+        case .chapter(let chapter): chapter.ref
         }
     }
 
@@ -38,6 +41,16 @@ struct PublicationItem: Identifiable {
         self.cover = cover
         self.status = status
     }
+
+    /// A source chapter you've opened, titled by its series since that's
+    /// what you'd look for, with the chapter under it.
+    init(_ state: SourceReadingState, cover: CoverSource) {
+        source = .chapter(SourceChapterRef(state))
+        title = state.seriesTitle
+        subtitle = state.chapterTitle
+        self.cover = cover
+        status = state.readingStatus
+    }
 }
 
 /// Opens an item in the reader: books at once, server publications once
@@ -53,6 +66,7 @@ struct OpenPublicationButton<Label: View>: View {
             switch item.source {
             case .local(let book): router.open(ReadingItem(book))
             case .remote(let publication): router.open(publication, using: sync)
+            case .chapter(let chapter): router.open(chapter, using: sync)
             }
         } label: {
             label

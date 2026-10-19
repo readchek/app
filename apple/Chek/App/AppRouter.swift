@@ -74,19 +74,16 @@ final class AppRouter {
 
     /// Opens a chapter from one of a server's sources once its pages are
     /// listed. A second tap while one is opening is ignored.
+    /// Opens a chapter from one of a server's sources. The reader fetches
+    /// its pages itself, so it opens at once.
     func open(_ chapter: SourceChapterRef, using sync: ServerSync) {
-        guard opening == nil else { return }
-        opening = chapter.ref
-        Task {
-            defer { opening = nil }
-            do {
-                open(try await sync.readingItem(for: chapter))
-            } catch {
-                openingFailure = OpeningFailure(
-                    error: DisplayError(error),
-                    signIn: sync.isSignedOut(of: chapter.server) ? chapter.server : nil
-                )
-            }
+        do {
+            open(try sync.readingItem(for: chapter))
+        } catch {
+            openingFailure = OpeningFailure(
+                error: error,
+                signIn: sync.isSignedOut(of: chapter.server) ? chapter.server : nil
+            )
         }
     }
 

@@ -20,27 +20,40 @@ enum ChekSchemaV2: VersionedSchema {
     static let versionIdentifier = Schema.Version(2, 0, 0)
 
     static var models: [any PersistentModel.Type] {
+        [ChekSchemaV1.Book.self, ChekSchemaV1.ServerAccount.self, ChekSchemaV1.RemoteReadingState.self, ChekSchemaV2.SourceReadingState.self]
+    }
+}
+
+/// Keeps the series' cover with your place in a source chapter, so it can
+/// show in Continue Reading.
+enum ChekSchemaV3: VersionedSchema {
+    static let versionIdentifier = Schema.Version(3, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
         [ChekSchemaV1.Book.self, ChekSchemaV1.ServerAccount.self, ChekSchemaV1.RemoteReadingState.self, SourceReadingState.self]
     }
 }
 
 enum ChekMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [ChekSchemaV1.self, ChekSchemaV2.self]
+        [ChekSchemaV1.self, ChekSchemaV2.self, ChekSchemaV3.self]
     }
 
     static var stages: [MigrationStage] {
-        [.lightweight(fromVersion: ChekSchemaV1.self, toVersion: ChekSchemaV2.self)]
+        [
+            .lightweight(fromVersion: ChekSchemaV1.self, toVersion: ChekSchemaV2.self),
+            .lightweight(fromVersion: ChekSchemaV2.self, toVersion: ChekSchemaV3.self),
+        ]
     }
 }
 
 /// The current schema, which the store opens with.
-typealias ChekSchema = ChekSchemaV2
+typealias ChekSchema = ChekSchemaV3
 
 typealias Book = ChekSchemaV1.Book
 typealias ServerAccount = ChekSchemaV1.ServerAccount
 typealias RemoteReadingState = ChekSchemaV1.RemoteReadingState
-typealias SourceReadingState = ChekSchemaV2.SourceReadingState
+typealias SourceReadingState = ChekSchemaV3.SourceReadingState
 
 extension ModelContainer {
     /// Chek's store, or an in-memory one for previews and tests.

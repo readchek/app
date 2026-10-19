@@ -54,6 +54,9 @@ final class SourceSeriesModel {
     struct Content: Equatable {
         var series: ChekAPI.SourceSeries
         var chapters: [ChekAPI.SourceChapter]
+        /// Why the chapters couldn't be listed, while the series could:
+        /// the series still shows, with a way to try the chapters again.
+        var chaptersFailure: DisplayError?
     }
 
     private(set) var state: LoadState<Content> = .idle
@@ -69,6 +72,14 @@ final class SourceSeriesModel {
         self.servers = servers
     }
 
+    nonisolated private static func chapters(of series: String, in source: String, client: ChekClient) async -> Result<[ChekAPI.SourceChapter], ChekError> {
+        do {
+            return .success(try await client.chapters(ofSeries: series, inSource: source))
+        } catch {
+            return .failure(error)
+        }
+    }
+
     func load() async {
         if state.value == nil {
             state = .loading
@@ -81,8 +92,18 @@ final class SourceSeriesModel {
                 // store to see sign-outs.
                 do {
                     async let series = client.series(seriesID, inSource: source)
-                    async let chapters = client.chapters(ofSeries: seriesID, inSource: source)
-                    return try await Content(series: series, chapters: chapters)
+                    async let chapters = Self.chapters(of: seriesID, in: source, client: client)
+                    let listed = await chapters
+                    let loaded = try await series
+                    switch listed {
+                    case .success(let chapters):
+                        return Content(series: loaded, chapters: chapters, chaptersFailure: nil)
+                    case .failure(.unauthorized):
+                        // A session that ended is the store's to notice.
+                        throw ChekError.unauthorized
+                    case .failure(let error):
+                        return Content(series: loaded, chapters: [], chaptersFailure: DisplayError(error))
+                    }
                 } catch let error as ChekError {
                     throw error
                 } catch {
@@ -131,17 +152,36 @@ private struct SourceSeriesContent: View {
                 .listRowSeparator(.hidden)
             }
             Section {
-                ForEach(content.chapters) { chapter in
-                    SourceChapterRow(chapter: chapterRef(chapter), status: statuses[chapter.id]?.readingStatus ?? .new)
+                if let failure = content.chaptersFailure {
+                    // Under the header, not over it, so the series still reads.
+                    ContentUnavailableView {
+                        Label(failure.title, systemImage: "wifi.exclamationmark")
+                    } description: {
+                        if let message = failure.message {
+                            Text(message)
+                        }
+                    } actions: {
+                        Button("Try Again") {
+                            Task { await refresh() }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .listRowSeparator(.hidden)
+                } else if content.chapters.isEmpty {
+                    ContentUnavailableView(
+                        "No Chapters to Read",
+                        systemImage: "books.vertical",
+                        description: Text("This source has no chapters it can show for this series. Licensed series are often only on the publisher's own site.")
+                    )
+                    .listRowSeparator(.hidden)
+                } else {
+                    ForEach(content.chapters) { chapter in
+                        SourceChapterRow(chapter: chapterRef(chapter), status: statuses[chapter.id]?.readingStatus ?? .new)
+                    }
                 }
             }
         }
         .listStyle(.plain)
-        .overlay {
-            if content.chapters.isEmpty {
-                ContentUnavailableView("No Chapters", systemImage: "books.vertical", description: Text("The source hasn't listed any chapters for this series."))
-            }
-        }
         .refreshable {
             await refresh()
         }
@@ -154,7 +194,9 @@ private struct SourceSeriesContent: View {
             seriesID: content.series.id,
             seriesTitle: content.series.title,
             chapterID: chapter.id,
-            chapterTitle: chapter.displayTitle
+            chapterTitle: chapter.displayTitle,
+            isRightToLeft: content.series.readingDirection == "rtl",
+            seriesCoverPath: content.series.coverUrl
         )
     }
 
@@ -214,13 +256,15 @@ private struct SourceSeriesHeader: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
-                    Text("^[\(count) chapter](inflect: true)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    if count > 0 {
+                        Text("^[\(count) chapter](inflect: true)")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
                 Spacer(minLength: 0)
             }
-            if let summary = series.summary?.trimmingCharacters(in: .whitespacesAndNewlines), !summary.isEmpty {
+            if let summary = Self.summary(series.summary) {
                 Text(summary)
                     .font(.subheadline)
                     .lineLimit(isShowingFullSummary ? nil : 3)
@@ -242,6 +286,25 @@ private struct SourceSeriesHeader: View {
             }
         }
         .padding(.vertical, 8)
+    }
+
+    /// The summary with its Markdown drawn as styling, as sources such as
+    /// MangaDex write them. Sources often add credits and links after a
+    /// rule, which aren't part of the story, so only what's before it shows.
+    static func summary(_ text: String?) -> AttributedString? {
+        guard var text = text?.replacingOccurrences(of: "\r\n", with: "\n") else { return nil }
+        if let rule = text.range(of: "\n---") ?? text.range(of: "\n___") ?? text.range(of: "\n***") {
+            text = String(text[..<rule.lowerBound])
+        }
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace, failurePolicy: .returnPartiallyParsedIfPossible)
+        var summary = (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+        // Links would open a browser from a tap meant to expand the text.
+        for run in summary.runs where run.link != nil {
+            summary[run.range].link = nil
+        }
+        return summary
     }
 
     private var authors: String {
