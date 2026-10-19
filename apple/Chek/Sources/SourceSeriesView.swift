@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// A series from a source: its cover, summary and a button to read on from
-/// where you are, then its chapters, newest first as sources list them.
+/// where you are, then its chapters in reading order, as the server lists them.
 struct SourceSeriesView: View {
     let account: UUID
     let source: String
@@ -158,11 +158,10 @@ private struct SourceSeriesContent: View {
         )
     }
 
-    /// The chapter you're partway through, or else the one after the last
-    /// you finished, or the first. Sources list the newest chapter first,
-    /// so reading order is the list reversed.
+    /// The chapter you opened last, or the one after it once it's
+    /// finished, or else the first.
     private func nextToRead(statuses: [String: SourceReadingState]) -> ChekAPI.SourceChapter? {
-        let inOrder = Array(content.chapters.reversed())
+        let inOrder = content.chapters
         let opened = inOrder.filter { statuses[$0.id]?.lastOpenedAt != nil }
         if let latest = opened.max(by: { (statuses[$0.id]?.lastOpenedAt ?? .distantPast) < (statuses[$1.id]?.lastOpenedAt ?? .distantPast) }) {
             guard statuses[latest.id]?.readingStatus == .finished else { return latest }
