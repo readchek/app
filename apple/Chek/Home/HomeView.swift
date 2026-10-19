@@ -10,7 +10,7 @@ struct HomeView: View {
         @Bindable var router = router
         NavigationStack(path: $router.homePath) {
             HomeContent()
-                .navigationTitle("Home")
+                .navigationTitle("Reading Now")
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Settings", systemImage: "gearshape") {
