@@ -13,6 +13,12 @@ struct ReadingStatuses {
     subscript(publication: Int64) -> ReadingStatus {
         byPublication[publication] ?? .new
     }
+
+    /// The status this device keeps, or `fallback` for a publication it
+    /// hasn't opened, such as one read on another device.
+    subscript(publication: Int64, or fallback: ReadingStatus?) -> ReadingStatus {
+        byPublication[publication] ?? fallback ?? .new
+    }
 }
 
 extension RemoteReadingState {

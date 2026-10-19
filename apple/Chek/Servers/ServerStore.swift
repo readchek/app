@@ -31,6 +31,20 @@ final class ServerStore {
         for account in accounts() where keychain.token(for: account.id) == nil {
             signedOut.insert(account.id)
         }
+        removeOrphanedReadingStates()
+    }
+
+    /// Places kept for servers that are no longer connected. Older builds
+    /// removed servers with a batch delete that could leave these behind.
+    private func removeOrphanedReadingStates() {
+        let servers = Set(accounts().map(\.id))
+        let states = (try? context.fetch(FetchDescriptor<RemoteReadingState>())) ?? []
+        let orphans = states.filter { !servers.contains($0.serverID) }
+        guard !orphans.isEmpty else { return }
+        for state in orphans {
+            context.delete(state)
+        }
+        try? context.save()
     }
 
     func state(of account: UUID) -> ConnectionState {
@@ -133,12 +147,21 @@ final class ServerStore {
     /// Forgets the server, your places in it and anything downloaded from it.
     func remove(_ account: ServerAccount) async {
         let id = account.id
-        await signOut(account)
-        try? context.delete(model: RemoteReadingState.self, where: #Predicate { $0.serverID == id })
+        // Gone from the device first, so it leaves the list at once; ending
+        // the session on the server can wait for the network.
+        let client = client(for: id)
+        endSession(id)
+        // One by one: a batch delete doesn't reach `@Query`, so the
+        // now-reading bar would keep showing a book from a server that's gone.
+        let states = (try? context.fetch(FetchDescriptor<RemoteReadingState>(predicate: #Predicate { $0.serverID == id }))) ?? []
+        for state in states {
+            context.delete(state)
+        }
         context.delete(account)
         try? context.save()
         signedOut.remove(id)
         try? FileManager.default.removeItem(at: ServerFiles.folder(for: id))
+        await client?.signOut()
     }
 
     /// Saves the order you arranged servers in.

@@ -32,10 +32,14 @@ struct BrowseView: View {
                             .contextMenu {
                                 ServerActions(account: account, editing: $editing)
                             }
-                            .swipeActions {
-                                Button("Remove", systemImage: "trash", role: .destructive) {
+                            // Not a destructive role: that removes the row at
+                            // once, before you've confirmed, and the list then
+                            // disagrees with the servers it shows.
+                            .swipeActions(allowsFullSwipe: false) {
+                                Button("Remove", systemImage: "trash") {
                                     editing = .remove(account)
                                 }
+                                .tint(.red)
                                 Button("Rename", systemImage: "pencil") {
                                     editing = .rename(account)
                                 }

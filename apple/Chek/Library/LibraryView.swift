@@ -126,10 +126,14 @@ private struct LibraryContent: View {
                             .contextMenu {
                                 BookActions(book: book, bookToRemove: $bookToRemove)
                             }
-                            .swipeActions {
-                                Button("Remove", systemImage: "trash", role: .destructive) {
+                            // Not a destructive role: that removes the row at
+                            // once, before you've confirmed, and the list then
+                            // disagrees with the books it shows.
+                            .swipeActions(allowsFullSwipe: false) {
+                                Button("Remove", systemImage: "trash") {
                                     bookToRemove = book
                                 }
+                                .tint(.red)
                             }
                             .removeBookConfirmation(book: removal(of: book))
                     }

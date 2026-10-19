@@ -47,6 +47,9 @@ struct ServerHomeView: View {
 final class ServerHomeModel {
     struct Content: Equatable {
         var continueReading: [RemotePublication]
+        /// Where you are in each of ``continueReading`` as the server keeps
+        /// it, for books this device hasn't opened.
+        var serverStatuses: [Int64: ReadingStatus]
         var recentlyAdded: [RemotePublication]
         var libraries: [ChekAPI.Library]
     }
@@ -73,8 +76,13 @@ final class ServerHomeModel {
                     async let libraries = client.libraries()
                     async let recent = client.recentlyAdded(cursor: nil)
                     async let reading = client.continueReading()
+                    let readingItems = try await reading
                     return try await Content(
-                        continueReading: reading.map { RemotePublication($0.publication, server: account) },
+                        continueReading: readingItems.map { RemotePublication($0.publication, server: account) },
+                        serverStatuses: Dictionary(readingItems.map { item in
+                            let progress = item.progress.locator?.locations.totalProgression
+                            return (item.publication.id, ReadingStatus(progress: progress, finished: false, opened: true))
+                        }, uniquingKeysWith: { first, _ in first }),
                         recentlyAdded: recent.items.map { RemotePublication($0, server: account) },
                         libraries: libraries
                     )
@@ -143,7 +151,7 @@ private struct ServerHomeContent: View {
                         if !content.continueReading.isEmpty {
                             Shelf(
                                 title: "Continue Reading",
-                                items: content.continueReading.map { servers.item($0, status: statuses[$0.id]) },
+                                items: content.continueReading.map { servers.item($0, status: statuses[$0.id, or: content.serverStatuses[$0.id]]) },
                                 isFeatured: true
                             )
                         }
