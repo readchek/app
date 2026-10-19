@@ -3,9 +3,11 @@ import SwiftUI
 
 /// Text size, theme, font, spacing and margins, changed while you read.
 struct AppearancePanel: View {
+    var showsTextSettings = true
+
     var body: some View {
         NavigationStack {
-            ReaderAppearanceForm()
+            ReaderAppearanceForm(showsTextSettings: showsTextSettings)
                 .navigationTitle("Appearance")
                 .navigationBarTitleDisplayMode(.inline)
         }
@@ -18,31 +20,46 @@ struct AppearancePanel: View {
 
 /// The reading settings, shared by the reader's panel and Settings.
 struct ReaderAppearanceForm: View {
+    /// Whether the settings for reflowing text apply, which they don't to
+    /// comics and PDFs.
+    var showsTextSettings = true
     @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
         @Bindable var settings = settings
         Form {
-            Section {
-                TextSizeControl()
-                ThemePicker(selection: $settings.theme)
+            if showsTextSettings {
+                Section {
+                    TextSizeControl()
+                    ThemePicker(selection: $settings.theme)
+                }
             }
-            Section("Text") {
-                Picker("Font", selection: $settings.font) {
-                    Text("Original").tag(ReaderPreferences.Font.original)
-                    Text("New York").tag(ReaderPreferences.Font.serif)
-                    Text("San Francisco").tag(ReaderPreferences.Font.sansSerif)
+            Section("Page Turn") {
+                Picker("Page Turn", selection: $settings.pageTransition) {
+                    Text("Curl").tag(ReaderPreferences.PageTransition.curl)
+                    Text("Slide").tag(ReaderPreferences.PageTransition.slide)
                 }
-                Picker("Line Spacing", selection: $settings.lineSpacing) {
-                    Text("Original").tag(ReaderSettings.LineSpacing.original)
-                    Text("Compact").tag(ReaderSettings.LineSpacing.compact)
-                    Text("Regular").tag(ReaderSettings.LineSpacing.regular)
-                    Text("Relaxed").tag(ReaderSettings.LineSpacing.relaxed)
-                }
-                Picker("Margins", selection: $settings.margins) {
-                    Text("Narrow").tag(ReaderSettings.Margins.narrow)
-                    Text("Regular").tag(ReaderSettings.Margins.regular)
-                    Text("Wide").tag(ReaderSettings.Margins.wide)
+                .pickerStyle(.segmented)
+                .labelsHidden()
+            }
+            if showsTextSettings {
+                Section("Text") {
+                    Picker("Font", selection: $settings.font) {
+                        Text("Original").tag(ReaderPreferences.Font.original)
+                        Text("New York").tag(ReaderPreferences.Font.serif)
+                        Text("San Francisco").tag(ReaderPreferences.Font.sansSerif)
+                    }
+                    Picker("Line Spacing", selection: $settings.lineSpacing) {
+                        Text("Original").tag(ReaderSettings.LineSpacing.original)
+                        Text("Compact").tag(ReaderSettings.LineSpacing.compact)
+                        Text("Regular").tag(ReaderSettings.LineSpacing.regular)
+                        Text("Relaxed").tag(ReaderSettings.LineSpacing.relaxed)
+                    }
+                    Picker("Margins", selection: $settings.margins) {
+                        Text("Narrow").tag(ReaderSettings.Margins.narrow)
+                        Text("Regular").tag(ReaderSettings.Margins.regular)
+                        Text("Wide").tag(ReaderSettings.Margins.wide)
+                    }
                 }
             }
             Section {

@@ -56,6 +56,9 @@ final class ReaderSettings {
     var margins: Margins {
         didSet { store(margins.rawValue, for: .margins); update() }
     }
+    var pageTransition: ReaderPreferences.PageTransition {
+        didSet { store(pageTransition.rawValue, for: .pageTransition); update() }
+    }
 
     /// Everything above, as the reader takes it. Stored rather than computed
     /// so views that apply it observe one property.
@@ -71,6 +74,7 @@ final class ReaderSettings {
         fontScale = scale > 0 ? scale : 1
         lineSpacing = defaults.string(forKey: Key.lineSpacing.rawValue).flatMap(LineSpacing.init(rawValue:)) ?? .original
         margins = defaults.string(forKey: Key.margins.rawValue).flatMap(Margins.init(rawValue:)) ?? .regular
+        pageTransition = defaults.string(forKey: Key.pageTransition.rawValue).flatMap(ReaderPreferences.PageTransition.init(rawValue:)) ?? .curl
         update()
     }
 
@@ -106,7 +110,8 @@ final class ReaderSettings {
             theme: theme,
             font: font,
             lineHeight: lineSpacing.lineHeight,
-            marginScale: margins.scale
+            marginScale: margins.scale,
+            pageTransition: pageTransition
         )
     }
 
@@ -116,6 +121,7 @@ final class ReaderSettings {
         case fontScale = "reader.fontScale"
         case lineSpacing = "reader.lineSpacing"
         case margins = "reader.margins"
+        case pageTransition = "reader.pageTransition"
     }
 
     private func store(_ value: Any, for key: Key) {

@@ -62,8 +62,8 @@ final class ReaderSession {
     }
 
     /// Text settings only reach text that reflows, so comics and PDFs
-    /// don't offer them.
-    var showsAppearance: Bool {
+    /// only offer the page turn.
+    var showsTextSettings: Bool {
         item.kind == .book && controller.format != .pdf
     }
 

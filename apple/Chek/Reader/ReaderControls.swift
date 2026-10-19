@@ -30,10 +30,8 @@ private struct ReaderToolbars: ViewModifier {
                     Button("Contents", systemImage: "list.bullet") {
                         session.show(.contents)
                     }
-                    if session.showsAppearance {
-                        Button("Appearance", systemImage: "textformat.size") {
-                            session.show(.appearance)
-                        }
+                    Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
+                        session.show(.appearance)
                     }
                 }
                 ToolbarItem(placement: .bottomBar) {
@@ -49,7 +47,7 @@ private struct ReaderToolbars: ViewModifier {
                 case .contents:
                     ContentsPanel(session: session)
                 case .appearance:
-                    AppearancePanel()
+                    AppearancePanel(showsTextSettings: session.showsTextSettings)
                 }
             }
     }
