@@ -39,12 +39,17 @@ struct ReaderScreen: View {
 private struct LocationSaver: View {
     let controller: ReaderController
     let book: Book
+    @Environment(\.modelContext) private var modelContext
 
     var body: some View {
         Color.clear
             .onChange(of: controller.location) { _, location in
                 if let location {
                     book.savedLocation = location
+                    // SwiftData's autosave can lag by several seconds, so a
+                    // book closed by quitting the app would reopen pages
+                    // back. Saving one row per page turn is cheap.
+                    try? modelContext.save()
                 }
             }
     }

@@ -1,0 +1,15 @@
+{
+  "originHash" : "c445e7a4ba3bbcb2e07cc6a8316b1c55de0b3f5ef4bbd5c9bf63eed0b459f146",
+  "pins" : [
+    {
+      "identity" : "chek-reader",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/readchek/chek-reader",
+      "state" : {
+        "branch" : "main",
+        "revision" : "062ea7a90214a34726e6b177e654e6c58c89dd41"
+      }
+    }
+  ],
+  "version" : 3
+}
