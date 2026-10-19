@@ -280,7 +280,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/readchek/chek-reader";
 			requirement = {
-				branch = "claude/project-thread-ji71he";
+				branch = main;
 				kind = branch;
 			};
 		};
