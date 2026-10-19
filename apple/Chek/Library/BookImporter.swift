@@ -10,7 +10,11 @@ nonisolated struct ImportedBook: Sendable {
     var title: String
     var authors: String
     var formatName: String
+    var kind: PublicationKind
+    var seriesTitle: String?
+    var seriesPosition: Double?
     var fileName: String
+    var fileSize: Int64
     var hasCover: Bool
 }
 
@@ -56,18 +60,56 @@ nonisolated enum BookImporter {
 
             let publication = try await Publication.open(.file(destination))
             let hasCover = await writeCover(of: publication, file: destination, to: LibraryFiles.coverURL(for: id))
+            let size = try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize
             return ImportedBook(
                 id: id,
-                title: publication.metadata.title ?? destination.deletingPathExtension().lastPathComponent,
+                title: displayTitle(publication.metadata.title, fileName: destination.deletingPathExtension().lastPathComponent),
                 authors: publication.metadata.authors.map(\.name).formatted(.list(type: .and)),
-                formatName: publication.format.name,
+                formatName: shortName(of: publication.format),
+                kind: [.cbz, .cbt, .cbr, .cb7].contains(publication.format) ? .comic : .book,
+                seriesTitle: publication.metadata.series?.name,
+                seriesPosition: publication.metadata.series?.position,
                 fileName: destination.lastPathComponent,
+                fileSize: Int64(size ?? 0),
                 hasCover: hasCover
             )
         } catch {
             LibraryFiles.remove(id)
             throw error
         }
+    }
+
+    /// The publication's title, or one made from its file name when it has
+    /// none or only repeats the file name, as comic archives often do.
+    static func displayTitle(_ title: String?, fileName: String) -> String {
+        guard let title, !title.isEmpty, title != fileName else {
+            return self.title(fromFileName: fileName)
+        }
+        return title
+    }
+
+    /// A short label for the format, such as "CBZ", that fits under a cover.
+    static func shortName(of format: ReaderFormat) -> String {
+        switch format {
+        case .plainText: String(localized: "Text")
+        case .markdown: "Markdown"
+        case .fb2, .fb2Zip: "FB2"
+        default: format.fileExtensions.first?.uppercased() ?? format.name
+        }
+    }
+
+    /// A readable title from a file name such as `birds-eye_vol_01`, for
+    /// publications that don't name themselves.
+    static func title(fromFileName name: String) -> String {
+        let words = name
+            .replacing(/[_\-.]+/, with: " ")
+            .split(separator: " ", omittingEmptySubsequences: true)
+        guard !words.isEmpty else { return name }
+        // Keep words that already have capitals, such as "MURAI" or "iPad".
+        return words.map { word in
+            word.contains(where: \.isUppercase) ? String(word) : word.prefix(1).uppercased() + word.dropFirst()
+        }
+        .joined(separator: " ")
     }
 
     /// Saves a thumbnail of the book's cover, falling back to the first

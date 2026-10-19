@@ -1,85 +1,140 @@
 import ChekReader
 import SwiftUI
 
-/// Reads one book, starting where it was left and saving the position as
-/// the reader moves.
+/// Reads one publication full screen, with Liquid Glass controls that
+/// appear when you tap the middle of the page.
 struct ReaderScreen: View {
-    let book: Book
-    @State private var controller = ReaderController()
+    @State private var session: ReaderSession
+
+    init(item: ReadingItem, preferences: ReaderPreferences) {
+        _session = State(initialValue: ReaderSession(item: item, preferences: preferences))
+    }
 
     var body: some View {
         ZStack {
-            NavigatorView(controller: controller)
-                .ignoresSafeArea(edges: .bottom)
-            ReaderStatus(state: controller.state) {
-                Task { await open() }
-            }
+            ReaderCanvas(kind: session.item.kind)
+            ReaderContent(session: session)
+            ReaderControls(session: session)
         }
-        .background {
-            LocationSaver(controller: controller, book: book)
+        .statusBarHidden(!session.isShowingControls)
+        .persistentSystemOverlays(session.isShowingControls ? .automatic : .hidden)
+        .animation(.smooth(duration: 0.25), value: session.isShowingControls)
+        .readerEffects(session: session)
+        .modifier(ReaderColorScheme(kind: session.item.kind))
+        .task {
+            await session.open()
         }
-        .navigationTitle(book.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbarRole(.editor)
-        .task(id: book.id) {
-            await open()
-        }
-    }
-
-    private func open() async {
-        book.lastOpenedAt = .now
-        book.recentAt = .now
-        // Failures show through the controller's state.
-        try? await controller.open(.file(book.fileURL), at: book.savedLocation)
     }
 }
 
-/// Saves the location as it changes. It reads `location` on its own so a
-/// page turn redraws only this view.
-private struct LocationSaver: View {
-    let controller: ReaderController
-    let book: Book
-    @Environment(\.modelContext) private var modelContext
+/// Light or dark to match the page, for the controls, panels and status
+/// bar alike.
+private struct ReaderColorScheme: ViewModifier {
+    let kind: PublicationKind
+    @Environment(ReaderSettings.self) private var settings
 
-    var body: some View {
-        Color.clear
-            .onChange(of: controller.location) { _, location in
-                if let location {
-                    book.savedLocation = location
-                    // SwiftData's autosave can lag by several seconds, so a
-                    // book closed by quitting the app would reopen pages
-                    // back. Saving one row per page turn is cheap.
-                    try? modelContext.save()
-                }
-            }
+    func body(content: Content) -> some View {
+        content.preferredColorScheme(kind == .comic ? .dark : ReaderTheme(settings.theme).colorScheme)
     }
 }
 
-/// Loading and failure states drawn over the reader.
-private struct ReaderStatus: View {
-    let state: ReaderController.State
-    let retry: () -> Void
+/// The color behind the page, matched to the reading theme so the edges
+/// around the text don't show a different color.
+private struct ReaderCanvas: View {
+    let kind: PublicationKind
+    @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
-        switch state {
-        case .idle, .opening, .closing:
-            ProgressView()
+        Group {
+            switch kind {
+            case .comic: Color.black
+            case .book: ReaderTheme(settings.theme).background
+            }
+        }
+        .ignoresSafeArea()
+    }
+}
+
+/// The page, or what's in its place while it downloads, opens or fails.
+private struct ReaderContent: View {
+    let session: ReaderSession
+
+    var body: some View {
+        switch session.phase {
+        case .downloading(let fraction):
+            ReaderDownloadView(fraction: fraction)
         case .failed(let error):
-            ContentUnavailableView {
-                Label {
-                    Text(verbatim: error.localizedDescription)
-                } icon: {
-                    Image(systemName: "book.closed")
-                }
-            } description: {
-                if let suggestion = error.recoverySuggestion {
-                    Text(verbatim: suggestion)
-                }
-            } actions: {
-                Button("Try Again", action: retry)
+            ReaderFailureView(error: error, session: session)
+        case .reading:
+            ZStack {
+                NavigatorView(controller: session.controller)
+                    .ignoresSafeArea(edges: session.item.kind == .comic ? .all : [])
+                ReaderStateView(session: session)
             }
-        case .ready, .closed:
+        }
+    }
+}
+
+/// Loading and failure states of the reader engine.
+private struct ReaderStateView: View {
+    let session: ReaderSession
+
+    var body: some View {
+        switch session.controller.state {
+        case .idle, .opening:
+            ProgressView()
+                .controlSize(.large)
+        case .failed(let error):
+            ReaderFailureView(error: DisplayError(error), session: session)
+        case .ready, .closing, .closed:
             EmptyView()
+        }
+    }
+}
+
+private struct ReaderDownloadView: View {
+    let fraction: Double?
+
+    var body: some View {
+        VStack(spacing: 16) {
+            if let fraction {
+                ProgressView(value: fraction)
+                    .progressViewStyle(.circular)
+                    .controlSize(.large)
+                Text(fraction, format: .percent.precision(.fractionLength(0)))
+                    .font(.footnote.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            } else {
+                ProgressView()
+                    .controlSize(.large)
+            }
+            Text("Downloading")
+                .font(.headline)
+        }
+    }
+}
+
+private struct ReaderFailureView: View {
+    let error: DisplayError
+    let session: ReaderSession
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        ContentUnavailableView {
+            Label(error.title, systemImage: "book.closed")
+        } description: {
+            if let message = error.message {
+                Text(message)
+            }
+        } actions: {
+            Button("Try Again") {
+                Task { await session.open() }
+            }
+            .buttonStyle(.glassProminent)
+            Button("Close") {
+                router.closeReader()
+            }
+            .buttonStyle(.glass)
         }
     }
 }

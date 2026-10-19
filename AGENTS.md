@@ -14,6 +14,7 @@ The native Chek apps, starting with iPhone and iPad. Chek is a reader for books 
 - **Platforms.** Build with Xcode 27 and Swift 6.4, and deploy to iOS and iPadOS 26 or later. Put 27-only APIs behind `if #available`.
 - **SwiftUI and SwiftData.** Books are `Book` models; each book's file and cover live in their own folder under Application Support, found by the book's id, because the app container's path changes between installs.
 - **Positions** are Chek Reader `Locator` values, stored as their Readium-compatible JSON.
+- **State.** Every value has one owner allowed to change it: a store, a screen model or a view's own `@State`. Phases are enums, not booleans, and stored data is versioned in `ChekSchema`. [docs/architecture.md](docs/architecture.md) has the layers and rules; read it before adding a screen, store or model.
 
 ## Build
 
