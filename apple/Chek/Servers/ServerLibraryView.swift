@@ -39,10 +39,11 @@ struct ServerLibraryView: View {
 private struct SeriesGrid: View {
     let account: UUID
     let series: PagedList<ChekAPI.Series>
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: Metrics.gridColumns, spacing: Metrics.gridRowSpacing) {
+            LazyVGrid(columns: Metrics.gridColumns(regular: sizeClass == .regular), spacing: Metrics.gridRowSpacing) {
                 ForEach(series.items) { item in
                     SeriesCell(account: account, series: item)
                         .task {

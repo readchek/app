@@ -10,15 +10,24 @@ enum Metrics {
     static let gridRowSpacing: CGFloat = 20
     /// Between sections on a page.
     static let sectionSpacing: CGFloat = 32
-    /// A cover's width in a shelf.
-    static let shelfCoverWidth: CGFloat = 108
+    /// A cover's width in a shelf, larger on iPad's wider screen.
+    static func shelfCoverWidth(regular: Bool) -> CGFloat {
+        regular ? 140 : 108
+    }
     /// A cover's width in the Continue Reading carousel.
-    static let featuredCoverWidth: CGFloat = 150
+    static func featuredCoverWidth(regular: Bool) -> CGFloat {
+        regular ? 200 : 150
+    }
     /// A cover's width in a list row.
     static let rowCoverWidth: CGFloat = 44
 
-    /// Three covers across on iPhone, as in Panels, more on wider screens.
-    static let gridColumns = [GridItem(.adaptive(minimum: 100, maximum: 150), spacing: 12, alignment: .top)]
+    /// Three covers across on iPhone, as in Panels, and covers about as
+    /// large as Books' on iPad.
+    static func gridColumns(regular: Bool) -> [GridItem] {
+        regular
+            ? [GridItem(.adaptive(minimum: 140, maximum: 190), spacing: 20, alignment: .top)]
+            : [GridItem(.adaptive(minimum: 100, maximum: 150), spacing: 12, alignment: .top)]
+    }
 }
 
 /// A cover with a one-line title and a small status under it, as in Panels.
@@ -161,15 +170,17 @@ struct Shelf: View {
     let items: [PublicationItem]
     /// Larger covers with titles, for what you're reading.
     var isFeatured = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        let regular = sizeClass == .regular
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: title)
             ScrollView(.horizontal) {
                 LazyHStack(alignment: .bottom, spacing: isFeatured ? 20 : Metrics.coverSpacing) {
                     ForEach(items) { item in
                         PublicationCell(item: item)
-                            .frame(width: isFeatured ? Metrics.featuredCoverWidth : Metrics.shelfCoverWidth)
+                            .frame(width: isFeatured ? Metrics.featuredCoverWidth(regular: regular) : Metrics.shelfCoverWidth(regular: regular))
                     }
                 }
                 .scrollTargetLayout()

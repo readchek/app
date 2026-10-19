@@ -8,13 +8,13 @@ struct LibraryView: View {
     @AppStorage("library.sort") private var sort = LibrarySort.recent
     @AppStorage("library.filter") private var filter = LibraryFilter.all
     @AppStorage("library.layout") private var layout = LibraryLayout.grid
-    @State private var search = ""
 
     var body: some View {
         NavigationStack {
-            LibraryContent(sort: sort, filter: filter, search: search, layout: layout)
+            // Searching is the Search tab's, which covers this library too,
+            // so there's one place to search rather than two side by side.
+            LibraryContent(sort: sort, filter: filter, layout: layout)
                 .navigationTitle(Text(filter.navigationTitle))
-                .searchable(text: $search, prompt: Text("Titles and Authors"))
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
                         LibraryOptionsMenu(sort: $sort, filter: $filter, layout: $layout)
@@ -80,23 +80,20 @@ private struct LibraryOptionsMenu: View {
 private struct LibraryContent: View {
     let filter: LibraryFilter
     let layout: LibraryLayout
-    let isSearching: Bool
     @Query private var books: [Book]
     @State private var bookToRemove: Book?
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
-    init(sort: LibrarySort, filter: LibraryFilter, search: String, layout: LibraryLayout) {
+    init(sort: LibrarySort, filter: LibraryFilter, layout: LibraryLayout) {
         self.filter = filter
         self.layout = layout
-        isSearching = !search.trimmingCharacters(in: .whitespaces).isEmpty
-        _books = Query(filter: Book.predicate(kind: filter.kind, search: search), sort: sort.descriptors, animation: .default)
+        _books = Query(filter: Book.predicate(kind: filter.kind, search: ""), sort: sort.descriptors, animation: .default)
     }
 
     var body: some View {
         Group {
             if books.isEmpty {
-                if isSearching {
-                    ContentUnavailableView.search
-                } else if filter != .all {
+                if filter != .all {
                     ContentUnavailableView(filter == .comics ? "No Comics" : "No Books", systemImage: "books.vertical")
                 } else {
                     EmptyLibraryView()
@@ -105,7 +102,7 @@ private struct LibraryContent: View {
                 switch layout {
                 case .grid:
                     ScrollView {
-                        LazyVGrid(columns: Metrics.gridColumns, spacing: Metrics.gridRowSpacing) {
+                        LazyVGrid(columns: Metrics.gridColumns(regular: sizeClass == .regular), spacing: Metrics.gridRowSpacing) {
                             ForEach(books) { book in
                                 let item = PublicationItem(book)
                                 PublicationCell(item: item)

@@ -1,6 +1,7 @@
 import ChekReader
 import Foundation
 import Observation
+import UIKit
 
 /// How text looks in the reader, the same for every book and kept between
 /// launches. The reader applies ``preferences`` whenever they change.
@@ -110,7 +111,7 @@ final class ReaderSettings {
 
     private func update() {
         preferences = ReaderPreferences(
-            fontScale: fontScale,
+            fontScale: fontScale * Self.deviceTextScale,
             theme: theme,
             font: font,
             lineHeight: lineSpacing.lineHeight,
@@ -119,6 +120,11 @@ final class ReaderSettings {
             comicFlow: comicFlow
         )
     }
+
+    /// iPad is read from further away than iPhone, so the same size reads
+    /// smaller there. Its text starts a step larger, as in Books, beneath
+    /// the size you choose, which still shows as 100%.
+    private static let deviceTextScale = UIDevice.current.userInterfaceIdiom == .pad ? 1.15 : 1
 
     private enum Key: String {
         case theme = "reader.theme"
