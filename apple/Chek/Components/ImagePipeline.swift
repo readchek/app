@@ -42,6 +42,25 @@ final class ImagePipeline {
         memory.removeObject(forKey: key as NSString)
     }
 
+    /// Where downloaded covers are kept between launches. Caches, since
+    /// they can always be fetched again.
+    nonisolated private static let diskFolder = URL.cachesDirectory.appending(path: "Covers", directoryHint: .isDirectory)
+
+    nonisolated private static func diskURL(for key: String) -> URL {
+        // Keys hold slashes; hex keeps them a single safe file name.
+        let name = Data(key.utf8).map { String(format: "%02x", $0) }.joined()
+        return diskFolder.appending(path: name)
+    }
+
+    nonisolated static func diskData(for key: String) -> Data? {
+        try? Data(contentsOf: diskURL(for: key))
+    }
+
+    nonisolated static func storeOnDisk(_ data: Data, for key: String) {
+        try? FileManager.default.createDirectory(at: diskFolder, withIntermediateDirectories: true)
+        try? data.write(to: diskURL(for: key), options: .atomic)
+    }
+
     /// Decodes an image file into a bitmap ready to draw.
     @concurrent
     nonisolated static func decodeFile(at url: URL) async -> UIImage? {

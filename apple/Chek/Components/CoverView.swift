@@ -71,9 +71,14 @@ struct CoverView: View {
             loaded = await ImagePipeline.shared.image(for: key) { await ImagePipeline.decodeFile(at: url) }
         case .remote(_, let request):
             loaded = await ImagePipeline.shared.image(for: key) {
+                // The copy on disk first, so covers show offline and at once.
+                if let data = ImagePipeline.diskData(for: key), let image = await ImagePipeline.decode(data) {
+                    return image
+                }
                 guard let (data, response) = try? await URLSession.shared.data(for: request),
                       (response as? HTTPURLResponse)?.statusCode == 200
                 else { return nil }
+                ImagePipeline.storeOnDisk(data, for: key)
                 return await ImagePipeline.decode(data)
             }
         }
