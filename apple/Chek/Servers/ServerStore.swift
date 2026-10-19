@@ -105,16 +105,22 @@ final class ServerStore {
         )
         context.insert(account)
         try? context.save()
-        keychain.setToken(session.token, for: account.id)
-        signedOut.remove(account.id)
+        keep(session, for: account)
         return account
     }
 
     /// Signs `account` in again after its session ended.
     func signIn(_ account: ServerAccount, password: String) async throws(DisplayError) {
         let session = try await signIn(at: account.baseURL, name: account.userName, password: password)
+        keep(session, for: account)
+    }
+
+    /// Stores a new session's token, and makes its client straight away so
+    /// the session works even if the Keychain refuses the token, as it does
+    /// in builds without signing.
+    private func keep(_ session: ChekAPI.Session, for account: ServerAccount) {
         keychain.setToken(session.token, for: account.id)
-        clients[account.id] = nil
+        clients[account.id] = ChekClient(baseURL: account.baseURL, token: session.token)
         signedOut.remove(account.id)
     }
 

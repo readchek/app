@@ -26,11 +26,18 @@ struct ServerHomeView: View {
                 ContentUnavailableView("Server Removed", systemImage: "server.rack")
             }
         }
-        .task(id: account) {
+        // Signing back in loads the home again, rather than leaving what
+        // failed while signed out on screen.
+        .task(id: LoadKey(account: account, isSignedIn: servers.state(of: account) == .signedIn)) {
             let model = model ?? ServerHomeModel(account: account, servers: servers)
             self.model = model
             await model.load()
         }
+    }
+
+    private struct LoadKey: Hashable {
+        var account: UUID
+        var isSignedIn: Bool
     }
 }
 
