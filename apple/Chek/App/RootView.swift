@@ -9,7 +9,7 @@ struct RootView: View {
     var body: some View {
         @Bindable var router = router
         TabView(selection: $router.tab) {
-            Tab("Reading Now", systemImage: "book", value: AppTab.home) {
+            Tab("Home", systemImage: "house", value: AppTab.home) {
                 HomeView()
             }
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
