@@ -9,6 +9,9 @@ struct ReaderScreen: View {
     /// Where the page's content sits, worked out once per screen size so
     /// showing and hiding the controls or the status bar never moves it.
     @State private var contentInsets = EdgeInsets()
+    /// How far the reader has been pulled down to close it.
+    @State private var pull: CGFloat = 0
+    @Environment(AppRouter.self) private var router
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         _session = State(initialValue: ReaderSession(item: item, preferences: preferences))
@@ -26,6 +29,10 @@ struct ReaderScreen: View {
             .onChange(of: proxy.size, initial: true) {
                 contentInsets = Self.deviceInsets(fallback: proxy.safeAreaInsets)
             }
+            .clipShape(.rect(cornerRadius: pull > 0 ? 40 : 0))
+            .scaleEffect(1 - min(pull / max(proxy.size.height, 1), 0.4) * 0.3, anchor: .top)
+            .offset(y: pull)
+            .simultaneousGesture(pullToClose(height: proxy.size.height))
         }
         .statusBarHidden(!session.isShowingControls)
         .persistentSystemOverlays(session.isShowingControls ? .automatic : .hidden)
@@ -39,6 +46,32 @@ struct ReaderScreen: View {
 }
 
 extension ReaderScreen {
+    /// Pulling down from the upper part of the page closes the reader, the
+    /// page following the finger and springing back if let go early. Only
+    /// the upper part, so it never fights a vertically scrolling comic.
+    private func pullToClose(height: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 16, coordinateSpace: .global)
+            .onChanged { value in
+                guard value.startLocation.y < height * 0.35,
+                      value.translation.height > abs(value.translation.width) * 1.5
+                else { return }
+                // Resistance grows the further it goes, as rubber does.
+                let distance = value.translation.height
+                pull = distance < 120 ? distance : 120 + (distance - 120) * 0.55
+            }
+            .onEnded { value in
+                guard pull > 0 else { return }
+                if pull > 150 || value.predictedEndTranslation.height > height * 0.45 {
+                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                    router.closeReader()
+                } else {
+                    withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) {
+                        pull = 0
+                    }
+                }
+            }
+    }
+
     /// The screen's own insets, for the sensor housing and the home
     /// indicator, which don't change when bars come and go.
     static func deviceInsets(fallback: EdgeInsets) -> EdgeInsets {
