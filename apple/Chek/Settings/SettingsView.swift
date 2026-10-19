@@ -62,11 +62,7 @@ private struct ServersSection: View {
                 NavigationLink {
                     ServerAccountForm(account: account)
                 } label: {
-                    LabeledContent {
-                        Text(account.userName)
-                    } label: {
-                        Label(account.name, systemImage: "server.rack")
-                    }
+                    ServerRow(account: account)
                 }
             }
             Button("Connect a Server", systemImage: "plus") {
@@ -92,7 +88,7 @@ private struct ServerAccountForm: View {
                 TextField("Name", text: $name)
                     .onSubmit { servers.rename(account, to: name) }
                 LabeledContent("Address", value: account.baseURL.absoluteString)
-                LabeledContent("Signed In As", value: account.userName)
+                LabeledContent("Account", value: account.userName)
             }
             Section {
                 if servers.state(of: account.id) == .signedIn {

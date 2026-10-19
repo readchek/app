@@ -71,7 +71,9 @@ struct BrowseView: View {
     }
 }
 
-private struct ServerRow: View {
+/// A server's name with your account under it, or that you're signed out.
+/// Browse and Settings both list servers with it, so they always agree.
+struct ServerRow: View {
     let account: ServerAccount
     @Environment(ServerStore.self) private var servers
 
