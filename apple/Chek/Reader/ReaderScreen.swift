@@ -139,7 +139,9 @@ private struct ReaderContent: View {
         case .reading:
             ZStack {
                 NavigatorView(controller: session.controller)
-                    .padding(session.item.kind == .comic ? EdgeInsets() : insets)
+                    // Only text that reflows keeps clear of the screen's
+                    // edges; comics and PDFs are pictures and use it all.
+                    .padding(session.showsTextSettings ? insets : EdgeInsets())
                     // The margins outside the text are the page too.
                     .background { ReaderCanvas(kind: session.item.kind) }
                     .ignoresSafeArea()
