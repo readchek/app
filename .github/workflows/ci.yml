@@ -25,8 +25,13 @@ jobs:
         run: |
           xcodebuild -version
           xcodebuild -version | grep -q '^Xcode 27' || { echo "::error::Expected Xcode 27"; exit 1; }
+      # The runner's shared SwiftPM repository cache can name clones that
+      # are gone, which fails package resolution before anything builds,
+      # so packages are fetched fresh into the workspace instead.
       - name: Build for iOS Simulator
         run: >
           xcodebuild build -project apple/Chek.xcodeproj -scheme Chek
           -destination 'generic/platform=iOS Simulator'
+          -disablePackageRepositoryCache
+          -clonedSourcePackagesDirPath .build/SourcePackages
           CODE_SIGNING_ALLOWED=NO
