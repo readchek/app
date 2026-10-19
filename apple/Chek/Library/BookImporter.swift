@@ -101,9 +101,17 @@ nonisolated enum BookImporter {
     /// A readable title from a file name such as `birds-eye_vol_01`, for
     /// publications that don't name themselves.
     static func title(fromFileName name: String) -> String {
-        let words = name
-            .replacing(/[_\-.]+/, with: " ")
-            .split(separator: " ", omittingEmptySubsequences: true)
+        // Underscores always break words; a dot or hyphen does unless it
+        // sits between digits, as in "3.0" or "1-2".
+        let characters = Array(name)
+        var spaced = ""
+        for (index, character) in characters.enumerated() {
+            let inNumber = index > 0 && index + 1 < characters.count
+                && characters[index - 1].isNumber && characters[index + 1].isNumber
+            let isBreak = character == "_" || ((character == "." || character == "-") && !inNumber)
+            spaced.append(isBreak ? " " : character)
+        }
+        let words = spaced.split(separator: " ", omittingEmptySubsequences: true)
         guard !words.isEmpty else { return name }
         // Keep words that already have capitals, such as "MURAI" or "iPad".
         return words.map { word in
