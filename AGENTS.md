@@ -37,6 +37,7 @@ CI runs this on every pull request. Before you push, build what you changed. If 
 
 ## Pull requests
 
-- Branch from `main`, keep each PR to one change, and merge by squash.
+- For now, while the app's shape is still being worked out, commit straight to `main` at meaningful checkpoints instead of opening PRs. The same goes for Chek Reader changes the app needs.
+- Once PRs are back: branch from `main`, keep each PR to one change, and merge by squash.
 - Fill in the PR template with "Before", "After" and "How" in plain language.
 - Update the README when requirements or usage change, and this file when a convention or decision changes.
