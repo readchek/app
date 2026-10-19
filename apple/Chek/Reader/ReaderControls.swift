@@ -26,17 +26,23 @@ private struct ReaderToolbars: ViewModifier {
                 ToolbarItem(placement: .principal) {
                     ReaderTitle(title: session.item.title, controller: session.controller)
                 }
-                ToolbarItemGroup(placement: .topBarTrailing) {
+                // One button either side, so the title sits in the visual
+                // middle, not just the measured one. Appearance goes with
+                // the scrubber at the bottom, as in Books.
+                ToolbarItem(placement: .topBarTrailing) {
                     Button("Contents", systemImage: "list.bullet") {
                         session.show(.contents)
-                    }
-                    Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
-                        session.show(.appearance)
                     }
                 }
                 ToolbarItem(placement: .bottomBar) {
                     ReaderScrubber(controller: session.controller)
-                        .frame(width: min(max(width - 72, 200), 560))
+                        .frame(width: min(max(width - 136, 160), 500))
+                }
+                ToolbarSpacer(.fixed, placement: .bottomBar)
+                ToolbarItem(placement: .bottomBar) {
+                    Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
+                        session.show(.appearance)
+                    }
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
