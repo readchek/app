@@ -111,6 +111,7 @@ private struct LibraryContent: View {
                                     .contextMenu {
                                         BookActions(book: book, bookToRemove: $bookToRemove)
                                     }
+                                    .removeBookConfirmation(book: removal(of: book))
                             }
                         }
                         .padding(.horizontal, Metrics.margin)
@@ -127,12 +128,22 @@ private struct LibraryContent: View {
                                     bookToRemove = book
                                 }
                             }
+                            .removeBookConfirmation(book: removal(of: book))
                     }
                     .listStyle(.plain)
                 }
             }
         }
-        .removeBookConfirmation(book: $bookToRemove)
+    }
+
+    /// The book being removed, for `book`'s own cell only, so the question
+    /// points at the book you chose rather than the middle of the screen.
+    private func removal(of book: Book) -> Binding<Book?> {
+        Binding {
+            bookToRemove?.id == book.id ? bookToRemove : nil
+        } set: {
+            bookToRemove = $0
+        }
     }
 }
 
