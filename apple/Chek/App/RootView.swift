@@ -15,6 +15,9 @@ struct RootView: View {
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 LibraryView()
             }
+            Tab("Browse", systemImage: "server.rack", value: AppTab.browse) {
+                BrowseView()
+            }
             Tab(value: AppTab.search, role: .search) {
                 SearchView()
             }
@@ -30,6 +33,10 @@ struct RootView: View {
             switch sheet {
             case .settings:
                 SettingsView()
+            case .addServer:
+                AddServerView()
+            case .signIn(let account):
+                SignInView(account: account)
             }
         }
         .onOpenURL { url in
@@ -45,6 +52,8 @@ struct RootView: View {
             }
         }
         .importFailureAlert()
+        .openingFailureAlert()
+        .syncTriggers()
     }
 }
 
@@ -81,6 +90,31 @@ private struct ReaderTransitionSource: ViewModifier {
             content.matchedTransitionSource(id: ref, in: namespace)
         } else {
             content
+        }
+    }
+}
+
+extension View {
+    /// Explains why a server publication couldn't open.
+    fileprivate func openingFailureAlert() -> some View {
+        modifier(OpeningFailureAlert())
+    }
+}
+
+/// Split out so the root view doesn't redraw when opening fails.
+private struct OpeningFailureAlert: ViewModifier {
+    @Environment(AppRouter.self) private var router
+
+    func body(content: Content) -> some View {
+        content.alert(
+            router.openingFailure?.title ?? "",
+            isPresented: Binding { router.openingFailure != nil } set: { if !$0 { router.openingFailure = nil } }
+        ) {
+            Button("OK") {}
+        } message: {
+            if let message = router.openingFailure?.message {
+                Text(message)
+            }
         }
     }
 }

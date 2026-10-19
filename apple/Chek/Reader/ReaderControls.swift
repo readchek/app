@@ -36,7 +36,7 @@ private struct ReaderTopBar: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        GlassEffectContainer(spacing: 12) {
+        GlassEffectContainer(spacing: 6) {
             HStack(spacing: 12) {
                 Button("Close", systemImage: "xmark") {
                     router.closeReader()
@@ -53,7 +53,8 @@ private struct ReaderTopBar: View {
                     Button("Contents", systemImage: "list.bullet") {
                         session.show(.contents)
                     }
-                    if session.item.kind == .book {
+                    // Text settings only reach text that reflows.
+                    if session.item.kind == .book, session.controller.format != .pdf {
                         Button("Appearance", systemImage: "textformat.size") {
                             session.show(.appearance)
                         }

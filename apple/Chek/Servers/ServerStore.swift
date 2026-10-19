@@ -1,0 +1,197 @@
+import ChekReader
+import Foundation
+import Observation
+import SwiftData
+import UIKit
+
+/// Owns the servers you've connected: adding and removing them, signing in
+/// and out, and the client each one is read through.
+///
+/// Every request to a server goes through ``request(_:_:)``, so a session
+/// that ends anywhere in the app marks its account as signed out in one place.
+@MainActor
+@Observable
+final class ServerStore {
+    enum ConnectionState: Equatable {
+        case signedIn
+        case signedOut
+    }
+
+    /// Accounts whose session ended. Every other account is signed in.
+    private(set) var signedOut: Set<UUID> = []
+
+    private let context: ModelContext
+    private let keychain: Keychain
+    /// Clients by account, made once per token so views can compare them.
+    @ObservationIgnored private var clients: [UUID: ChekClient] = [:]
+
+    init(context: ModelContext, keychain: Keychain = .serverTokens) {
+        self.context = context
+        self.keychain = keychain
+        for account in accounts() where keychain.token(for: account.id) == nil {
+            signedOut.insert(account.id)
+        }
+    }
+
+    func state(of account: UUID) -> ConnectionState {
+        signedOut.contains(account) ? .signedOut : .signedIn
+    }
+
+    func accounts() -> [ServerAccount] {
+        (try? context.fetch(FetchDescriptor<ServerAccount>(sortBy: [SortDescriptor(\.sortIndex)]))) ?? []
+    }
+
+    func account(_ id: UUID) -> ServerAccount? {
+        var descriptor = FetchDescriptor<ServerAccount>(predicate: #Predicate { $0.id == id })
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
+    }
+
+    /// The client for `account`, or nil while it's signed out.
+    func client(for account: UUID) -> ChekClient? {
+        if let client = clients[account] {
+            return client
+        }
+        guard !signedOut.contains(account),
+              let server = self.account(account),
+              let token = keychain.token(for: account)
+        else { return nil }
+        let client = ChekClient(baseURL: server.baseURL, token: token)
+        clients[account] = client
+        return client
+    }
+
+    /// Runs `operation` against `account`'s server, marking the account
+    /// signed out if the server says its session ended.
+    func request<Value>(_ account: UUID, _ operation: (ChekClient) async throws(ChekError) -> Value) async throws(ChekError) -> Value {
+        guard let client = client(for: account) else { throw .unauthorized }
+        do {
+            return try await operation(client)
+        } catch .unauthorized {
+            endSession(account)
+            throw .unauthorized
+        }
+    }
+
+    /// The cover of `publication`, fetched with `account`'s credentials.
+    func cover(of publication: Int64, on account: UUID) -> CoverSource {
+        guard let client = client(for: account) else { return .none }
+        return .remote(key: "server/\(account.uuidString)/\(publication)/cover", request: client.coverRequest(of: publication))
+    }
+
+    // MARK: - Connecting
+
+    /// Signs in to the Chek server at `address` and remembers it.
+    func connect(address: String, name: String, password: String) async throws(DisplayError) -> ServerAccount {
+        guard let baseURL = Self.baseURL(from: address) else {
+            throw DisplayError(title: String(localized: "That doesn't look like a server address."), message: String(localized: "Enter an address such as chek.example.com."))
+        }
+        if let existing = accounts().first(where: { $0.baseURL == baseURL && $0.userName.caseInsensitiveCompare(name) == .orderedSame }) {
+            try await signIn(existing, password: password)
+            return existing
+        }
+        let session = try await signIn(at: baseURL, name: name, password: password)
+        let account = ServerAccount(
+            kind: .chek,
+            name: baseURL.host() ?? baseURL.absoluteString,
+            baseURL: baseURL,
+            userName: session.user.name,
+            userID: session.user.id,
+            sortIndex: (accounts().map(\.sortIndex).max() ?? -1) + 1
+        )
+        context.insert(account)
+        try? context.save()
+        keychain.setToken(session.token, for: account.id)
+        signedOut.remove(account.id)
+        return account
+    }
+
+    /// Signs `account` in again after its session ended.
+    func signIn(_ account: ServerAccount, password: String) async throws(DisplayError) {
+        let session = try await signIn(at: account.baseURL, name: account.userName, password: password)
+        keychain.setToken(session.token, for: account.id)
+        clients[account.id] = nil
+        signedOut.remove(account.id)
+    }
+
+    func signOut(_ account: ServerAccount) async {
+        let client = client(for: account.id)
+        endSession(account.id)
+        await client?.signOut()
+    }
+
+    /// Forgets the server, your places in it and anything downloaded from it.
+    func remove(_ account: ServerAccount) async {
+        let id = account.id
+        await signOut(account)
+        try? context.delete(model: RemoteReadingState.self, where: #Predicate { $0.serverID == id })
+        context.delete(account)
+        try? context.save()
+        signedOut.remove(id)
+        try? FileManager.default.removeItem(at: ServerFiles.folder(for: id))
+    }
+
+    func rename(_ account: ServerAccount, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        // A removed account has no context, and changing it would crash.
+        guard !trimmed.isEmpty, trimmed != account.name, account.modelContext != nil else { return }
+        account.name = trimmed
+        try? context.save()
+    }
+
+    private func endSession(_ account: UUID) {
+        keychain.removeToken(for: account)
+        clients[account] = nil
+        signedOut.insert(account)
+    }
+
+    private func signIn(at baseURL: URL, name: String, password: String) async throws(DisplayError) -> ChekAPI.Session {
+        do {
+            try await ChekClient.checkHealth(at: baseURL)
+        } catch {
+            throw DisplayError(title: String(localized: "Couldn't find a Chek server there."), message: String(localized: "Check the address, and that the server is running."))
+        }
+        do {
+            return try await ChekClient.signIn(at: baseURL, name: name, password: password, device: UIDevice.current.name)
+        } catch .unauthorized {
+            throw DisplayError(title: String(localized: "The name or password is wrong."))
+        } catch .server(status: 429, _) {
+            throw DisplayError(title: String(localized: "Too many attempts."), message: String(localized: "Wait a minute and try again."))
+        } catch {
+            throw DisplayError(error)
+        }
+    }
+
+    /// The server's base address from what someone typed: a scheme is added
+    /// when it's missing, and paths, queries and trailing slashes go.
+    static func baseURL(from address: String) -> URL? {
+        var text = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        if !text.contains("://") {
+            // Local servers usually run without TLS.
+            let isLocal = text.hasPrefix("localhost") || text.hasPrefix("127.") || text.hasPrefix("192.168.") || text.hasPrefix("10.") || text.hasSuffix(".local")
+            text = (isLocal ? "http://" : "https://") + text
+        }
+        guard var components = URLComponents(string: text),
+              let scheme = components.scheme?.lowercased(), ["http", "https"].contains(scheme),
+              let host = components.host, !host.isEmpty
+        else { return nil }
+        components.scheme = scheme
+        components.path = components.path.hasSuffix("/") ? String(components.path.dropLast()) : components.path
+        components.query = nil
+        components.fragment = nil
+        return components.url
+    }
+}
+
+/// Where files downloaded from servers are kept: a folder per account in
+/// Caches, since they can always be fetched again.
+nonisolated enum ServerFiles {
+    static func folder(for account: UUID) -> URL {
+        URL.cachesDirectory.appending(path: "Servers/\(account.uuidString)", directoryHint: .isDirectory)
+    }
+
+    static func file(for publication: Int64, format: String, account: UUID) -> URL {
+        folder(for: account).appending(path: "\(publication).\(format)")
+    }
+}

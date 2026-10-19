@@ -37,6 +37,8 @@ final class AppDependencies {
     let library: LibraryStore
     let progress: ProgressStore
     let readerSettings: ReaderSettings
+    let servers: ServerStore
+    let sync: ServerSync
 
     init(container: ModelContainer, defaults: UserDefaults = .standard) {
         self.container = container
@@ -44,6 +46,8 @@ final class AppDependencies {
         library = LibraryStore(context: container.mainContext)
         progress = ProgressStore(context: container.mainContext)
         readerSettings = ReaderSettings(defaults: defaults)
+        servers = ServerStore(context: container.mainContext)
+        sync = ServerSync(servers: servers, progress: progress, context: container.mainContext)
     }
 }
 
@@ -55,5 +59,7 @@ extension View {
             .environment(app.library)
             .environment(app.progress)
             .environment(app.readerSettings)
+            .environment(app.servers)
+            .environment(app.sync)
     }
 }

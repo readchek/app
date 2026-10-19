@@ -15,6 +15,7 @@ struct ReaderScreen: View {
             ReaderCanvas(kind: session.item.kind)
             ReaderContent(session: session)
             ReaderControls(session: session)
+            OtherDevicePrompt(session: session)
         }
         .statusBarHidden(!session.isShowingControls)
         .persistentSystemOverlays(session.isShowingControls ? .automatic : .hidden)
