@@ -103,7 +103,7 @@ private struct SourceSeriesGrid: View {
 }
 
 /// A source's series drawn like the other grids' cells.
-private struct SourceSeriesCell: View {
+struct SourceSeriesCell: View {
     let account: UUID
     let source: String
     let series: ChekAPI.SourceSeriesItem

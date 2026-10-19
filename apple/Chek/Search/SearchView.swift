@@ -38,8 +38,22 @@ final class ServerSearchModel {
         var id: UUID { account }
     }
 
+    /// Series found by one of a server's sources, such as MangaDex.
+    struct SourceResults: Identifiable {
+        let account: UUID
+        let source: ChekAPI.InstalledExtension
+        let serverName: String
+        var state: LoadState<[ChekAPI.SourceSeriesItem]>
+
+        var id: String { "\(account.uuidString)/\(source.id)" }
+    }
+
     private(set) var results: [Results] = []
+    private(set) var sourceResults: [SourceResults] = []
     @ObservationIgnored private var generation = 0
+    /// Each server's installed sources, asked for once rather than with
+    /// every search.
+    @ObservationIgnored private var sources: [UUID: [ChekAPI.InstalledExtension]] = [:]
 
     func search(_ text: String, servers: ServerStore) async {
         generation += 1
@@ -48,9 +62,42 @@ final class ServerSearchModel {
         let accounts = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
         guard !query.isEmpty else {
             results = []
+            sourceResults = []
             return
         }
         results = accounts.map { Results(account: $0.id, name: $0.name, state: .loading) }
+        for account in accounts where sources[account.id] == nil {
+            let id = account.id
+            sources[id] = (try? await servers.request(id) { client throws(ChekError) in
+                try await client.installedExtensionsIfSupported()
+            }).flatMap(\.self) ?? []
+        }
+        guard current == generation else { return }
+        sourceResults = accounts.flatMap { account in
+            (sources[account.id] ?? []).filter(\.usable).map {
+                SourceResults(account: account.id, source: $0, serverName: account.name, state: .loading)
+            }
+        }
+        // Sources look on their sites while you wait, so each answers on
+        // its own like the servers do.
+        let sourceTasks = sourceResults.map { results in
+            let id = results.id
+            let account = results.account
+            let source = results.source.id
+            return Task {
+                let state: LoadState<[ChekAPI.SourceSeriesItem]>
+                do {
+                    let page = try await servers.request(account) { client throws(ChekError) in
+                        try await client.search(source: source, query: query, page: 1)
+                    }
+                    state = .loaded(page.items)
+                } catch {
+                    state = .failed(DisplayError(error))
+                }
+                guard current == generation, let index = sourceResults.firstIndex(where: { $0.id == id }) else { return }
+                sourceResults[index].state = state
+            }
+        }
         // Each server answers on its own, so a slow one doesn't hold up the rest.
         let tasks = accounts.map { account in
             let id = account.id
@@ -72,8 +119,14 @@ final class ServerSearchModel {
             for task in tasks {
                 await task.value
             }
+            for task in sourceTasks {
+                await task.value
+            }
         } onCancel: {
             for task in tasks {
+                task.cancel()
+            }
+            for task in sourceTasks {
                 task.cancel()
             }
         }
@@ -100,7 +153,7 @@ private struct SearchResults: View {
 
     var body: some View {
         if text.trimmingCharacters(in: .whitespaces).isEmpty {
-            ContentUnavailableView("Search Everything", systemImage: "magnifyingglass", description: Text("Find books and comics on this device and your servers by title, series or author."))
+            ContentUnavailableView("Search Everything", systemImage: "magnifyingglass", description: Text("Find books and comics on this device, your servers and their sources by title, series or author."))
         } else if books.isEmpty && serverResults.isEmpty {
             ContentUnavailableView.search(text: text)
         } else {
@@ -114,6 +167,9 @@ private struct SearchResults: View {
                 }
                 ForEach(serverResults.results) { results in
                     ServerResultsSection(results: results)
+                }
+                ForEach(serverResults.sourceResults) { results in
+                    SourceResultsSection(results: results)
                 }
             }
         }
@@ -176,6 +232,51 @@ extension ServerSearchModel {
     var isEmpty: Bool {
         results.allSatisfy { results in
             if case .loaded(let items) = results.state { items.isEmpty } else { false }
+        } && sourceResults.allSatisfy { results in
+            if case .loaded(let items) = results.state { items.isEmpty } else { false }
         }
+    }
+}
+
+/// A source's series as a row of covers, as a store's search shows them,
+/// since there are often many and covers tell them apart fastest.
+private struct SourceResultsSection: View {
+    let results: ServerSearchModel.SourceResults
+
+    var body: some View {
+        switch results.state {
+        case .idle:
+            EmptyView()
+        case .loading:
+            Section(header) {
+                ProgressView()
+                    .frame(maxWidth: .infinity)
+            }
+        case .failed(let error):
+            Section(header) {
+                Label(error.title, systemImage: "wifi.exclamationmark")
+                    .foregroundStyle(.secondary)
+            }
+        case .loaded(let series):
+            if !series.isEmpty {
+                Section(header) {
+                    ScrollView(.horizontal) {
+                        LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
+                            ForEach(series) { item in
+                                SourceSeriesCell(account: results.account, source: results.source.id, series: item)
+                                    .frame(width: Metrics.shelfCoverWidth(regular: false))
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                    .scrollIndicators(.hidden)
+                    .listRowInsets(EdgeInsets(top: 8, leading: Metrics.margin, bottom: 8, trailing: 0))
+                }
+            }
+        }
+    }
+
+    private var header: String {
+        "\(results.source.name) · \(results.serverName)"
     }
 }
