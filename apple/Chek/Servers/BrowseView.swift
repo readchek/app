@@ -11,17 +11,20 @@ struct BrowseView: View {
         NavigationStack(path: $router.browsePath) {
             Group {
                 if accounts.isEmpty {
-                    NoServersView()
+                    ContentUnavailableView {
+                        Label("No Servers", systemImage: "server.rack")
+                    } description: {
+                        Text("Connect a Chek server to read from it without downloading first. Your place follows you between devices.")
+                    } actions: {
+                        Button("Connect a Server") {
+                            router.sheet = .addServer
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
                 } else {
-                    List {
-                        Section {
-                            ForEach(accounts) { account in
-                                NavigationLink(value: Route.server(account.id)) {
-                                    ServerRow(account: account)
-                                }
-                            }
-                        } footer: {
-                            Text("Books you open from a server stream from it, and your place syncs with your other devices.")
+                    List(accounts) { account in
+                        NavigationLink(value: Route.server(account.id)) {
+                            ServerRow(account: account)
                         }
                     }
                 }
@@ -44,44 +47,15 @@ private struct ServerRow: View {
     @Environment(ServerStore.self) private var servers
 
     var body: some View {
-        HStack(spacing: 14) {
-            Image(systemName: "server.rack")
-                .font(.title3)
-                .foregroundStyle(.tint)
-                .frame(width: 44, height: 44)
-                .glassEffect(.regular.tint(.accentColor.opacity(0.15)), in: .rect(cornerRadius: 12))
+        Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.name)
-                    .font(.headline)
-                Text(account.userName)
+                Text(servers.state(of: account.id) == .signedOut ? "Signed out" : account.userName)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(servers.state(of: account.id) == .signedOut ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
             }
-            Spacer()
-            if servers.state(of: account.id) == .signedOut {
-                Text("Signed Out")
-                    .font(.caption)
-                    .foregroundStyle(.orange)
-            }
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-private struct NoServersView: View {
-    @Environment(AppRouter.self) private var router
-
-    var body: some View {
-        ContentUnavailableView {
-            Label("Connect a Server", systemImage: "server.rack")
-        } description: {
-            Text("Read from your Chek server without downloading first. Your place in each book follows you between devices.")
-        } actions: {
-            Button("Connect a Server") {
-                router.sheet = .addServer
-            }
-            .buttonStyle(.glassProminent)
-            .controlSize(.large)
+        } icon: {
+            Image(systemName: "server.rack")
         }
     }
 }

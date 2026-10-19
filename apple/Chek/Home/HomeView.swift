@@ -1,283 +1,210 @@
 import SwiftData
 import SwiftUI
 
-/// What you're reading, first, then what's new.
+/// What you're reading first, then what's new, from the device and every
+/// server.
 struct HomeView: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 32) {
-                    ContinueReadingSection()
-                    RecentlyAddedSection()
-                    WelcomeSection()
-                }
-                .padding(.vertical)
-            }
-            .navigationTitle("Home")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Settings", systemImage: "gearshape") {
-                        router.sheet = .settings
+        @Bindable var router = router
+        NavigationStack(path: $router.homePath) {
+            HomeContent()
+                .navigationTitle("Home")
+                .toolbar {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Settings", systemImage: "gearshape") {
+                            router.sheet = .settings
+                        }
                     }
                 }
-            }
+                .routeDestinations()
         }
     }
 }
 
-/// Everything you've started and not finished, from this device and your
-/// servers, most recent first, as big covers you can swipe through.
-private struct ContinueReadingSection: View {
+private struct HomeContent: View {
     @Query(filter: #Predicate<Book> { $0.lastOpenedAt != nil && $0.finishedAt == nil }, sort: \Book.recentAt, order: .reverse)
-    private var books: [Book]
+    private var startedBooks: [Book]
+    @Query(filter: #Predicate<Book> { $0.lastOpenedAt == nil }, sort: \Book.addedAt, order: .reverse)
+    private var newBooks: [Book]
     @Query(filter: #Predicate<RemoteReadingState> { $0.lastOpenedAt != nil }, sort: \RemoteReadingState.updatedAt, order: .reverse)
-    private var remote: [RemoteReadingState]
+    private var remoteStates: [RemoteReadingState]
+    @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
     @Environment(ServerStore.self) private var servers
-    @State private var elsewhere = ElsewhereModel()
+    @State private var model = HomeServersModel()
 
     var body: some View {
-        let entries = ContinueEntry.merge(books: books, remote: remote, elsewhere: elsewhere.items)
+        let continueReading = continueReadingItems()
+        let isEmpty = continueReading.isEmpty && newBooks.isEmpty && accounts.isEmpty
         Group {
-            if !entries.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    SectionHeader(title: "Continue Reading")
-                    ScrollView(.horizontal) {
-                        LazyHStack(alignment: .top, spacing: 20) {
-                            ForEach(entries.prefix(20)) { entry in
-                                switch entry {
-                                case .local(let book):
-                                    ContinueReadingCard(
-                                        target: .local(book),
-                                        title: book.title,
-                                        cover: book.coverURL.map(CoverSource.file) ?? .none,
-                                        ref: book.ref,
-                                        progress: book.readingStatus.progress
-                                    )
-                                case .remote(let publication, let status):
-                                    ContinueReadingCard(
-                                        target: .remote(publication),
-                                        title: publication.displayTitle,
-                                        cover: servers.cover(of: publication.id, on: publication.server),
-                                        ref: publication.ref,
-                                        progress: status.progress
-                                    )
-                                }
-                            }
+            if isEmpty {
+                HomeEmptyView()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
+                        if let current = continueReading.first {
+                            CurrentReadingHeader(item: current)
                         }
-                        .scrollTargetLayout()
-                        .padding(.horizontal)
+                        if continueReading.count > 1 {
+                            Shelf(title: "Continue Reading", items: Array(continueReading.dropFirst()))
+                        }
+                        if !newBooks.isEmpty {
+                            Shelf(title: "Recently Added", items: newBooks.prefix(20).map(PublicationItem.init))
+                        }
+                        ForEach(model.newOnServers) { shelf in
+                            Shelf(title: "New on \(shelf.serverName)", items: shelf.publications.map { publication in
+                                PublicationItem(publication, status: statuses[publication.ref] ?? .new, cover: servers.cover(of: publication.id, on: publication.server))
+                            })
+                        }
                     }
-                    .scrollIndicators(.hidden)
-                    .scrollTargetBehavior(.viewAligned)
-                    .scrollClipDisabled()
+                    .padding(.vertical, 8)
+                }
+                .refreshable {
+                    await model.load(from: servers)
                 }
             }
         }
         .task(id: servers.signedOut) {
-            await elsewhere.load(from: servers)
-        }
-    }
-}
-
-/// One thing to continue: a book here, or a publication on a server.
-private enum ContinueEntry: Identifiable {
-    case local(Book)
-    case remote(RemotePublication, ReadingStatus)
-
-    var id: PublicationRef {
-        switch self {
-        case .local(let book): book.ref
-        case .remote(let publication, _): publication.ref
+            await model.load(from: servers)
         }
     }
 
-    /// Books here and server publications by when you last read them, with
-    /// publications started on other devices after the ones read here.
-    static func merge(books: [Book], remote: [RemoteReadingState], elsewhere: [(RemotePublication, ReadingStatus, Date)]) -> [ContinueEntry] {
-        var dated: [(ContinueEntry, Date)] = books.map { (.local($0), $0.recentAt) }
+    private var statuses: [PublicationRef: ReadingStatus] {
+        Dictionary(remoteStates.map { ($0.ref, $0.readingStatus) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// Books here and server publications by when you last read them.
+    /// Publications started on other devices follow those read here.
+    private func continueReadingItems() -> [PublicationItem] {
+        var dated: [(PublicationItem, Date)] = startedBooks.map { (PublicationItem($0), $0.recentAt) }
         var seen = Set<PublicationRef>()
-        for state in remote where state.readingStatus != .finished {
+        for state in remoteStates where state.readingStatus != .finished {
             seen.insert(state.ref)
-            dated.append((.remote(RemotePublication(state), state.readingStatus), state.lastOpenedAt ?? state.updatedAt))
+            let publication = RemotePublication(state)
+            let cover = servers.cover(of: publication.id, on: publication.server)
+            dated.append((PublicationItem(publication, status: state.readingStatus, cover: cover), state.lastOpenedAt ?? state.updatedAt))
         }
-        for (publication, status, date) in elsewhere where !seen.contains(publication.ref) {
-            dated.append((.remote(publication, status), date))
+        for elsewhere in model.elsewhere where !seen.contains(elsewhere.publication.ref) {
+            let publication = elsewhere.publication
+            let cover = servers.cover(of: publication.id, on: publication.server)
+            dated.append((PublicationItem(publication, status: elsewhere.status, cover: cover), elsewhere.date))
         }
-        return dated.sorted { $0.1 > $1.1 }.map(\.0)
+        return dated.sorted { $0.1 > $1.1 }.prefix(20).map(\.0)
     }
 }
 
-/// Publications you're reading on other devices, from each server's
-/// Continue Reading. Loaded when Home appears and kept between visits.
+/// What Home shows from servers: what you're reading on other devices,
+/// and what's new on each one.
 @MainActor
 @Observable
-private final class ElsewhereModel {
-    private(set) var items: [(RemotePublication, ReadingStatus, Date)] = []
+final class HomeServersModel {
+    struct Elsewhere {
+        let publication: RemotePublication
+        let status: ReadingStatus
+        let date: Date
+    }
+
+    struct ServerShelf: Identifiable {
+        let id: UUID
+        let serverName: String
+        let publications: [RemotePublication]
+    }
+
+    private(set) var elsewhere: [Elsewhere] = []
+    private(set) var newOnServers: [ServerShelf] = []
 
     func load(from servers: ServerStore) async {
-        var found: [(RemotePublication, ReadingStatus, Date)] = []
+        var elsewhere: [Elsewhere] = []
+        var shelves: [ServerShelf] = []
         for account in servers.accounts() where servers.state(of: account.id) == .signedIn {
             let id = account.id
-            guard let reading = try? await servers.request(id, { client throws(ChekError) in try await client.continueReading() }) else { continue }
-            for item in reading {
-                let progress = item.progress.locator?.locations.totalProgression
-                let status = ReadingStatus(progress: progress, finished: false, opened: true)
-                found.append((RemotePublication(item.publication, server: id), status, item.progress.updatedAt ?? .distantPast))
+            if let reading = try? await servers.request(id, { client throws(ChekError) in try await client.continueReading() }) {
+                for item in reading {
+                    let progress = item.progress.locator?.locations.totalProgression
+                    elsewhere.append(Elsewhere(
+                        publication: RemotePublication(item.publication, server: id),
+                        status: ReadingStatus(progress: progress, finished: false, opened: true),
+                        date: item.progress.updatedAt ?? .distantPast
+                    ))
+                }
+            }
+            if let recent = try? await servers.request(id, { client throws(ChekError) in try await client.recentlyAdded(cursor: nil) }), !recent.items.isEmpty {
+                shelves.append(ServerShelf(id: id, serverName: account.name, publications: recent.items.prefix(20).map { RemotePublication($0, server: id) }))
             }
         }
-        items = found
+        self.elsewhere = elsewhere
+        newOnServers = shelves
     }
 }
 
-/// A big cover with your progress under it. Books here open straight
-/// away; server publications open once their position is checked.
-private struct ContinueReadingCard: View {
-    enum Target {
-        case local(Book)
-        case remote(RemotePublication)
-    }
+/// Shown before there's anything to read, with the two ways to start.
+private struct HomeEmptyView: View {
+    @Environment(AppRouter.self) private var router
 
-    let target: Target
-    let title: String
-    let cover: CoverSource
-    let ref: PublicationRef
-    let progress: Double?
+    var body: some View {
+        ContentUnavailableView {
+            Label("Nothing to Read Yet", systemImage: "books.vertical")
+        } description: {
+            Text("Add books and comics from Files, or connect a Chek server to read from it.")
+        } actions: {
+            Button("Add Books") {
+                router.addBooks()
+            }
+            .buttonStyle(.borderedProminent)
+            Button("Connect a Server") {
+                router.sheet = .addServer
+            }
+        }
+    }
+}
+
+/// The publication you're reading now, large, with one button to go on.
+private struct CurrentReadingHeader: View {
+    let item: PublicationItem
     @Environment(AppRouter.self) private var router
     @Environment(ServerSync.self) private var sync
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        Button {
-            switch target {
-            case .local(let book): router.open(ReadingItem(book))
-            case .remote(let publication): router.open(publication, using: sync)
+        HStack(alignment: .bottom, spacing: 20) {
+            OpenPublicationButton(item: item) {
+                CoverView(source: item.cover, title: item.title, cornerRadius: 6)
+                    .frame(width: 132)
+                    .readerTransitionSource(item.id)
             }
-        } label: {
-            VStack(alignment: .leading, spacing: 10) {
-                CoverView(source: cover, title: title, cornerRadius: 8)
-                    .overlay {
-                        if router.opening == ref {
-                            ProgressView()
-                                .padding(10)
-                                .glassEffect(.regular, in: .circle)
-                        }
-                    }
-                    .readerTransitionSource(ref)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(1)
-                    HStack(spacing: 8) {
-                        ReadingProgressBar(progress: progress ?? 0)
-                        Text(progress ?? 0, format: .percent.precision(.fractionLength(0)))
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(.secondary)
-                    }
-                }
-            }
-            .frame(width: sizeClass == .regular ? 190 : 150)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-        .accessibilityElement(children: .combine)
-    }
-}
-
-
-/// Books added but not opened yet.
-private struct RecentlyAddedSection: View {
-    @Query(filter: #Predicate<Book> { $0.lastOpenedAt == nil }, sort: \Book.addedAt, order: .reverse)
-    private var books: [Book]
-
-    var body: some View {
-        if !books.isEmpty {
-            VStack(alignment: .leading, spacing: 12) {
-                SectionHeader(title: "Recently Added")
-                ScrollView(.horizontal) {
-                    LazyHStack(alignment: .bottom, spacing: 16) {
-                        ForEach(books.prefix(20)) { book in
-                            SmallCoverButton(book: book)
-                        }
-                    }
-                    .scrollTargetLayout()
-                    .padding(.horizontal)
-                }
-                .scrollIndicators(.hidden)
-                .scrollTargetBehavior(.viewAligned)
-                .scrollClipDisabled()
-            }
-        }
-    }
-}
-
-private struct SmallCoverButton: View {
-    let book: Book
-    @Environment(AppRouter.self) private var router
-
-    var body: some View {
-        Button {
-            router.open(ReadingItem(book))
-        } label: {
             VStack(alignment: .leading, spacing: 6) {
-                CoverView(source: book.coverURL.map(CoverSource.file) ?? .none, title: book.title)
-                    .readerTransitionSource(book.ref)
-                Text(book.title)
-                    .font(.caption.weight(.medium))
-                    .lineLimit(1)
-            }
-            .frame(width: 104)
-            .contentShape(.rect)
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-/// Shown while the library is empty, with the two ways to start.
-private struct WelcomeSection: View {
-    @Query private var books: [Book]
-    @Environment(AppRouter.self) private var router
-
-    init() {
-        var descriptor = FetchDescriptor<Book>()
-        descriptor.fetchLimit = 1
-        _books = Query(descriptor)
-    }
-
-    var body: some View {
-        if books.isEmpty {
-            VStack(alignment: .leading, spacing: 16) {
-                Image(systemName: "books.vertical.fill")
-                    .font(.system(size: 40))
-                    .foregroundStyle(.tint)
-                Text("Welcome to Chek")
-                    .font(.title2.bold())
-                Text("Read books and comics from the Files app, kept on this device with no account needed. Your place is saved on every page.")
+                Text("Reading Now")
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
-                Button {
-                    router.addBooks()
-                } label: {
-                    Label("Add Books", systemImage: "plus")
-                        .frame(maxWidth: .infinity)
+                Text(item.title)
+                    .font(.title2.weight(.bold))
+                    .lineLimit(3)
+                if let subtitle = item.subtitle {
+                    Text(subtitle)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
                 }
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
+                if let progress = item.status.progress, progress >= 0.01 {
+                    Text("\(progress, format: .percent.precision(.fractionLength(0))) read")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                Button("Continue", systemImage: "play.fill", action: resume)
+                    .buttonStyle(.glassProminent)
+                    .controlSize(.large)
+                    .padding(.top, 8)
             }
-            .padding(24)
-            .glassEffect(.regular, in: .rect(cornerRadius: 28))
-            .padding(.horizontal)
+            Spacer(minLength: 0)
         }
+        .padding(.horizontal, Metrics.margin)
     }
-}
 
-struct SectionHeader: View {
-    let title: LocalizedStringKey
-
-    var body: some View {
-        Text(title)
-            .font(.title2.bold())
-            .padding(.horizontal)
-            .accessibilityAddTraits(.isHeader)
+    private func resume() {
+        switch item.source {
+        case .local(let book): router.open(ReadingItem(book))
+        case .remote(let publication): router.open(publication, using: sync)
+        }
     }
 }

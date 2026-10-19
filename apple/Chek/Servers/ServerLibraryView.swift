@@ -42,15 +42,16 @@ private struct SeriesGrid: View {
 
     var body: some View {
         ScrollView {
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140, maximum: 200), spacing: 20, alignment: .top)], spacing: 28) {
+            LazyVGrid(columns: Metrics.gridColumns, spacing: Metrics.gridRowSpacing) {
                 ForEach(series.items) { item in
-                    SeriesTile(account: account, series: item)
+                    SeriesCell(account: account, series: item)
                         .task {
                             await series.loadMore(after: item)
                         }
                 }
             }
-            .padding()
+            .padding(.horizontal, Metrics.margin)
+            .padding(.vertical, 8)
             if series.phase == .loadingMore {
                 ProgressView()
                     .padding()
@@ -67,22 +68,24 @@ private struct SeriesGrid: View {
     }
 }
 
-private struct SeriesTile: View {
+/// A series' cover with its title and how many items it has, drawn like
+/// ``PublicationCell`` so grids of either look the same.
+private struct SeriesCell: View {
     let account: UUID
     let series: ChekAPI.Series
     @Environment(ServerStore.self) private var servers
 
     var body: some View {
         NavigationLink(value: Route.series(account, seriesID: series.id, title: series.title)) {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 6) {
                 CoverView(
                     source: series.coverPublicationId.map { servers.cover(of: $0, on: account) } ?? .none,
                     title: series.title
                 )
                 VStack(alignment: .leading, spacing: 2) {
                     Text(series.title)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(2)
+                        .font(.footnote.weight(.medium))
+                        .lineLimit(2, reservesSpace: true)
                     Text("^[\(series.publicationCount) item](inflect: true)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -116,7 +119,7 @@ struct PagedListOverlay: View {
                 }
             } actions: {
                 Button("Try Again", action: retry)
-                    .buttonStyle(.glass)
+                    .buttonStyle(.bordered)
             }
         case .complete where isEmpty:
             ContentUnavailableView(emptyTitle, systemImage: "books.vertical")

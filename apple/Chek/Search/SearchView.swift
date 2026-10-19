@@ -125,7 +125,10 @@ private struct SearchBookRow: View {
     @State private var bookToRemove: Book?
 
     var body: some View {
-        BookRow(book: book, bookToRemove: $bookToRemove)
+        PublicationRow(item: PublicationItem(book))
+            .contextMenu {
+                BookActions(book: book, bookToRemove: $bookToRemove)
+            }
             .removeBookConfirmation(book: $bookToRemove)
     }
 }
@@ -133,6 +136,7 @@ private struct SearchBookRow: View {
 private struct ServerResultsSection: View {
     let results: ServerSearchModel.Results
     @Query private var states: [RemoteReadingState]
+    @Environment(ServerStore.self) private var servers
 
     init(results: ServerSearchModel.Results) {
         self.results = results
@@ -158,7 +162,7 @@ private struct ServerResultsSection: View {
                 let statuses = ReadingStatuses(states)
                 Section(results.name) {
                     ForEach(publications) { publication in
-                        RemotePublicationRow(publication: publication, status: statuses[publication.id])
+                        PublicationRow(item: servers.item(publication, status: statuses[publication.id]))
                     }
                 }
             }

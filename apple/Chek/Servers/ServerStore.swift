@@ -168,9 +168,10 @@ final class ServerStore {
         var text = address.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return nil }
         if !text.contains("://") {
-            // Local servers usually run without TLS.
-            let isLocal = text.hasPrefix("localhost") || text.hasPrefix("127.") || text.hasPrefix("192.168.") || text.hasPrefix("10.") || text.hasSuffix(".local")
-            text = (isLocal ? "http://" : "https://") + text
+            // HTTPS unless the host is on this machine or the local
+            // network, where servers usually run without TLS.
+            let host = URLComponents(string: "https://" + text)?.host ?? ""
+            text = (isLocalNetwork(host) ? "http://" : "https://") + text
         }
         guard var components = URLComponents(string: text),
               let scheme = components.scheme?.lowercased(), ["http", "https"].contains(scheme),
@@ -184,6 +185,23 @@ final class ServerStore {
     }
 }
 
+/// Whether `host` is this machine or a private network address, judged
+/// from the whole host rather than its prefix, so `localhost.example.com`
+/// doesn't count.
+nonisolated func isLocalNetwork(_ host: String) -> Bool {
+    let host = host.lowercased()
+    if host == "localhost" || host == "::1" || host.hasSuffix(".local") {
+        return true
+    }
+    let parts = host.split(separator: ".", omittingEmptySubsequences: false).compactMap { UInt8($0) }
+    guard parts.count == 4, host.split(separator: ".").count == 4 else { return false }
+    switch (parts[0], parts[1]) {
+    case (127, _), (10, _), (192, 168): return true
+    case (172, 16...31): return true
+    default: return false
+    }
+}
+
 /// Where files downloaded from servers are kept: a folder per account in
 /// Caches, since they can always be fetched again.
 nonisolated enum ServerFiles {
@@ -192,6 +210,9 @@ nonisolated enum ServerFiles {
     }
 
     static func file(for publication: Int64, format: String, account: UUID) -> URL {
-        folder(for: account).appending(path: "\(publication).\(format)")
+        // The format comes from the server, so only letters and digits
+        // reach the file name; anything else could step out of the folder.
+        let safeFormat = String(format.lowercased().filter { $0.isASCII && ($0.isLetter || $0.isNumber) }.prefix(8))
+        return folder(for: account).appending(path: "\(publication).\(safeFormat.isEmpty ? "bin" : safeFormat)")
     }
 }

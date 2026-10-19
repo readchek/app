@@ -40,6 +40,14 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
         }
     }
 
+    var navigationTitle: LocalizedStringResource {
+        switch self {
+        case .all: "Library"
+        case .books: "Books"
+        case .comics: "Comics"
+        }
+    }
+
     var kind: PublicationKind? {
         switch self {
         case .all: nil

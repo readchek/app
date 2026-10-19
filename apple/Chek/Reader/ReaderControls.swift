@@ -1,107 +1,86 @@
 import ChekReader
 import SwiftUI
 
-/// The controls drawn over the page: a bar at the top to close, find your
-/// way and change how text looks, and your place in the book at the bottom.
-struct ReaderControls: View {
-    let session: ReaderSession
-
-    var body: some View {
-        VStack(spacing: 0) {
-            if session.isShowingControls {
-                ReaderTopBar(session: session)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-            Spacer(minLength: 0)
-            if session.isShowingControls, session.controller.state == .ready {
-                ReaderBottomBar(controller: session.controller)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .sheet(item: Bindable(session).panel) { panel in
-            switch panel {
-            case .contents:
-                ContentsPanel(session: session)
-            case .appearance:
-                AppearancePanel()
-            }
-        }
+extension View {
+    /// The reader's toolbars, shown and hidden together.
+    func readerToolbars(session: ReaderSession) -> some View {
+        modifier(ReaderToolbars(session: session))
     }
 }
 
-private struct ReaderTopBar: View {
+private struct ReaderToolbars: ViewModifier {
     let session: ReaderSession
     @Environment(AppRouter.self) private var router
 
-    var body: some View {
-        GlassEffectContainer(spacing: 6) {
-            HStack(spacing: 12) {
-                Button("Close", systemImage: "xmark") {
-                    router.closeReader()
+    func body(content: Content) -> some View {
+        content
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Close", systemImage: "xmark") {
+                        router.closeReader()
+                    }
                 }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.glass)
-                .buttonBorderShape(.circle)
-                .controlSize(.large)
-
-                ReaderTitle(title: session.item.title, chapter: session.controller.location?.title)
-                    .frame(maxWidth: .infinity)
-
-                HStack(spacing: 0) {
+                ToolbarItem(placement: .principal) {
+                    ReaderTitle(title: session.item.title, controller: session.controller)
+                }
+                ToolbarItemGroup(placement: .topBarTrailing) {
                     Button("Contents", systemImage: "list.bullet") {
                         session.show(.contents)
                     }
-                    // Text settings only reach text that reflows.
-                    if session.item.kind == .book, session.controller.format != .pdf {
+                    if session.showsAppearance {
                         Button("Appearance", systemImage: "textformat.size") {
                             session.show(.appearance)
                         }
                     }
                 }
-                .labelStyle(.iconOnly)
-                .buttonStyle(.glass)
-                .controlSize(.large)
-                .disabled(session.controller.state != .ready)
+                ToolbarItem(placement: .bottomBar) {
+                    ReaderScrubber(controller: session.controller)
+                }
             }
-        }
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbarVisibility(session.isShowingControls ? .visible : .hidden, for: .navigationBar, .bottomBar)
+            .animation(.smooth(duration: 0.25), value: session.isShowingControls)
+            .sheet(item: Bindable(session).panel) { panel in
+                switch panel {
+                case .contents:
+                    ContentsPanel(session: session)
+                case .appearance:
+                    AppearancePanel()
+                }
+            }
     }
 }
 
-/// The book's title, with the chapter you're in under it.
+/// The publication's title, with the chapter you're in under it.
 private struct ReaderTitle: View {
     let title: String
-    let chapter: String?
+    let controller: ReaderController
 
     var body: some View {
-        VStack(spacing: 1) {
+        VStack(spacing: 0) {
             Text(title)
-                .font(.subheadline.weight(.semibold))
+                .font(.headline)
                 .lineLimit(1)
-            if let chapter, chapter != title {
+            if let chapter = controller.location?.title, chapter != title {
                 Text(chapter)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .glassEffect(.regular, in: .capsule)
         .accessibilityElement(children: .combine)
     }
 }
 
-/// A scrubber through the whole publication, with the page you're on.
-private struct ReaderBottomBar: View {
+/// A slider through the whole publication, with where you are beside it.
+private struct ReaderScrubber: View {
     let controller: ReaderController
-    /// Where the scrubber is while you drag it, before the reader moves.
+    /// Where the slider is while you drag it, before the reader moves.
     @State private var scrubbing: Double?
 
-    /// Fixed pages, as in comics and PDFs, have real page numbers. Text
-    /// that reflows has positions instead, which aren't pages you'd
-    /// recognize, so it shows the chapter.
+    /// Comics and PDFs have real page numbers. Text that reflows has
+    /// positions instead, which aren't pages you'd recognize, so it shows
+    /// a percentage.
     private var showsPages: Bool {
         guard let format = controller.format else { return false }
         return [.pdf, .cbz, .cbt, .cbr, .cb7].contains(format)
@@ -109,14 +88,11 @@ private struct ReaderBottomBar: View {
 
     var body: some View {
         let count = controller.positions?.count ?? 0
-        let position = controller.location?.locations.position
-        VStack(spacing: 6) {
+        let position = Double(controller.location?.locations.position ?? 1)
+        HStack(spacing: 12) {
             if count > 1 {
                 Slider(
-                    value: Binding(
-                        get: { scrubbing ?? Double(position ?? 1) },
-                        set: { scrubbing = $0 }
-                    ),
+                    value: Binding(get: { scrubbing ?? position }, set: { scrubbing = $0 }),
                     in: 1...Double(count),
                     step: 1
                 ) { editing in
@@ -126,30 +102,40 @@ private struct ReaderBottomBar: View {
                         scrubbing = nil
                     }
                 }
-                .accessibilityLabel(Text("Page"))
-                .accessibilityValue(Text("\(Int(scrubbing ?? Double(position ?? 1))) of \(count)"))
+                .accessibilityLabel(Text("Position"))
             } else {
                 ProgressView(value: controller.location?.locations.totalProgression ?? 0)
             }
-            HStack {
-                if let target = scrubbing, showsPages {
-                    Text("Page \(Int(target)) of \(count)")
-                } else if showsPages, let position, count > 0 {
-                    Text("Page \(position) of \(count)")
-                } else if let chapter = controller.location?.title {
-                    Text(chapter)
-                        .lineLimit(1)
-                }
-                Spacer()
-                if let progress = scrubbing.map({ ($0 - 1) / Double(max(count - 1, 1)) }) ?? controller.location?.locations.totalProgression {
-                    Text(progress, format: .percent.precision(.fractionLength(0)))
-                }
-            }
-            .font(.caption.monospacedDigit())
-            .foregroundStyle(.secondary)
+            PlaceLabel(showsPages: showsPages, position: Int(scrubbing ?? position), count: count, progress: progress(count: count))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
-        .glassEffect(.regular, in: .rect(cornerRadius: 28))
+        .padding(.horizontal, 8)
+        .frame(maxWidth: 560)
+    }
+
+    private func progress(count: Int) -> Double? {
+        if let scrubbing, count > 1 {
+            return (scrubbing - 1) / Double(count - 1)
+        }
+        return controller.location?.locations.totalProgression
+    }
+}
+
+private struct PlaceLabel: View {
+    let showsPages: Bool
+    let position: Int
+    let count: Int
+    let progress: Double?
+
+    var body: some View {
+        Group {
+            if showsPages, count > 0 {
+                Text("\(position) of \(count)")
+            } else if let progress {
+                Text(progress, format: .percent.precision(.fractionLength(0)))
+            }
+        }
+        .font(.footnote.monospacedDigit())
+        .foregroundStyle(.secondary)
+        .fixedSize()
     }
 }

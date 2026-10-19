@@ -1,8 +1,9 @@
 import ChekReader
 import SwiftUI
 
-/// Reads one publication full screen, with Liquid Glass controls that
-/// appear when you tap the middle of the page.
+/// Reads one publication full screen. Tapping the middle of the page
+/// shows the toolbars: close, title, contents and appearance at the top,
+/// and your place in the book at the bottom.
 struct ReaderScreen: View {
     @State private var session: ReaderSession
 
@@ -11,16 +12,21 @@ struct ReaderScreen: View {
     }
 
     var body: some View {
-        ZStack {
-            ReaderCanvas(kind: session.item.kind)
-            ReaderContent(session: session)
-            ReaderControls(session: session)
-            OtherDevicePrompt(session: session)
+        // Read outside the navigation stack, the insets are the device's
+        // alone, so showing the toolbars never lays the page out again.
+        GeometryReader { proxy in
+            NavigationStack {
+                ZStack {
+                    ReaderCanvas(kind: session.item.kind)
+                    ReaderContent(session: session, insets: proxy.safeAreaInsets)
+                }
+                .readerToolbars(session: session)
+            }
         }
         .statusBarHidden(!session.isShowingControls)
         .persistentSystemOverlays(session.isShowingControls ? .automatic : .hidden)
-        .animation(.smooth(duration: 0.25), value: session.isShowingControls)
         .readerEffects(session: session)
+        .otherDevicePrompt(session: session)
         .modifier(ReaderColorScheme(kind: session.item.kind))
         .task {
             await session.open()
@@ -59,6 +65,9 @@ private struct ReaderCanvas: View {
 /// The page, or what's in its place while it downloads, opens or fails.
 private struct ReaderContent: View {
     let session: ReaderSession
+    /// The device's safe area. Text stays inside it; comics use the whole
+    /// screen.
+    let insets: EdgeInsets
 
     var body: some View {
         switch session.phase {
@@ -69,7 +78,8 @@ private struct ReaderContent: View {
         case .reading:
             ZStack {
                 NavigatorView(controller: session.controller)
-                    .ignoresSafeArea(edges: session.item.kind == .comic ? .all : [])
+                    .padding(session.item.kind == .comic ? EdgeInsets() : insets)
+                    .ignoresSafeArea()
                 ReaderStateView(session: session)
             }
         }
@@ -131,11 +141,10 @@ private struct ReaderFailureView: View {
             Button("Try Again") {
                 Task { await session.open() }
             }
-            .buttonStyle(.glassProminent)
+            .buttonStyle(.borderedProminent)
             Button("Close") {
                 router.closeReader()
             }
-            .buttonStyle(.glass)
         }
     }
 }

@@ -61,6 +61,12 @@ final class ReaderSession {
         try? await controller.open(source, at: item.startLocation)
     }
 
+    /// Text settings only reach text that reflows, so comics and PDFs
+    /// don't offer them.
+    var showsAppearance: Bool {
+        item.kind == .book && controller.format != .pdf
+    }
+
     func toggleControls() {
         isShowingControls.toggle()
         if !isShowingControls {

@@ -22,7 +22,7 @@ enum CoverSource: Hashable {
 struct CoverView: View {
     let source: CoverSource
     let title: String
-    var cornerRadius: CGFloat = 6
+    var cornerRadius: CGFloat = 4
 
     @State private var image: UIImage?
 
@@ -45,7 +45,7 @@ struct CoverView: View {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
             }
-            .shadow(color: .black.opacity(0.18), radius: 6, y: 3)
+            .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
             .accessibilityHidden(true)
             .task(id: source) {
                 await load()
@@ -96,12 +96,12 @@ private struct CoverPlaceholder: View {
                 endPoint: .bottom
             )
             Text(title)
-                .font(.system(.headline, design: .serif))
+                .font(.system(.footnote, design: .serif, weight: .semibold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(5)
                 .minimumScaleFactor(0.6)
-                .padding(12)
+                .padding(8)
         }
     }
 }

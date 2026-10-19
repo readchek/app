@@ -76,9 +76,9 @@ private struct TextSizeControl: View {
             .disabled(!settings.canMakeTextLarger)
         }
         .labelStyle(.iconOnly)
-        .buttonStyle(.glass)
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.circle)
         .controlSize(.large)
-        .font(.title3)
     }
 }
 

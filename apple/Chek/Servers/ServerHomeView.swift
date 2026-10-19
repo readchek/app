@@ -100,7 +100,7 @@ private struct ServerHomeContent: View {
                 Button("Sign In") {
                     router.sheet = .signIn(account.id)
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.borderedProminent)
             }
         } else {
             switch model?.state ?? .idle {
@@ -118,97 +118,42 @@ private struct ServerHomeContent: View {
                     Button("Try Again") {
                         Task { await model?.load() }
                     }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.bordered)
                 }
             case .loaded(let content):
                 let statuses = ReadingStatuses(states)
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 32) {
+                    VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
                         if !content.continueReading.isEmpty {
-                            PublicationShelf(title: "Continue Reading", publications: content.continueReading, statuses: statuses, large: true)
+                            Shelf(
+                                title: "Continue Reading",
+                                items: content.continueReading.map { servers.item($0, status: statuses[$0.id]) },
+                                showsProgressBar: true
+                            )
                         }
                         if !content.recentlyAdded.isEmpty {
-                            PublicationShelf(title: "Recently Added", publications: content.recentlyAdded, statuses: statuses, large: false)
+                            Shelf(title: "Recently Added", items: content.recentlyAdded.map { servers.item($0, status: statuses[$0.id]) })
                         }
-                        LibraryLinks(account: account.id, libraries: content.libraries)
+                        if !content.libraries.isEmpty {
+                            VStack(alignment: .leading, spacing: 4) {
+                                SectionHeader(title: "Libraries")
+                                ForEach(content.libraries) { library in
+                                    NavigationRow(
+                                        title: library.name,
+                                        systemImage: "books.vertical",
+                                        value: Route.serverLibrary(account.id, library),
+                                        showsDivider: library.id != content.libraries.last?.id
+                                    )
+                                }
+                            }
+                        }
                     }
-                    .padding(.vertical)
+                    .padding(.vertical, 8)
                 }
                 .refreshable {
                     await model?.load()
                 }
             }
-        }
-    }
-}
-
-/// A row of covers you can swipe through.
-struct PublicationShelf: View {
-    let title: LocalizedStringKey
-    let publications: [RemotePublication]
-    let statuses: ReadingStatuses
-    let large: Bool
-    @Environment(\.horizontalSizeClass) private var sizeClass
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: title)
-            ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: large ? 20 : 16) {
-                    ForEach(publications) { publication in
-                        RemotePublicationTile(publication: publication, status: statuses[publication.id], width: tileWidth)
-                    }
-                }
-                .scrollTargetLayout()
-                .padding(.horizontal)
-            }
-            .scrollIndicators(.hidden)
-            .scrollTargetBehavior(.viewAligned)
-            .scrollClipDisabled()
-        }
-    }
-
-    private var tileWidth: CGFloat {
-        switch (large, sizeClass == .regular) {
-        case (true, true): 190
-        case (true, false): 150
-        case (false, true): 130
-        case (false, false): 108
-        }
-    }
-}
-
-private struct LibraryLinks: View {
-    let account: UUID
-    let libraries: [ChekAPI.Library]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "Libraries")
-            VStack(spacing: 0) {
-                ForEach(libraries) { library in
-                    NavigationLink(value: Route.serverLibrary(account, library)) {
-                        HStack {
-                            Label(library.name, systemImage: "books.vertical")
-                                .foregroundStyle(.primary)
-                            Spacer()
-                            Image(systemName: "chevron.forward")
-                                .font(.footnote.weight(.semibold))
-                                .foregroundStyle(.tertiary)
-                        }
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 14)
-                        .contentShape(.rect)
-                    }
-                    .buttonStyle(.plain)
-                    if library.id != libraries.last?.id {
-                        Divider()
-                            .padding(.leading, 56)
-                    }
-                }
-            }
-            .background(.background.secondary, in: .rect(cornerRadius: 22))
-            .padding(.horizontal)
         }
     }
 }

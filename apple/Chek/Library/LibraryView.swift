@@ -12,12 +12,12 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            LibraryContent(sort: sort, filter: $filter, search: search, layout: layout)
-                .navigationTitle("Library")
+            LibraryContent(sort: sort, filter: filter, search: search, layout: layout)
+                .navigationTitle(Text(filter.navigationTitle))
                 .searchable(text: $search, prompt: Text("Titles and Authors"))
                 .toolbar {
                     ToolbarItemGroup(placement: .primaryAction) {
-                        LibraryOptionsMenu(sort: $sort, layout: $layout)
+                        LibraryOptionsMenu(sort: $sort, filter: $filter, layout: $layout)
                         AddBooksButton()
                     }
                 }
@@ -49,19 +49,26 @@ private struct AddBooksButton: View {
 
 private struct LibraryOptionsMenu: View {
     @Binding var sort: LibrarySort
+    @Binding var filter: LibraryFilter
     @Binding var layout: LibraryLayout
 
     var body: some View {
         Menu("View Options", systemImage: "line.3.horizontal.decrease") {
-            Picker("Layout", selection: $layout) {
-                Label("Grid", systemImage: "square.grid.2x2").tag(LibraryLayout.grid)
-                Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
+            Picker("Show", selection: $filter) {
+                ForEach(LibraryFilter.allCases) { filter in
+                    Text(filter.title).tag(filter)
+                }
             }
             .pickerStyle(.inline)
             Picker("Sort By", selection: $sort) {
                 ForEach(LibrarySort.allCases) { sort in
                     Text(sort.title).tag(sort)
                 }
+            }
+            .pickerStyle(.inline)
+            Picker("Layout", selection: $layout) {
+                Label("Grid", systemImage: "square.grid.3x2").tag(LibraryLayout.grid)
+                Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
             }
             .pickerStyle(.inline)
         }
@@ -71,98 +78,61 @@ private struct LibraryOptionsMenu: View {
 /// The books matching the current options. Its query is built from them,
 /// so changing an option swaps the query rather than filtering in memory.
 private struct LibraryContent: View {
+    let filter: LibraryFilter
     let layout: LibraryLayout
-    @Binding var filter: LibraryFilter
     let isSearching: Bool
     @Query private var books: [Book]
     @State private var bookToRemove: Book?
 
-    init(sort: LibrarySort, filter: Binding<LibraryFilter>, search: String, layout: LibraryLayout) {
+    init(sort: LibrarySort, filter: LibraryFilter, search: String, layout: LibraryLayout) {
+        self.filter = filter
         self.layout = layout
-        _filter = filter
         isSearching = !search.trimmingCharacters(in: .whitespaces).isEmpty
-        _books = Query(filter: Book.predicate(kind: filter.wrappedValue.kind, search: search), sort: sort.descriptors, animation: .smooth)
+        _books = Query(filter: Book.predicate(kind: filter.kind, search: search), sort: sort.descriptors, animation: .default)
     }
 
     var body: some View {
         Group {
-            if books.isEmpty && !isSearching && filter == .all {
-                EmptyLibraryView()
+            if books.isEmpty {
+                if isSearching {
+                    ContentUnavailableView.search
+                } else if filter != .all {
+                    ContentUnavailableView(filter == .comics ? "No Comics" : "No Books", systemImage: "books.vertical")
+                } else {
+                    EmptyLibraryView()
+                }
             } else {
                 switch layout {
                 case .grid:
-                    LibraryGrid(books: books, filter: $filter, bookToRemove: $bookToRemove)
+                    ScrollView {
+                        LazyVGrid(columns: Metrics.gridColumns, spacing: Metrics.gridRowSpacing) {
+                            ForEach(books) { book in
+                                PublicationCell(item: PublicationItem(book))
+                                    .contextMenu {
+                                        BookActions(book: book, bookToRemove: $bookToRemove)
+                                    }
+                            }
+                        }
+                        .padding(.horizontal, Metrics.margin)
+                        .padding(.vertical, 8)
+                    }
                 case .list:
-                    LibraryList(books: books, filter: $filter, bookToRemove: $bookToRemove)
+                    List(books) { book in
+                        PublicationRow(item: PublicationItem(book))
+                            .contextMenu {
+                                BookActions(book: book, bookToRemove: $bookToRemove)
+                            }
+                            .swipeActions {
+                                Button("Remove", systemImage: "trash", role: .destructive) {
+                                    bookToRemove = book
+                                }
+                            }
+                    }
+                    .listStyle(.plain)
                 }
-            }
-        }
-        .overlay {
-            if books.isEmpty && isSearching {
-                ContentUnavailableView.search
-            } else if books.isEmpty && filter != .all {
-                ContentUnavailableView(
-                    filter == .comics ? "No Comics" : "No Books",
-                    systemImage: filter == .comics ? "book.pages" : "book.closed",
-                    description: Text("Add files from the Files app, or drop them here.")
-                )
             }
         }
         .removeBookConfirmation(book: $bookToRemove)
-    }
-}
-
-/// All, Books and Comics.
-private struct LibraryFilterPicker: View {
-    @Binding var filter: LibraryFilter
-
-    var body: some View {
-        Picker("Show", selection: $filter) {
-            ForEach(LibraryFilter.allCases) { filter in
-                Text(filter.title).tag(filter)
-            }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-    }
-}
-
-private struct LibraryGrid: View {
-    let books: [Book]
-    @Binding var filter: LibraryFilter
-    @Binding var bookToRemove: Book?
-
-    var body: some View {
-        ScrollView {
-            LibraryFilterPicker(filter: $filter)
-                .padding(.horizontal)
-                .padding(.bottom, 8)
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 20, alignment: .bottom)], spacing: 28) {
-                ForEach(books) { book in
-                    BookGridItem(book: book, bookToRemove: $bookToRemove)
-                }
-            }
-            .padding(.horizontal)
-            .padding(.bottom, 24)
-        }
-    }
-}
-
-private struct LibraryList: View {
-    let books: [Book]
-    @Binding var filter: LibraryFilter
-    @Binding var bookToRemove: Book?
-
-    var body: some View {
-        List {
-            LibraryFilterPicker(filter: $filter)
-                .listRowSeparator(.hidden)
-                .listRowBackground(Color.clear)
-            ForEach(books) { book in
-                BookRow(book: book, bookToRemove: $bookToRemove)
-            }
-        }
-        .listStyle(.plain)
     }
 }
 
@@ -172,15 +142,14 @@ private struct EmptyLibraryView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("Your Library", systemImage: "books.vertical")
+            Label("No Books Yet", systemImage: "books.vertical")
         } description: {
-            Text("Add EPUB, PDF, comics, MOBI, FictionBook, text and Markdown files from Files, or drop them here. They stay on this device and need no account.")
+            Text("Add EPUB, PDF, comics, MOBI, FictionBook, text and Markdown files from Files, or drop them here. They stay on this device.")
         } actions: {
             Button("Add Books") {
                 router.addBooks()
             }
-            .buttonStyle(.glassProminent)
-            .controlSize(.large)
+            .buttonStyle(.borderedProminent)
         }
     }
 }

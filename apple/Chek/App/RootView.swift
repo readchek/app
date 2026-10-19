@@ -24,6 +24,7 @@ struct RootView: View {
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
+        .nowReadingAccessory()
         .environment(\.readerTransition, readerTransition)
         .fullScreenCover(item: $router.reading) { item in
             ReaderHost(item: item)

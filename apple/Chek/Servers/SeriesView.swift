@@ -1,8 +1,8 @@
 import SwiftData
 import SwiftUI
 
-/// A series on a server: a header with a button to read on from where
-/// you are, then every volume or chapter in order.
+/// A series on a server: its cover and a button to read on from where you
+/// are, then every volume or chapter in order.
 struct SeriesView: View {
     let account: UUID
     let seriesID: Int64
@@ -45,6 +45,7 @@ private struct SeriesContent: View {
     let title: String
     let publications: PagedList<RemotePublication>
     @Query private var states: [RemoteReadingState]
+    @Environment(ServerStore.self) private var servers
 
     init(account: UUID, seriesID: Int64, title: String, publications: PagedList<RemotePublication>) {
         self.account = account
@@ -57,26 +58,29 @@ private struct SeriesContent: View {
         let statuses = ReadingStatuses(states)
         List {
             if let first = publications.items.first {
-                SeriesHeader(
-                    title: title,
-                    count: publications.items.count,
-                    isComplete: publications.phase == .complete,
-                    cover: first,
-                    next: nextToRead(statuses: statuses)
-                )
-                .listRowSeparator(.hidden)
-                .listRowInsets(EdgeInsets())
-            }
-            ForEach(publications.items) { publication in
-                RemotePublicationRow(publication: publication, status: statuses[publication.id], showsSeries: false)
-                    .task {
-                        await publications.loadMore(after: publication)
-                    }
-            }
-            if publications.phase == .loadingMore {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
+                Section {
+                    SeriesHeader(
+                        title: title,
+                        count: publications.items.count,
+                        isComplete: publications.phase == .complete,
+                        cover: servers.cover(of: first.id, on: first.server),
+                        next: nextToRead(statuses: statuses)
+                    )
                     .listRowSeparator(.hidden)
+                }
+            }
+            Section {
+                ForEach(publications.items) { publication in
+                    PublicationRow(item: servers.item(publication, status: statuses[publication.id], showsSeries: false))
+                        .task {
+                            await publications.loadMore(after: publication)
+                        }
+                }
+                if publications.phase == .loadingMore {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .listRowSeparator(.hidden)
+                }
             }
         }
         .listStyle(.plain)
@@ -103,49 +107,44 @@ private struct SeriesContent: View {
     }
 }
 
+/// The series' cover beside its title, and the button that picks up where
+/// you are.
 private struct SeriesHeader: View {
     let title: String
     let count: Int
     let isComplete: Bool
-    let cover: RemotePublication
+    let cover: CoverSource
     let next: (RemotePublication, ReadingStatus)?
-    @Environment(ServerStore.self) private var servers
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        VStack(spacing: 16) {
-            CoverView(source: servers.cover(of: cover.id, on: cover.server), title: title, cornerRadius: 8)
-                .frame(width: 150)
-                .padding(.top, 8)
-            VStack(spacing: 4) {
-                Text(title)
-                    .font(.title2.bold())
-                    .multilineTextAlignment(.center)
-                Text(isComplete ? "^[\(count) item](inflect: true)" : "\(count)+ items")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(alignment: .bottom, spacing: 16) {
+                CoverView(source: cover, title: title)
+                    .frame(width: 96)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.title2.weight(.bold))
+                        .lineLimit(3)
+                    Text(isComplete ? "^[\(count) item](inflect: true)" : "\(count)+ items")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
             }
             if let (publication, status) = next {
                 Button {
                     router.open(publication, using: sync)
                 } label: {
-                    VStack(spacing: 2) {
-                        Text(status == .new ? "Start Reading" : "Continue")
-                            .font(.headline)
-                        Text(publication.displayTitle)
-                            .font(.caption)
-                            .lineLimit(1)
-                    }
-                    .frame(maxWidth: 320)
-                    .padding(.vertical, 4)
+                    Text(status == .new ? "Start Reading" : "Continue \(publication.displayTitle)")
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glassProminent)
+                .buttonStyle(.borderedProminent)
                 .controlSize(.large)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.horizontal)
-        .padding(.bottom, 20)
+        .padding(.vertical, 8)
     }
 }
