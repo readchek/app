@@ -89,12 +89,12 @@ extension ReaderScreen {
             }
     }
 
-    /// The screen's own insets, for the sensor housing and the home
-    /// indicator, which don't change when bars come and go.
     /// Room for the floating controls, measured from the glass buttons.
     static let topBarHeight: CGFloat = 36
     static let bottomBarHeight: CGFloat = 40
 
+    /// The screen's own insets, for the sensor housing and the home
+    /// indicator, which don't change when bars come and go.
     static func deviceInsets(fallback: EdgeInsets) -> EdgeInsets {
         let window = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }

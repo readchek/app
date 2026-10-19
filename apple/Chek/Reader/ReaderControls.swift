@@ -24,7 +24,7 @@ private struct ReaderToolbars: ViewModifier {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    ReaderTitle(title: session.item.title, controller: session.controller)
+                    ReaderTitle(title: session.item.title, controller: session.controller, isOverArtwork: session.item.kind == .comic)
                 }
                 // One button either side, so the title sits in the visual
                 // middle, not just the measured one. Appearance goes with
@@ -67,8 +67,22 @@ private struct ReaderToolbars: ViewModifier {
 private struct ReaderTitle: View {
     let title: String
     let controller: ReaderController
+    /// Comic pages run under the bar, where plain text would vanish into
+    /// light artwork, so the title sits on glass like the buttons beside it.
+    let isOverArtwork: Bool
 
     var body: some View {
+        if isOverArtwork {
+            label
+                .padding(.horizontal, 16)
+                .padding(.vertical, 6)
+                .glassEffect(.regular, in: .capsule)
+        } else {
+            label
+        }
+    }
+
+    private var label: some View {
         VStack(spacing: 0) {
             Text(title)
                 .font(.headline)

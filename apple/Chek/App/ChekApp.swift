@@ -21,6 +21,7 @@ struct ChekApp: App {
         WindowGroup {
             RootView()
                 .appEnvironment(app)
+                .task { await app.library.carryOverChibiMangaLibrary() }
         }
         .modelContainer(app.container)
     }

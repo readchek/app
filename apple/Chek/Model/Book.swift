@@ -46,6 +46,8 @@ extension ChekSchemaV1 {
             fileName = imported.fileName
             fileSize = imported.fileSize
             hasCover = imported.hasCover
+            location = imported.location
+            progress = imported.progress
             addedAt = date
             recentAt = date
         }

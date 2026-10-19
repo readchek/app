@@ -16,6 +16,10 @@ nonisolated struct ImportedBook: Sendable {
     var fileName: String
     var fileSize: Int64
     var hasCover: Bool
+    /// Where to start reading, as Locator JSON, for a book carried over
+    /// with a place already kept.
+    var location: Data?
+    var progress: Double?
 }
 
 /// Copies books into the library and reads their metadata and covers.
@@ -39,10 +43,15 @@ nonisolated enum BookImporter {
     /// Copies the file at `source` into a new folder in the library and
     /// opens it once to check it can be read.
     ///
+    /// With `moving`, the file is moved instead, for files already on the
+    /// device that would otherwise take their space twice. `page` is a
+    /// zero-based page to start a comic or PDF at.
+    ///
     /// Throws the reader's error when the file isn't a publication the
-    /// reader can open, and leaves nothing behind in that case.
+    /// reader can open, and leaves nothing behind in that case; a moved file
+    /// goes back where it was.
     @concurrent
-    static func importBook(from source: URL) async throws -> ImportedBook {
+    static func importBook(from source: URL, moving: Bool = false, page: Int? = nil) async throws -> ImportedBook {
         let id = UUID()
         let folder = LibraryFiles.folder(for: id)
         let destination = folder.appending(path: source.lastPathComponent)
@@ -56,11 +65,21 @@ nonisolated enum BookImporter {
 
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: source, to: destination)
+            if moving {
+                try FileManager.default.moveItem(at: source, to: destination)
+            } else {
+                try FileManager.default.copyItem(at: source, to: destination)
+            }
+        } catch {
+            LibraryFiles.remove(id)
+            throw error
+        }
 
+        do {
             let publication = try await Publication.open(.file(destination))
             let hasCover = await writeCover(of: publication, file: destination, to: LibraryFiles.coverURL(for: id))
             let size = try? destination.resourceValues(forKeys: [.fileSizeKey]).fileSize
+            let start = page.flatMap { startLocator(in: publication, file: destination, page: $0) }
             return ImportedBook(
                 id: id,
                 title: displayTitle(publication.metadata.title, fileName: destination.deletingPathExtension().lastPathComponent),
@@ -71,12 +90,44 @@ nonisolated enum BookImporter {
                 seriesPosition: publication.metadata.series?.position,
                 fileName: destination.lastPathComponent,
                 fileSize: Int64(size ?? 0),
-                hasCover: hasCover
+                hasCover: hasCover,
+                location: start.flatMap { try? JSONEncoder().encode($0) },
+                progress: start?.locations.totalProgression
             )
         } catch {
+            if moving {
+                try? FileManager.default.moveItem(at: destination, to: source)
+            }
             LibraryFiles.remove(id)
             throw error
         }
+    }
+
+    /// A position at the start of zero-based `page`, as the comic and PDF
+    /// navigators write them. Reflowable books have no fixed pages, so
+    /// they start from the beginning.
+    private static func startLocator(in publication: Publication, file: URL, page: Int) -> Locator? {
+        guard page > 0 else { return nil }
+        if publication.format == .pdf {
+            guard let link = publication.readingOrder.first,
+                  let count = PDFDocument(url: file)?.pageCount,
+                  count > 0
+            else { return nil }
+            let index = min(page, count - 1)
+            let progression = Double(index) / Double(count)
+            return Locator(
+                href: link.path,
+                mediaType: "application/pdf",
+                locations: Locator.Locations(fragments: ["page=\(index + 1)"], progression: progression, totalProgression: progression)
+            )
+        }
+        let pages = publication.readingOrder
+        guard pages.allSatisfy({ $0.mediaType?.hasPrefix("image/") == true }), !pages.isEmpty else { return nil }
+        let index = min(page, pages.count - 1)
+        guard var locator = publication.locator(for: pages[index]) else { return nil }
+        locator.locations.progression = 0
+        locator.locations.totalProgression = Double(index) / Double(pages.count)
+        return locator
     }
 
     /// The publication's title, or one made from its file name when it has

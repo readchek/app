@@ -33,6 +33,7 @@ final class LibraryStore {
     }
 
     private let context: ModelContext
+    @ObservationIgnored private var hasCarriedOver = false
 
     init(context: ModelContext) {
         self.context = context
@@ -55,6 +56,35 @@ final class LibraryStore {
                 }
             }
         }
+    }
+
+    /// Moves the books someone had in Chibi Manga into the library, each
+    /// at the page they left it on. It runs once, on the first launch
+    /// after updating; books that can't be read are left where they were.
+    func carryOverChibiMangaLibrary() async {
+        // Each window asks, and only the first should carry anything over.
+        guard !hasCarriedOver else { return }
+        hasCarriedOver = true
+        let entries = ChibiMangaLibrary.pendingEntries()
+        guard !entries.isEmpty else { return }
+        let jobs = entries.map { Import(fileName: $0.fileName) }
+        imports.append(contentsOf: jobs)
+        // One at a time, so a large library doesn't open every book at once.
+        for (entry, job) in zip(entries, jobs) {
+            defer { imports.removeAll { $0.id == job.id } }
+            guard let imported = try? await BookImporter.importBook(
+                from: ChibiMangaLibrary.file(for: entry),
+                moving: true,
+                page: entry.currentPage
+            ) else { continue }
+            let book = Book(imported, at: entry.lastReadAt ?? .now)
+            if let lastReadAt = entry.lastReadAt, entry.currentPage > 0 {
+                book.lastOpenedAt = lastReadAt
+            }
+            context.insert(book)
+            save()
+        }
+        ChibiMangaLibrary.finish()
     }
 
     func remove(_ book: Book) {

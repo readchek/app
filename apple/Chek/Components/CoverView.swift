@@ -35,6 +35,9 @@ struct CoverView: View {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFill()
+                            // Takes the frame's size, so the clip below crops
+                            // a wider image to 2:3 instead of following it.
+                            .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                             .transition(.opacity)
                     } else {
                         CoverPlaceholder(title: title)
