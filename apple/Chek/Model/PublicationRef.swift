@@ -9,12 +9,16 @@ nonisolated enum PublicationRef: Hashable, Codable, Sendable {
     case local(UUID)
     /// A publication on a connected server.
     case server(UUID, Int64)
+    /// A chapter read straight from one of a server's sources: the server,
+    /// the extension's id and the source's own chapter id.
+    case source(UUID, String, String)
 
     /// A stable string form, for unique keys in storage.
     var storageKey: String {
         switch self {
         case .local(let id): "local/\(id.uuidString)"
         case .server(let server, let publication): "server/\(server.uuidString)/\(publication)"
+        case .source(let server, let source, let chapter): "source/\(server.uuidString)/\(source)/\(chapter)"
         }
     }
 }

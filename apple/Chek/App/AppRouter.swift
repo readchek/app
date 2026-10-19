@@ -11,6 +11,11 @@ enum Route: Hashable {
     case server(UUID)
     case serverLibrary(UUID, ChekAPI.Library)
     case series(UUID, seriesID: Int64, title: String)
+    /// A source's series, searchable: the server and the installed extension.
+    case source(UUID, ChekAPI.InstalledExtension)
+    case sourceSeries(UUID, source: String, seriesID: String, title: String)
+    /// The extensions a server offers, to install and update.
+    case extensions(UUID)
 }
 
 /// Something shown in a sheet over the whole app.
@@ -62,6 +67,24 @@ final class AppRouter {
                 openingFailure = OpeningFailure(
                     error: DisplayError(error),
                     signIn: sync.isSignedOut(of: publication.server) ? publication.server : nil
+                )
+            }
+        }
+    }
+
+    /// Opens a chapter from one of a server's sources once its pages are
+    /// listed. A second tap while one is opening is ignored.
+    func open(_ chapter: SourceChapterRef, using sync: ServerSync) {
+        guard opening == nil else { return }
+        opening = chapter.ref
+        Task {
+            defer { opening = nil }
+            do {
+                open(try await sync.readingItem(for: chapter))
+            } catch {
+                openingFailure = OpeningFailure(
+                    error: DisplayError(error),
+                    signIn: sync.isSignedOut(of: chapter.server) ? chapter.server : nil
                 )
             }
         }

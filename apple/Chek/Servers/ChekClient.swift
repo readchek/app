@@ -62,6 +62,98 @@ nonisolated struct ChekClient: Sendable {
         try await get("api/v1/search", query: [URLQueryItem(name: "q", value: String(text.prefix(200)))], cursor: cursor)
     }
 
+    // MARK: - Sources
+
+    func installedExtensions() async throws(ChekError) -> [ChekAPI.InstalledExtension] {
+        let page: ChekAPI.Items<ChekAPI.InstalledExtension> = try await get("api/v1/me/extensions")
+        return page.items
+    }
+
+    /// Installed extensions, or nil from a server too old to have them,
+    /// which answers 404, so the rest of a screen can still show.
+    func installedExtensionsIfSupported() async throws(ChekError) -> [ChekAPI.InstalledExtension]? {
+        do {
+            return try await installedExtensions()
+        } catch .notFound {
+            return nil
+        }
+    }
+
+    func availableExtensions() async throws(ChekError) -> [ChekAPI.AvailableExtension] {
+        let page: ChekAPI.Items<ChekAPI.AvailableExtension> = try await get("api/v1/extensions")
+        return page.items
+    }
+
+    func extensionRepositories() async throws(ChekError) -> [ChekAPI.ExtensionRepository] {
+        let page: ChekAPI.Items<ChekAPI.ExtensionRepository> = try await get("api/v1/extension-repositories")
+        return page.items
+    }
+
+    /// Has the server read `repository`'s index again.
+    func refresh(repository: Int64) async throws(ChekError) {
+        var request = authorized("api/v1/extension-repositories/\(repository)/refresh")
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        try await Self.sendWithoutBody(request, session: session)
+    }
+
+    /// Installs `id` from `repository`, or updates it when it's installed.
+    func install(_ id: String, from repository: Int64) async throws(ChekError) -> ChekAPI.InstalledExtension {
+        var request = authorized("api/v1/me/extensions/\(id)")
+        request.httpMethod = "PUT"
+        request.timeoutInterval = 60
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(["repositoryId": repository])
+        return try await Self.send(request, session: session)
+    }
+
+    func uninstall(_ id: String) async throws(ChekError) {
+        var request = authorized("api/v1/me/extensions/\(id)")
+        request.httpMethod = "DELETE"
+        try await Self.sendWithoutBody(request, session: session)
+    }
+
+    /// One page of a source's series matching `query`, or the ones it
+    /// shows first when `query` is empty. Pages count from 1.
+    func search(source: String, query: String, page: Int) async throws(ChekError) -> ChekAPI.SourceSearchPage {
+        var items = [URLQueryItem(name: "page", value: String(page))]
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !query.isEmpty {
+            items.append(URLQueryItem(name: "q", value: String(query.prefix(200))))
+        }
+        // A source fetches from its site while you wait, which can be slow.
+        var request = authorized("api/v1/me/extensions/\(source)/search", query: items)
+        request.timeoutInterval = 60
+        return try await Self.send(request, session: session)
+    }
+
+    func series(_ series: String, inSource source: String) async throws(ChekError) -> ChekAPI.SourceSeries {
+        var request = authorized("api/v1/me/extensions/\(source)/series", query: [URLQueryItem(name: "seriesId", value: series)])
+        request.timeoutInterval = 60
+        return try await Self.send(request, session: session)
+    }
+
+    func chapters(ofSeries series: String, inSource source: String) async throws(ChekError) -> [ChekAPI.SourceChapter] {
+        var request = authorized("api/v1/me/extensions/\(source)/chapters", query: [URLQueryItem(name: "seriesId", value: series)])
+        request.timeoutInterval = 60
+        let page: ChekAPI.Items<ChekAPI.SourceChapter> = try await Self.send(request, session: session)
+        return page.items
+    }
+
+    func pages(ofChapter chapter: String, inSource source: String) async throws(ChekError) -> [ChekAPI.SourcePage] {
+        var request = authorized("api/v1/me/extensions/\(source)/pages", query: [URLQueryItem(name: "chapterId", value: chapter)])
+        request.timeoutInterval = 60
+        let page: ChekAPI.Items<ChekAPI.SourcePage> = try await Self.send(request, session: session)
+        return page.items.sorted { $0.index < $1.index }
+    }
+
+    /// A request for an image a source route returned, which is a path on
+    /// this server rather than on the source's site.
+    func imageRequest(_ path: String) -> URLRequest? {
+        guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else { return nil }
+        return authorize(URLRequest(url: url, timeoutInterval: 60))
+    }
+
     // MARK: - Reading
 
     func pageCount(of publication: Int64) async throws(ChekError) -> Int {
@@ -152,6 +244,25 @@ nonisolated struct ChekClient: Sendable {
         }
         return decoder
     }()
+
+    /// Sends a request whose success has no body, such as a delete.
+    private static func sendWithoutBody(_ request: URLRequest, session: URLSession) async throws(ChekError) {
+        let response: URLResponse
+        do {
+            (_, response) = try await session.data(for: request)
+        } catch let error as URLError {
+            throw .offline(error)
+        } catch {
+            throw .invalidResponse
+        }
+        guard let http = response as? HTTPURLResponse else { throw .invalidResponse }
+        switch http.statusCode {
+        case 200..<300: return
+        case 401: throw .unauthorized
+        case 404: throw .notFound
+        default: throw .server(status: http.statusCode, code: nil)
+        }
+    }
 
     private static func send<Value: Decodable>(_ request: URLRequest, session: URLSession) async throws(ChekError) -> Value {
         let data: Data

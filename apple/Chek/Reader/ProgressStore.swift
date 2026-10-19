@@ -32,6 +32,9 @@ final class ProgressStore {
         case .server:
             guard let state = readingState(ref) else { return }
             state.lastOpenedAt = now
+        case .source:
+            guard let state = sourceState(ref) else { return }
+            state.lastOpenedAt = now
         }
         save()
     }
@@ -59,6 +62,12 @@ final class ProgressStore {
             state.updatedAt = .now
             state.needsUpload = true
             pendingUploads += 1
+        case .source:
+            guard let state = sourceState(ref), state.location != data else { return }
+            state.location = data
+            if let progress {
+                state.progress = progress
+            }
         }
         save()
     }
@@ -74,6 +83,31 @@ final class ProgressStore {
         var descriptor = FetchDescriptor<RemoteReadingState>(predicate: #Predicate { $0.key == key })
         descriptor.fetchLimit = 1
         return try? context.fetch(descriptor).first
+    }
+
+    func sourceState(_ ref: PublicationRef) -> SourceReadingState? {
+        let key = ref.storageKey
+        var descriptor = FetchDescriptor<SourceReadingState>(predicate: #Predicate { $0.key == key })
+        descriptor.fetchLimit = 1
+        return try? context.fetch(descriptor).first
+    }
+
+    /// The device's record of a source chapter, made the first time it opens.
+    func sourceState(for chapter: SourceChapterRef) -> SourceReadingState {
+        if let state = sourceState(chapter.ref) {
+            return state
+        }
+        let state = SourceReadingState(
+            serverID: chapter.server,
+            sourceID: chapter.source,
+            seriesID: chapter.seriesID,
+            seriesTitle: chapter.seriesTitle,
+            chapterID: chapter.chapterID,
+            chapterTitle: chapter.chapterTitle
+        )
+        context.insert(state)
+        save()
+        return state
     }
 
     private func save() {

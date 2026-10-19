@@ -50,6 +50,8 @@ final class ServerHomeModel {
         /// Where you are in each of ``continueReading`` as the server keeps
         /// it, for books this device hasn't opened.
         var serverStatuses: [Int64: ReadingStatus]
+        /// Installed extensions, or nil on a server too old to have them.
+        var sources: [ChekAPI.InstalledExtension]?
         var recentlyAdded: [RemotePublication]
         var libraries: [ChekAPI.Library]
     }
@@ -70,12 +72,13 @@ final class ServerHomeModel {
         let account = account
         do {
             let content = try await servers.request(account) { client throws(ChekError) in
-                // The three load side by side. `async let` loses the error
+                // They load side by side. `async let` loses the error
                 // type, so it's restored for the store to see sign-outs.
                 do {
                     async let libraries = client.libraries()
                     async let recent = client.recentlyAdded(cursor: nil)
                     async let reading = client.continueReading()
+                    async let sources = client.installedExtensionsIfSupported()
                     let readingItems = try await reading
                     return try await Content(
                         continueReading: readingItems.map { RemotePublication($0.publication, server: account) },
@@ -83,6 +86,7 @@ final class ServerHomeModel {
                             let progress = item.progress.locator?.locations.totalProgression
                             return (item.publication.id, ReadingStatus(progress: progress, finished: false, opened: true))
                         }, uniquingKeysWith: { first, _ in first }),
+                        sources: sources,
                         recentlyAdded: recent.items.map { RemotePublication($0, server: account) },
                         libraries: libraries
                     )
@@ -157,6 +161,9 @@ private struct ServerHomeContent: View {
                         }
                         if !content.recentlyAdded.isEmpty {
                             Shelf(title: "Recently Added", items: content.recentlyAdded.map { servers.item($0, status: statuses[$0.id]) })
+                        }
+                        if let sources = content.sources {
+                            SourcesSection(account: account.id, sources: sources)
                         }
                         if !content.libraries.isEmpty {
                             VStack(alignment: .leading, spacing: 4) {

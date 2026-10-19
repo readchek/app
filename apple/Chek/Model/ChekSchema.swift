@@ -14,19 +14,33 @@ enum ChekSchemaV1: VersionedSchema {
     }
 }
 
+/// Adds your places in chapters read straight from a server's sources.
+/// The other models are unchanged, so they carry over as they are.
+enum ChekSchemaV2: VersionedSchema {
+    static let versionIdentifier = Schema.Version(2, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [ChekSchemaV1.Book.self, ChekSchemaV1.ServerAccount.self, ChekSchemaV1.RemoteReadingState.self, SourceReadingState.self]
+    }
+}
+
 enum ChekMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [ChekSchemaV1.self]
+        [ChekSchemaV1.self, ChekSchemaV2.self]
     }
 
     static var stages: [MigrationStage] {
-        []
+        [.lightweight(fromVersion: ChekSchemaV1.self, toVersion: ChekSchemaV2.self)]
     }
 }
+
+/// The current schema, which the store opens with.
+typealias ChekSchema = ChekSchemaV2
 
 typealias Book = ChekSchemaV1.Book
 typealias ServerAccount = ChekSchemaV1.ServerAccount
 typealias RemoteReadingState = ChekSchemaV1.RemoteReadingState
+typealias SourceReadingState = ChekSchemaV2.SourceReadingState
 
 extension ModelContainer {
     /// Chek's store, or an in-memory one for previews and tests.
@@ -35,9 +49,9 @@ extension ModelContainer {
     /// Manga, which keeps a different schema in the default store. A store
     /// of its own keeps the two from meeting.
     static func chek(inMemory: Bool = false) throws -> ModelContainer {
-        let configuration = ModelConfiguration("Chek", schema: Schema(versionedSchema: ChekSchemaV1.self), isStoredInMemoryOnly: inMemory)
+        let configuration = ModelConfiguration("Chek", schema: Schema(versionedSchema: ChekSchema.self), isStoredInMemoryOnly: inMemory)
         return try ModelContainer(
-            for: Schema(versionedSchema: ChekSchemaV1.self),
+            for: Schema(versionedSchema: ChekSchema.self),
             migrationPlan: ChekMigrationPlan.self,
             configurations: configuration
         )

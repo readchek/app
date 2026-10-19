@@ -70,10 +70,12 @@ migrate instead of resetting:
 | `Book` | A publication imported to the device: metadata, file name, position. |
 | `ServerAccount` | A connected server: kind, address, user. The token is in the Keychain under the account's id. |
 | `RemoteReadingState` | Your position in a server publication, with enough to show it in Continue Reading offline, its last synced revision and whether it still needs uploading. |
+| `SourceReadingState` | Your position in a chapter read straight from a server's source (an extension). Sources keep no positions on the server, so this copy is the only one. Added in `ChekSchemaV2`. |
 
-Server catalogs (libraries, series, publications) are not stored. Screen
-models load them page by page, and covers go through `ImageLoader`'s memory
-and disk cache.
+Server catalogs (libraries, series, publications) and what sources list
+(series, chapters, pages) are not stored. Sources run on the server, so the
+app reaches them only through its API. Screen models load them page by page,
+and covers go through `ImageLoader`'s memory and disk cache.
 
 The store is named `Chek` so it never opens the default store Chibi Manga
 left on devices that update.

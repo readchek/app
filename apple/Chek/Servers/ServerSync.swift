@@ -79,6 +79,35 @@ final class ServerSync {
         )
     }
 
+    /// What the reader needs to open a chapter straight from a source,
+    /// starting where you left it on this device.
+    ///
+    /// The page list is fetched first: the source looks it up on its site,
+    /// and the reader needs to know how many pages there are.
+    func readingItem(for chapter: SourceChapterRef) async throws(DisplayError) -> ReadingItem {
+        let pages: [ChekAPI.SourcePage]
+        let client: ChekClient
+        do {
+            (pages, client) = try await servers.request(chapter.server) { client throws(ChekError) in
+                (try await client.pages(ofChapter: chapter.chapterID, inSource: chapter.source), client)
+            }
+        } catch {
+            throw DisplayError(error)
+        }
+        guard !pages.isEmpty else {
+            throw DisplayError(title: String(localized: "This chapter has no pages."), message: String(localized: "The source didn't list any. It may not be out yet."))
+        }
+        let state = progress.sourceState(for: chapter)
+        return ReadingItem(
+            ref: chapter.ref,
+            title: chapter.chapterTitle,
+            subtitle: chapter.seriesTitle,
+            kind: .comic,
+            content: .source(.pages(SourcePageSource(client: client, pages: pages.map(\.url)))),
+            startLocation: state.savedLocation
+        )
+    }
+
     /// Brings the device's copy of your place up to date with the server's
     /// before opening. Your place here wins until you choose otherwise.
     private func refresh(_ state: RemoteReadingState, from publication: RemotePublication) async {

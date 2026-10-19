@@ -106,6 +106,12 @@ extension View {
                 ServerLibraryView(account: account, library: library)
             case .series(let account, let series, let title):
                 SeriesView(account: account, seriesID: series, title: title)
+            case .source(let account, let source):
+                SourceView(account: account, source: source)
+            case .sourceSeries(let account, let source, let series, let title):
+                SourceSeriesView(account: account, source: source, seriesID: series, title: title)
+            case .extensions(let account):
+                ExtensionsView(account: account)
             }
         }
     }

@@ -40,8 +40,13 @@ final class ServerStore {
         let servers = Set(accounts().map(\.id))
         let states = (try? context.fetch(FetchDescriptor<RemoteReadingState>())) ?? []
         let orphans = states.filter { !servers.contains($0.serverID) }
-        guard !orphans.isEmpty else { return }
+        let sourceStates = (try? context.fetch(FetchDescriptor<SourceReadingState>())) ?? []
+        let sourceOrphans = sourceStates.filter { !servers.contains($0.serverID) }
+        guard !orphans.isEmpty || !sourceOrphans.isEmpty else { return }
         for state in orphans {
+            context.delete(state)
+        }
+        for state in sourceOrphans {
             context.delete(state)
         }
         try? context.save()
@@ -155,6 +160,10 @@ final class ServerStore {
         // now-reading bar would keep showing a book from a server that's gone.
         let states = (try? context.fetch(FetchDescriptor<RemoteReadingState>(predicate: #Predicate { $0.serverID == id }))) ?? []
         for state in states {
+            context.delete(state)
+        }
+        let sourceStates = (try? context.fetch(FetchDescriptor<SourceReadingState>(predicate: #Predicate { $0.serverID == id }))) ?? []
+        for state in sourceStates {
             context.delete(state)
         }
         context.delete(account)
