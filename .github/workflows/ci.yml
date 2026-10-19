@@ -1,0 +1,32 @@
+name: CI
+
+# Pushes to other branches are covered by their pull request, so running on
+# both would build every commit twice.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+# The job runs on the maintainers' Mac mini when the SELF_HOSTED_MAC
+# repository variable is "true", and on GitHub's runners otherwise. Pull
+# requests from forks always use GitHub's runners, so code from outside the
+# repository never runs on our machines.
+jobs:
+  ios:
+    name: iOS app
+    runs-on: ${{ vars.SELF_HOSTED_MAC == 'true' && github.event.pull_request.head.repo.fork != true && fromJSON('["self-hosted","chek-mac"]') || 'xcode-27' }}
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check Xcode
+        run: |
+          xcodebuild -version
+          xcodebuild -version | grep -q '^Xcode 27' || { echo "::error::Expected Xcode 27"; exit 1; }
+      - name: Build for iOS Simulator
+        run: >
+          xcodebuild build -project apple/Chek.xcodeproj -scheme Chek
+          -destination 'generic/platform=iOS Simulator'
+          CODE_SIGNING_ALLOWED=NO
