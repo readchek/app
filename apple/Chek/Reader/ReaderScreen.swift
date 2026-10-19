@@ -25,15 +25,26 @@ struct ReaderScreen: View {
                     ReaderContent(session: session, insets: contentInsets)
                 }
                 .readerToolbars(session: session, width: proxy.size.width)
+                // The bars' edge effect darkens the page's top and bottom
+                // even with the bars hidden; the page should run clean.
+                .scrollEdgeEffectHidden(true, for: .all)
+                // The navigation stack paints its own background over the
+                // edges otherwise, black in dark mode rather than the page's.
+                .containerBackground(for: .navigation) {
+                    ReaderCanvas(kind: session.item.kind)
+                }
             }
             .onChange(of: proxy.size, initial: true) {
-                contentInsets = Self.deviceInsets(fallback: proxy.safeAreaInsets)
+                contentInsets = Self.deviceInsets(fallback: EdgeInsets(top: 59, leading: 0, bottom: 34, trailing: 0))
             }
             .clipShape(.rect(cornerRadius: pull > 0 ? 40 : 0))
             .scaleEffect(1 - min(pull / max(proxy.size.height, 1), 0.4) * 0.3, anchor: .top)
             .offset(y: pull)
             .simultaneousGesture(pullToClose(height: proxy.size.height))
         }
+        // The pull-to-close clip and scale act on this frame, so it must be
+        // the whole screen or they cut the page off at the safe area.
+        .ignoresSafeArea()
         .statusBarHidden(!session.isShowingControls)
         .persistentSystemOverlays(session.isShowingControls ? .automatic : .hidden)
         .readerEffects(session: session)
@@ -52,7 +63,7 @@ extension ReaderScreen {
     private func pullToClose(height: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 16, coordinateSpace: .global)
             .onChanged { value in
-                guard value.startLocation.y < height * 0.35,
+                guard value.startLocation.y < height * 0.18,
                       value.translation.height > abs(value.translation.width) * 1.5
                 else { return }
                 // Resistance grows the further it goes, as rubber does.
@@ -129,6 +140,8 @@ private struct ReaderContent: View {
             ZStack {
                 NavigatorView(controller: session.controller)
                     .padding(session.item.kind == .comic ? EdgeInsets() : insets)
+                    // The margins outside the text are the page too.
+                    .background { ReaderCanvas(kind: session.item.kind) }
                     .ignoresSafeArea()
                 ReaderStateView(session: session)
             }
