@@ -23,6 +23,9 @@ struct CoverView: View {
     let source: CoverSource
     let title: String
     var cornerRadius: CGFloat = 6
+    /// Off where the system frames the cover itself, as a long-press
+    /// preview does, so no margin shows around it.
+    var isFramed = true
 
     @State private var image: UIImage?
 
@@ -43,13 +46,15 @@ struct CoverView: View {
                         CoverPlaceholder(title: title)
                     }
                 }
-                .clipShape(.rect(cornerRadius: cornerRadius))
+                .clipShape(.rect(cornerRadius: isFramed ? cornerRadius : 0))
                 .overlay {
                     // A hairline keeps white covers from melting into the page.
-                    RoundedRectangle(cornerRadius: cornerRadius)
-                        .strokeBorder(.primary.opacity(0.1), lineWidth: 0.5)
+                    if isFramed {
+                        RoundedRectangle(cornerRadius: cornerRadius)
+                            .strokeBorder(.primary.opacity(0.1), lineWidth: 0.5)
+                    }
                 }
-                .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
+                .shadow(color: .black.opacity(isFramed ? 0.18 : 0), radius: 4, y: 2)
             }
             .accessibilityHidden(true)
             .task(id: source) {

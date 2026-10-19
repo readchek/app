@@ -107,9 +107,15 @@ private struct LibraryContent: View {
                     ScrollView {
                         LazyVGrid(columns: Metrics.gridColumns, spacing: Metrics.gridRowSpacing) {
                             ForEach(books) { book in
-                                PublicationCell(item: PublicationItem(book))
+                                let item = PublicationItem(book)
+                                PublicationCell(item: item)
                                     .contextMenu {
                                         BookActions(book: book, bookToRemove: $bookToRemove)
+                                    } preview: {
+                                        // The cover alone lifts, as in Books,
+                                        // rather than the cell and its caption.
+                                        CoverView(source: item.cover, title: item.title, isFramed: false)
+                                            .frame(width: 240)
                                     }
                                     .removeBookConfirmation(book: removal(of: book))
                             }
