@@ -41,6 +41,10 @@ struct NavigationRow<Value: Hashable>: View {
     let systemImage: String
     let value: Value
     var showsDivider = true
+    /// A short note after the title, such as an update or why it's off.
+    var detail: String?
+    /// Whether the row is muted, for something you can't use right now.
+    var isDimmed = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -51,8 +55,16 @@ struct NavigationRow<Value: Hashable>: View {
                         .foregroundStyle(.tint)
                         .frame(width: 28)
                     Text(title)
-                        .foregroundStyle(.primary)
-                    Spacer()
+                        .foregroundStyle(isDimmed ? .secondary : .primary)
+                        .lineLimit(2)
+                    Spacer(minLength: 8)
+                    if let detail {
+                        Text(detail)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .fixedSize()
+                    }
                     Image(systemName: "chevron.forward")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.tertiary)

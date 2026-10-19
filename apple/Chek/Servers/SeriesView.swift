@@ -7,6 +7,7 @@ struct SeriesView: View {
     let account: UUID
     let seriesID: Int64
     let title: String
+    @State private var isHeaderVisible = true
     @Environment(ServerStore.self) private var servers
     @State private var publications: PagedList<RemotePublication>?
 
@@ -18,8 +19,13 @@ struct SeriesView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(title)
+        // The header shows the title large, so the bar only takes it once
+        // the header has scrolled away, as Music does for albums.
+        .navigationTitle(isHeaderVisible ? "" : title)
         .navigationBarTitleDisplayMode(.inline)
+        .onPreferenceChange(SeriesHeaderVisibleKey.self) { visible in
+            withAnimation(.easeInOut(duration: 0.2)) { isHeaderVisible = visible }
+        }
         .task(id: seriesID) {
             let list = publications ?? makeList()
             publications = list
@@ -41,6 +47,7 @@ struct SeriesView: View {
 }
 
 private struct SeriesContent: View {
+    @State private var headerVisible = true
     let account: UUID
     let title: String
     let publications: PagedList<RemotePublication>
@@ -67,6 +74,11 @@ private struct SeriesContent: View {
                         next: nextToRead(statuses: statuses)
                     )
                     .listRowSeparator(.hidden)
+                    .listSectionSeparator(.hidden)
+                    .onScrollVisibilityChange(threshold: 0.2) { visible in
+                        headerVisible = visible
+                    }
+                    .preference(key: SeriesHeaderVisibleKey.self, value: headerVisible)
                 }
             }
             Section {

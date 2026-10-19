@@ -13,14 +13,18 @@ struct SourcesSection: View {
                 NavigationRow(
                     title: source.name,
                     systemImage: "globe",
-                    value: Route.source(account, source)
+                    value: Route.source(account, source),
+                    detail: source.usable ? nil : String(localized: "Not Allowed"),
+                    isDimmed: !source.usable
                 )
             }
+            let updates = sources.filter { $0.update != nil }.count
             NavigationRow(
                 title: sources.isEmpty ? String(localized: "Get Sources") : String(localized: "Manage Sources"),
                 systemImage: "puzzlepiece.extension",
                 value: Route.extensions(account),
-                showsDivider: false
+                showsDivider: false,
+                detail: updates > 0 ? String(AttributedString(localized: "^[\(updates) update](inflect: true)").characters) : nil
             )
         }
     }

@@ -92,12 +92,37 @@ final class ProgressStore {
         return try? context.fetch(descriptor).first
     }
 
+    /// Brings your places in a source series' chapters up to date with
+    /// what the source now says about it, such as a new cover or title.
+    func updateSourceSeries(_ series: ChekAPI.SourceSeries, server: UUID, source: String) {
+        let seriesID = series.id
+        let descriptor = FetchDescriptor<SourceReadingState>(predicate: #Predicate {
+            $0.serverID == server && $0.sourceID == source && $0.seriesID == seriesID
+        })
+        let rightToLeft = series.readingDirection == "rtl"
+        var changed = false
+        for state in (try? context.fetch(descriptor)) ?? [] {
+            if state.seriesCoverPath != series.coverUrl {
+                state.seriesCoverPath = series.coverUrl
+                changed = true
+            }
+            if state.seriesTitle != series.title {
+                state.seriesTitle = series.title
+                changed = true
+            }
+            if state.isRightToLeft != rightToLeft {
+                state.isRightToLeft = rightToLeft
+                changed = true
+            }
+        }
+        if changed {
+            save()
+        }
+    }
+
     /// The device's record of a source chapter, made the first time it opens.
     func sourceState(for chapter: SourceChapterRef) -> SourceReadingState {
         if let state = sourceState(chapter.ref) {
-            if state.seriesCoverPath == nil, chapter.seriesCoverPath != nil {
-                state.seriesCoverPath = chapter.seriesCoverPath
-            }
             return state
         }
         let state = SourceReadingState(

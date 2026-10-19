@@ -225,3 +225,13 @@ private struct OpeningIndicator: View {
         }
     }
 }
+
+/// Whether a series screen's header, which shows its title large, is on
+/// screen, so the bar can leave the title out until it isn't.
+struct SeriesHeaderVisibleKey: PreferenceKey {
+    static let defaultValue = true
+
+    static func reduce(value: inout Bool, nextValue: () -> Bool) {
+        value = value && nextValue()
+    }
+}

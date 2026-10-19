@@ -8,7 +8,9 @@ struct SourceSeriesView: View {
     let source: String
     let seriesID: String
     let title: String
+    @State private var isHeaderVisible = true
     @Environment(ServerStore.self) private var servers
+    @Environment(ProgressStore.self) private var progress
     @State private var model: SourceSeriesModel?
 
     var body: some View {
@@ -36,10 +38,20 @@ struct SourceSeriesView: View {
                 }
             }
         }
-        .navigationTitle(title)
+        // The header shows the title large, so the bar only takes it once
+        // the header has scrolled away, as Music does for albums.
+        .navigationTitle(isHeaderVisible ? "" : title)
         .navigationBarTitleDisplayMode(.inline)
+        .onPreferenceChange(SeriesHeaderVisibleKey.self) { visible in
+            withAnimation(.easeInOut(duration: 0.2)) { isHeaderVisible = visible }
+        }
         .task(id: seriesID) {
             let model = model ?? SourceSeriesModel(account: account, source: source, seriesID: seriesID, servers: servers)
+            let account = account
+            let source = source
+            model.onLoad = { [progress] series in
+                progress.updateSourceSeries(series, server: account, source: source)
+            }
             self.model = model
             await model.load()
         }
@@ -64,6 +76,9 @@ final class SourceSeriesModel {
     private let source: String
     private let seriesID: String
     private let servers: ServerStore
+    /// Told about the series each time it loads, so places in its chapters
+    /// can pick up its cover.
+    @ObservationIgnored var onLoad: ((ChekAPI.SourceSeries) -> Void)?
 
     init(account: UUID, source: String, seriesID: String, servers: ServerStore) {
         self.account = account
@@ -87,7 +102,7 @@ final class SourceSeriesModel {
         let source = source
         let seriesID = seriesID
         do {
-            let content = try await servers.request(account) { client throws(ChekError) in
+            let content: Content = try await servers.request(account) { client throws(ChekError) in
                 // `async let` loses the error type, so it's restored for the
                 // store to see sign-outs.
                 do {
@@ -111,6 +126,7 @@ final class SourceSeriesModel {
                 }
             }
             state = .loaded(content)
+            onLoad?(content.series)
         } catch {
             // A refresh that fails keeps what's already showing.
             if state.value == nil {
@@ -121,12 +137,15 @@ final class SourceSeriesModel {
 }
 
 private struct SourceSeriesContent: View {
+    @State private var headerVisible = true
     let account: UUID
     let source: String
     let content: SourceSeriesModel.Content
     let refresh: () async -> Void
     @Query private var states: [SourceReadingState]
     @Environment(ServerStore.self) private var servers
+    /// Long-running series are easier to read from their latest chapter.
+    @AppStorage("sourceSeries.newestFirst") private var newestFirst = false
 
     init(account: UUID, source: String, content: SourceSeriesModel.Content, refresh: @escaping () async -> Void) {
         self.account = account
@@ -150,6 +169,11 @@ private struct SourceSeriesContent: View {
                     next: nextToRead(statuses: statuses).map { (chapterRef($0), statuses[$0.id]?.readingStatus ?? .new) }
                 )
                 .listRowSeparator(.hidden)
+                .listSectionSeparator(.hidden)
+                .onScrollVisibilityChange(threshold: 0.2) { visible in
+                    headerVisible = visible
+                }
+                .preference(key: SeriesHeaderVisibleKey.self, value: headerVisible)
             }
             Section {
                 if let failure = content.chaptersFailure {
@@ -175,9 +199,23 @@ private struct SourceSeriesContent: View {
                     )
                     .listRowSeparator(.hidden)
                 } else {
-                    ForEach(content.chapters) { chapter in
+                    ForEach(newestFirst ? content.chapters.reversed() : content.chapters) { chapter in
                         SourceChapterRow(chapter: chapterRef(chapter), status: statuses[chapter.id]?.readingStatus ?? .new)
                     }
+                }
+            } header: {
+                if content.chapters.count > 1 {
+                    HStack {
+                        Text("Chapters")
+                        Spacer()
+                        Button(newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down") {
+                            withAnimation(.snappy) { newestFirst.toggle() }
+                        }
+                        .font(.subheadline)
+                        .labelStyle(.titleAndIcon)
+                        .accessibilityHint(Text("Changes the order chapters are listed in."))
+                    }
+                    .textCase(nil)
                 }
             }
         }
