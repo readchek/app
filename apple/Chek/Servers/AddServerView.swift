@@ -6,6 +6,7 @@ struct AddServerView: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var address = ""
+    @State private var displayName = ""
     @State private var name = ""
     @State private var password = ""
     @State private var phase = Phase.editing
@@ -18,7 +19,7 @@ struct AddServerView: View {
     }
 
     enum Field {
-        case address, name, password
+        case address, displayName, name, password
     }
 
     private var canConnect: Bool {
@@ -36,12 +37,18 @@ struct AddServerView: View {
                         .autocorrectionDisabled()
                         .focused($focus, equals: .address)
                         .submitLabel(.next)
+                        .onSubmit { focus = .displayName }
+                    TextField("Name in Chek (optional)", text: $displayName, prompt: Text(Self.suggestedName(for: address) ?? String(localized: "Name in Chek (optional)")))
+                        .focused($focus, equals: .displayName)
+                        .submitLabel(.next)
                         .onSubmit { focus = .name }
                 } header: {
                     Text("Server")
+                } footer: {
+                    Text("A friendly name, such as “Home” or “Office”, for telling servers apart.")
                 }
                 Section {
-                    TextField("Name", text: $name)
+                    TextField("User Name", text: $name)
                         .textContentType(.username)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()
@@ -91,7 +98,7 @@ struct AddServerView: View {
         phase = .connecting
         Task {
             do {
-                let account = try await servers.connect(address: address, name: name, password: password)
+                let account = try await servers.connect(address: address, displayName: displayName, name: name, password: password)
                 router.sheet = nil
                 router.tab = .browse
                 router.browsePath = [.server(account.id)]
@@ -99,6 +106,14 @@ struct AddServerView: View {
                 phase = .failed(DisplayError(error))
             }
         }
+    }
+}
+
+extension AddServerView {
+    /// The host name a server is called by when no name is given, shown as
+    /// the name field's placeholder.
+    static func suggestedName(for address: String) -> String? {
+        ServerStore.baseURL(from: address)?.host()
     }
 }
 

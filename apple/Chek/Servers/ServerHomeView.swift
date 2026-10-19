@@ -7,12 +7,21 @@ struct ServerHomeView: View {
     let account: UUID
     @Environment(ServerStore.self) private var servers
     @State private var model: ServerHomeModel?
+    @State private var editing: ServerEdit?
 
     var body: some View {
         Group {
             if let server = servers.account(account) {
                 ServerHomeContent(account: server, model: model)
                     .navigationTitle(server.name)
+                    .toolbar {
+                        ToolbarItem(placement: .primaryAction) {
+                            Menu("Server", systemImage: "ellipsis") {
+                                ServerActions(account: server, editing: $editing)
+                            }
+                        }
+                    }
+                    .serverEditing($editing)
             } else {
                 ContentUnavailableView("Server Removed", systemImage: "server.rack")
             }

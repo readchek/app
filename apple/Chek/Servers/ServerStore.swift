@@ -82,7 +82,9 @@ final class ServerStore {
     // MARK: - Connecting
 
     /// Signs in to the Chek server at `address` and remembers it.
-    func connect(address: String, name: String, password: String) async throws(DisplayError) -> ServerAccount {
+    /// `displayName` is what the server is called in Chek; when empty it
+    /// starts as the server's host name.
+    func connect(address: String, displayName: String = "", name: String, password: String) async throws(DisplayError) -> ServerAccount {
         guard let baseURL = Self.baseURL(from: address) else {
             throw DisplayError(title: String(localized: "That doesn't look like a server address."), message: String(localized: "Enter an address such as chek.example.com."))
         }
@@ -93,7 +95,9 @@ final class ServerStore {
         let session = try await signIn(at: baseURL, name: name, password: password)
         let account = ServerAccount(
             kind: .chek,
-            name: baseURL.host() ?? baseURL.absoluteString,
+            name: displayName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? baseURL.host() ?? baseURL.absoluteString
+                : displayName.trimmingCharacters(in: .whitespacesAndNewlines),
             baseURL: baseURL,
             userName: session.user.name,
             userID: session.user.id,
@@ -129,6 +133,14 @@ final class ServerStore {
         try? context.save()
         signedOut.remove(id)
         try? FileManager.default.removeItem(at: ServerFiles.folder(for: id))
+    }
+
+    /// Saves the order you arranged servers in.
+    func reorder(_ accounts: [ServerAccount]) {
+        for (index, account) in accounts.enumerated() where account.sortIndex != index {
+            account.sortIndex = index
+        }
+        try? context.save()
     }
 
     func rename(_ account: ServerAccount, to name: String) {

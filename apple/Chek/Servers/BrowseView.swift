@@ -5,6 +5,8 @@ import SwiftUI
 struct BrowseView: View {
     @Environment(AppRouter.self) private var router
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
+    @Environment(ServerStore.self) private var servers
+    @State private var editing: ServerEdit?
 
     var body: some View {
         @Bindable var router = router
@@ -22,10 +24,25 @@ struct BrowseView: View {
                         .buttonStyle(.borderedProminent)
                     }
                 } else {
-                    List(accounts) { account in
-                        NavigationLink(value: Route.server(account.id)) {
-                            ServerRow(account: account)
+                    List {
+                        ForEach(accounts) { account in
+                            NavigationLink(value: Route.server(account.id)) {
+                                ServerRow(account: account)
+                            }
+                            .contextMenu {
+                                ServerActions(account: account, editing: $editing)
+                            }
+                            .swipeActions {
+                                Button("Remove", systemImage: "trash", role: .destructive) {
+                                    editing = .remove(account)
+                                }
+                                Button("Rename", systemImage: "pencil") {
+                                    editing = .rename(account)
+                                }
+                                .tint(.gray)
+                            }
                         }
+                        .onMove(perform: move)
                     }
                 }
             }
@@ -36,9 +53,21 @@ struct BrowseView: View {
                         router.sheet = .addServer
                     }
                 }
+                if accounts.count > 1 {
+                    ToolbarItem(placement: .topBarLeading) {
+                        EditButton()
+                    }
+                }
             }
             .routeDestinations()
+            .serverEditing($editing)
         }
+    }
+
+    private func move(from source: IndexSet, to destination: Int) {
+        var ordered = accounts
+        ordered.move(fromOffsets: source, toOffset: destination)
+        servers.reorder(ordered)
     }
 }
 
@@ -72,6 +101,117 @@ extension View {
             case .series(let account, let series, let title):
                 SeriesView(account: account, seriesID: series, title: title)
             }
+        }
+    }
+}
+
+/// A change to a server that needs a question answered first.
+enum ServerEdit: Identifiable {
+    case rename(ServerAccount)
+    case remove(ServerAccount)
+
+    var id: String {
+        switch self {
+        case .rename(let account): "rename-\(account.id)"
+        case .remove(let account): "remove-\(account.id)"
+        }
+    }
+}
+
+/// Rename, sign in or out, and remove: what you can do to a server, shared
+/// by its row's menu and its own screen's toolbar.
+struct ServerActions: View {
+    let account: ServerAccount
+    @Binding var editing: ServerEdit?
+    @Environment(ServerStore.self) private var servers
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        Button("Rename", systemImage: "pencil") {
+            editing = .rename(account)
+        }
+        if servers.state(of: account.id) == .signedIn {
+            Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                Task { await servers.signOut(account) }
+            }
+        } else {
+            Button("Sign In", systemImage: "person.crop.circle") {
+                router.sheet = .signIn(account.id)
+            }
+        }
+        Divider()
+        Button("Remove", systemImage: "trash", role: .destructive) {
+            editing = .remove(account)
+        }
+    }
+}
+
+extension View {
+    /// The rename prompt and the removal confirmation for ``ServerEdit``.
+    func serverEditing(_ editing: Binding<ServerEdit?>) -> some View {
+        modifier(ServerEditing(editing: editing))
+    }
+}
+
+private struct ServerEditing: ViewModifier {
+    @Binding var editing: ServerEdit?
+    @Environment(ServerStore.self) private var servers
+    @Environment(AppRouter.self) private var router
+    @State private var name = ""
+
+    func body(content: Content) -> some View {
+        content
+            .alert("Rename Server", isPresented: isRenaming) {
+                TextField("Name", text: $name)
+                Button("Cancel", role: .cancel) {}
+                Button("Save") {
+                    if case .rename(let account) = editing {
+                        servers.rename(account, to: name)
+                    }
+                }
+            } message: {
+                Text("The name is only used in Chek on this device.")
+            }
+            .confirmationDialog(removalTitle, isPresented: isRemoving, titleVisibility: .visible) {
+                Button("Remove Server", role: .destructive) {
+                    guard case .remove(let account) = editing else { return }
+                    let id = account.id
+                    if router.browsePath.first == .server(id) {
+                        router.browsePath = []
+                    }
+                    Task { await servers.remove(account) }
+                }
+            } message: {
+                Text("Chek signs out and forgets your places in its publications on this device. They stay saved on the server.")
+            }
+            .onChange(of: editing?.id) {
+                if case .rename(let account) = editing {
+                    name = account.name
+                }
+            }
+    }
+
+    private var isRenaming: Binding<Bool> {
+        Binding {
+            if case .rename = editing { true } else { false }
+        } set: {
+            if !$0 { editing = nil }
+        }
+    }
+
+    private var isRemoving: Binding<Bool> {
+        Binding {
+            if case .remove = editing { true } else { false }
+        } set: {
+            if !$0 { editing = nil }
+        }
+    }
+
+    private var removalTitle: String {
+        if case .remove(let account) = editing {
+            String(localized: "Remove \(account.name)?")
+        } else {
+            ""
         }
     }
 }
