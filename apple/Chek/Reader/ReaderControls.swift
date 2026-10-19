@@ -3,13 +3,16 @@ import SwiftUI
 
 extension View {
     /// The reader's toolbars, shown and hidden together.
-    func readerToolbars(session: ReaderSession) -> some View {
-        modifier(ReaderToolbars(session: session))
+    func readerToolbars(session: ReaderSession, width: CGFloat) -> some View {
+        modifier(ReaderToolbars(session: session, width: width))
     }
 }
 
 private struct ReaderToolbars: ViewModifier {
     let session: ReaderSession
+    /// The screen's width. Toolbar items size to their content, and a
+    /// slider has none, so the scrubber is given its width.
+    let width: CGFloat
     @Environment(AppRouter.self) private var router
 
     func body(content: Content) -> some View {
@@ -35,6 +38,7 @@ private struct ReaderToolbars: ViewModifier {
                 }
                 ToolbarItem(placement: .bottomBar) {
                     ReaderScrubber(controller: session.controller)
+                        .frame(width: min(max(width - 72, 200), 560))
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -109,7 +113,6 @@ private struct ReaderScrubber: View {
             PlaceLabel(showsPages: showsPages, position: Int(scrubbing ?? position), count: count, progress: progress(count: count))
         }
         .padding(.horizontal, 8)
-        .frame(maxWidth: 560)
     }
 
     private func progress(count: Int) -> Double? {

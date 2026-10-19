@@ -20,7 +20,7 @@ struct ReaderScreen: View {
                     ReaderCanvas(kind: session.item.kind)
                     ReaderContent(session: session, insets: proxy.safeAreaInsets)
                 }
-                .readerToolbars(session: session)
+                .readerToolbars(session: session, width: proxy.size.width)
             }
         }
         .statusBarHidden(!session.isShowingControls)
