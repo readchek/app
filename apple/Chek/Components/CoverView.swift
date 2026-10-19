@@ -17,8 +17,9 @@ enum CoverSource: Hashable {
     }
 }
 
-/// A publication's cover at a fixed 2:3 shape, with a designed stand-in
-/// while it loads or when there isn't one.
+/// A publication's cover in its own proportions, sitting on the bottom
+/// of a 2:3 slot so a row of covers shares one baseline, as on a shelf.
+/// A quiet stand-in shows while it loads or when there isn't one.
 struct CoverView: View {
     let source: CoverSource
     let title: String
@@ -29,23 +30,25 @@ struct CoverView: View {
     var body: some View {
         Color.clear
             .aspectRatio(2 / 3, contentMode: .fit)
-            .overlay {
-                if let image {
-                    Image(uiImage: image)
-                        .resizable()
-                        .scaledToFill()
-                        .transition(.opacity)
-                } else {
-                    CoverPlaceholder(title: title)
+            .overlay(alignment: .bottom) {
+                Group {
+                    if let image {
+                        Image(uiImage: image)
+                            .resizable()
+                            .scaledToFit()
+                            .transition(.opacity)
+                    } else {
+                        CoverPlaceholder(title: title)
+                    }
                 }
+                .clipShape(.rect(cornerRadius: cornerRadius))
+                .overlay {
+                    // A hairline keeps white covers from melting into the page.
+                    RoundedRectangle(cornerRadius: cornerRadius)
+                        .strokeBorder(.primary.opacity(0.1), lineWidth: 0.5)
+                }
+                .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
             }
-            .clipShape(.rect(cornerRadius: cornerRadius))
-            .overlay {
-                // A hairline keeps white covers from melting into the page.
-                RoundedRectangle(cornerRadius: cornerRadius)
-                    .strokeBorder(.primary.opacity(0.08), lineWidth: 0.5)
-            }
-            .shadow(color: .black.opacity(0.12), radius: 3, y: 1)
             .accessibilityHidden(true)
             .task(id: source) {
                 await load()
@@ -82,26 +85,22 @@ struct CoverView: View {
     }
 }
 
-/// A plain cover with the title set on it, colored from the title so the
-/// same book always looks the same.
+/// A plain cover with the title set small at the top, toned from the title
+/// so the same book always looks the same, and quiet enough to sit among
+/// real covers.
 private struct CoverPlaceholder: View {
     let title: String
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         let hue = Double(abs(title.hashValueStable) % 360) / 360
-        ZStack {
-            LinearGradient(
-                colors: [Color(hue: hue, saturation: 0.35, brightness: 0.55), Color(hue: hue, saturation: 0.45, brightness: 0.35)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
+        ZStack(alignment: .topLeading) {
+            Color(hue: hue, saturation: 0.12, brightness: colorScheme == .dark ? 0.26 : 0.9)
             Text(title)
-                .font(.system(.footnote, design: .serif, weight: .semibold))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(.white.opacity(0.92))
-                .lineLimit(5)
-                .minimumScaleFactor(0.6)
-                .padding(8)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(.primary.opacity(0.75))
+                .lineLimit(4)
+                .padding(10)
         }
     }
 }

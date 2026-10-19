@@ -128,7 +128,7 @@ private struct ServerHomeContent: View {
                             Shelf(
                                 title: "Continue Reading",
                                 items: content.continueReading.map { servers.item($0, status: statuses[$0.id]) },
-                                showsProgressBar: true
+                                isFeatured: true
                             )
                         }
                         if !content.recentlyAdded.isEmpty {

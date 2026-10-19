@@ -43,11 +43,8 @@ private struct HomeContent: View {
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
-                        if let current = continueReading.first {
-                            CurrentReadingHeader(item: current)
-                        }
-                        if continueReading.count > 1 {
-                            Shelf(title: "Continue Reading", items: Array(continueReading.dropFirst()))
+                        if !continueReading.isEmpty {
+                            Shelf(title: "Continue Reading", items: continueReading, isFeatured: true)
                         }
                         if !newBooks.isEmpty {
                             Shelf(title: "Recently Added", items: newBooks.prefix(20).map(PublicationItem.init))
@@ -155,56 +152,6 @@ private struct HomeEmptyView: View {
             Button("Connect a Server") {
                 router.sheet = .addServer
             }
-        }
-    }
-}
-
-/// The publication you're reading now, large, with one button to go on.
-private struct CurrentReadingHeader: View {
-    let item: PublicationItem
-    @Environment(AppRouter.self) private var router
-    @Environment(ServerSync.self) private var sync
-
-    var body: some View {
-        HStack(alignment: .bottom, spacing: 20) {
-            OpenPublicationButton(item: item) {
-                CoverView(source: item.cover, title: item.title, cornerRadius: 6)
-                    .frame(width: 132)
-                    .readerTransitionSource(item.id)
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Reading Now")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.secondary)
-                Text(item.title)
-                    .font(.title2.weight(.bold))
-                    .lineLimit(3)
-                if let subtitle = item.subtitle {
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
-                }
-                if let progress = item.status.progress, progress >= 0.01 {
-                    Text("\(progress, format: .percent.precision(.fractionLength(0))) read")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-                Button("Continue", systemImage: "play.fill", action: resume)
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                    .padding(.top, 8)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, Metrics.margin)
-    }
-
-    private func resume() {
-        switch item.source {
-        case .local(let book): router.open(ReadingItem(book))
-        case .remote(let publication): router.open(publication, using: sync)
         }
     }
 }

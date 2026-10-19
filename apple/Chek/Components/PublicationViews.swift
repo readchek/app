@@ -11,45 +11,45 @@ enum Metrics {
     /// Between sections on a page.
     static let sectionSpacing: CGFloat = 32
     /// A cover's width in a shelf.
-    static let shelfCoverWidth: CGFloat = 116
+    static let shelfCoverWidth: CGFloat = 112
+    /// A cover's width in the Continue Reading carousel.
+    static let featuredCoverWidth: CGFloat = 172
     /// A cover's width in a list row.
     static let rowCoverWidth: CGFloat = 44
 
-    /// Three covers across on iPhone, more on wider screens.
-    static let gridColumns = [GridItem(.adaptive(minimum: 100, maximum: 160), spacing: coverSpacing, alignment: .top)]
+    /// Two covers across on iPhone, as in Books, more on wider screens.
+    static let gridColumns = [GridItem(.adaptive(minimum: 150, maximum: 220), spacing: 24, alignment: .bottom)]
 }
 
-/// A cover with its title and one line under it. Used in every grid and
-/// shelf.
+/// A cover with one quiet line under it. The cover carries the title, as
+/// on a shelf; VoiceOver reads it. Used in every grid and shelf.
 struct PublicationCell: View {
     let item: PublicationItem
-    /// Continue Reading shows a progress bar; everywhere else uses text.
-    var showsProgressBar = false
+    /// Shows the title under the cover too, for the larger Continue Reading
+    /// covers where a glance should be enough.
+    var showsTitle = false
 
     var body: some View {
         OpenPublicationButton(item: item) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 8) {
                 CoverView(source: item.cover, title: item.title)
                     .overlay {
                         OpeningIndicator(ref: item.id)
                     }
                     .readerTransitionSource(item.id)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(item.title)
-                        .font(.footnote.weight(.medium))
-                        .lineLimit(2, reservesSpace: true)
-                    if showsProgressBar, let progress = item.status.progress {
-                        ProgressView(value: progress)
-                            .progressViewStyle(.linear)
-                            .padding(.top, 4)
-                    } else {
-                        StatusText(status: item.status, fallback: item.subtitle)
+                VStack(alignment: .leading, spacing: 1) {
+                    if showsTitle {
+                        Text(item.title)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(1)
                     }
+                    StatusText(status: item.status, fallback: nil)
                 }
             }
             .contentShape(.rect)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel(Text(item.title))
     }
 }
 
@@ -118,25 +118,38 @@ struct StatusText: View {
     }
 }
 
-/// A section title with an optional "See All" link, aligned to the margin.
+/// A section title, which leads to the whole list when it has somewhere to
+/// go, as section titles do in Books and Music.
 struct SectionHeader<Destination: View>: View {
     let title: LocalizedStringKey
     @ViewBuilder var destination: Destination
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .font(.title3.weight(.semibold))
-                .accessibilityAddTraits(.isHeader)
-            Spacer()
-            if Destination.self != EmptyView.self {
-                NavigationLink("See All") {
+        Group {
+            if Destination.self == EmptyView.self {
+                label
+            } else {
+                NavigationLink {
                     destination
+                } label: {
+                    HStack(spacing: 4) {
+                        label
+                        Image(systemName: "chevron.forward")
+                            .font(.title3.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-                .font(.subheadline)
+                .buttonStyle(.plain)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, Metrics.margin)
+    }
+
+    private var label: some View {
+        Text(title)
+            .font(.title3.weight(.bold))
+            .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -151,16 +164,17 @@ extension SectionHeader where Destination == EmptyView {
 struct Shelf: View {
     let title: LocalizedStringKey
     let items: [PublicationItem]
-    var showsProgressBar = false
+    /// Larger covers with titles, for what you're reading.
+    var isFeatured = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             SectionHeader(title: title)
             ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
+                LazyHStack(alignment: .bottom, spacing: isFeatured ? 20 : Metrics.coverSpacing) {
                     ForEach(items) { item in
-                        PublicationCell(item: item, showsProgressBar: showsProgressBar)
-                            .frame(width: Metrics.shelfCoverWidth)
+                        PublicationCell(item: item, showsTitle: isFeatured)
+                            .frame(width: isFeatured ? Metrics.featuredCoverWidth : Metrics.shelfCoverWidth)
                     }
                 }
                 .scrollTargetLayout()
