@@ -42,7 +42,7 @@ final class AppRouter {
     /// on the cover you tapped.
     private(set) var opening: PublicationRef?
     /// Why the last server publication couldn't open.
-    var openingFailure: DisplayError?
+    var openingFailure: OpeningFailure?
 
     func open(_ item: ReadingItem) {
         sheet = nil
@@ -59,7 +59,10 @@ final class AppRouter {
             do {
                 open(try await sync.readingItem(for: publication))
             } catch {
-                openingFailure = DisplayError(error)
+                openingFailure = OpeningFailure(
+                    error: DisplayError(error),
+                    signIn: sync.isSignedOut(of: publication.server) ? publication.server : nil
+                )
             }
         }
     }
@@ -72,4 +75,11 @@ final class AppRouter {
     func addBooks() {
         isImportingFiles = true
     }
+}
+
+/// Why a server publication couldn't open, and the server to sign in to
+/// when signing in again is what would fix it.
+struct OpeningFailure: Hashable {
+    var error: DisplayError
+    var signIn: UUID?
 }

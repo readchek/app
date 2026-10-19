@@ -108,12 +108,18 @@ private struct OpeningFailureAlert: ViewModifier {
 
     func body(content: Content) -> some View {
         content.alert(
-            router.openingFailure?.title ?? "",
-            isPresented: Binding { router.openingFailure != nil } set: { if !$0 { router.openingFailure = nil } }
-        ) {
-            Button("OK") {}
-        } message: {
-            if let message = router.openingFailure?.message {
+            router.openingFailure?.error.title ?? "",
+            isPresented: Binding { router.openingFailure != nil } set: { if !$0 { router.openingFailure = nil } },
+            presenting: router.openingFailure
+        ) { failure in
+            if let account = failure.signIn {
+                Button("Sign In") { router.sheet = .signIn(account) }
+                Button("Not Now", role: .cancel) {}
+            } else {
+                Button("OK") {}
+            }
+        } message: { failure in
+            if let message = failure.error.message {
                 Text(message)
             }
         }

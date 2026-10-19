@@ -35,7 +35,13 @@ struct ReaderScreen: View {
                 }
             }
             .onChange(of: proxy.size, initial: true) {
-                contentInsets = Self.deviceInsets(fallback: EdgeInsets(top: 59, leading: 0, bottom: 34, trailing: 0))
+                // Text stays clear of where the controls float, whether or
+                // not they're showing, so it never sits under them and never
+                // moves when they come and go.
+                var insets = Self.deviceInsets(fallback: EdgeInsets(top: 59, leading: 0, bottom: 34, trailing: 0))
+                insets.top += Self.topBarHeight
+                insets.bottom += Self.bottomBarHeight
+                contentInsets = insets
             }
             .clipShape(.rect(cornerRadius: pull > 0 ? 40 : 0))
             .scaleEffect(1 - min(pull / max(proxy.size.height, 1), 0.4) * 0.3, anchor: .top)
@@ -85,6 +91,10 @@ extension ReaderScreen {
 
     /// The screen's own insets, for the sensor housing and the home
     /// indicator, which don't change when bars come and go.
+    /// Room for the floating controls, measured from the glass buttons.
+    static let topBarHeight: CGFloat = 36
+    static let bottomBarHeight: CGFloat = 40
+
     static func deviceInsets(fallback: EdgeInsets) -> EdgeInsets {
         let window = UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }

@@ -46,6 +46,10 @@ private struct ReaderToolbars: ViewModifier {
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
+            // Only the glass controls float over the page; the bars
+            // themselves draw nothing, so no band of another color shows.
+            .toolbarBackgroundVisibility(.hidden, for: .navigationBar, .bottomBar)
+
             .toolbarVisibility(session.isShowingControls ? .visible : .hidden, for: .navigationBar, .bottomBar)
             .animation(.smooth(duration: 0.25), value: session.isShowingControls)
             .sheet(item: Bindable(session).panel) { panel in
@@ -146,3 +150,4 @@ private struct PlaceLabel: View {
         .fixedSize()
     }
 }
+

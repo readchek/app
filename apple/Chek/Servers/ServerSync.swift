@@ -38,6 +38,12 @@ final class ServerSync {
 
     // MARK: - Opening
 
+    /// Whether `server`'s session has ended, so opening from it needs you
+    /// to sign in again.
+    func isSignedOut(of server: UUID) -> Bool {
+        servers.state(of: server) == .signedOut
+    }
+
     /// What the reader needs to open `publication`, starting at your
     /// latest place on any device.
     func readingItem(for publication: RemotePublication) async throws(DisplayError) -> ReadingItem {
