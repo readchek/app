@@ -19,6 +19,8 @@ final class ServerStore {
 
     /// Accounts whose session ended. Every other account is signed in.
     private(set) var signedOut: Set<UUID> = []
+    /// Told when a server is removed, so what else was kept for it goes too.
+    @ObservationIgnored var onRemove: ((UUID) -> Void)?
 
     private let context: ModelContext
     private let keychain: Keychain
@@ -173,6 +175,7 @@ final class ServerStore {
         try? context.save()
         signedOut.remove(id)
         try? FileManager.default.removeItem(at: ServerFiles.folder(for: id))
+        onRemove?(id)
         await client?.signOut()
     }
 

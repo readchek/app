@@ -153,6 +153,7 @@ private struct SourceSeriesContent: View {
     @Environment(ServerStore.self) private var servers
     @Environment(FollowStore.self) private var followStore
     @Environment(ProgressStore.self) private var progress
+    @Environment(ChapterDownloads.self) private var downloads
     /// Long-running series are easier to read from their latest chapter.
     @AppStorage("sourceSeries.newestFirst") private var newestFirst = false
 
@@ -227,8 +228,11 @@ private struct SourceSeriesContent: View {
                     ForEach(ordered) { chapter in
                         let ref = chapterRef(chapter)
                         let status = statuses[chapter.id]?.readingStatus ?? .new
-                        SourceChapterRow(chapter: ref, status: status, isNew: follows.first?.unseenChapterIDs.contains(chapter.id) == true)
+                        let download = downloads.state(of: ref)
+                        SourceChapterRow(chapter: ref, status: status, isNew: follows.first?.unseenChapterIDs.contains(chapter.id) == true, download: download)
                             .contextMenu {
+                                DownloadAction(chapter: ref, state: download)
+                                Divider()
                                 if status == .finished {
                                     Button("Mark as Unread", systemImage: "circle") {
                                         progress.markUnread(ref)
@@ -244,11 +248,15 @@ private struct SourceSeriesContent: View {
                                     }
                                 }
                             }
+                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                                DownloadAction(chapter: ref, state: download)
+                                    .tint(download == .downloaded ? .secondary : .accentColor)
+                            }
                     }
                 }
             } header: {
                 if content.chapters.count > 1 {
-                    HStack {
+                    HStack(spacing: 16) {
                         Text("Chapters")
                         Spacer()
                         Button(newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down") {
@@ -257,6 +265,7 @@ private struct SourceSeriesContent: View {
                         .font(.subheadline)
                         .labelStyle(.titleAndIcon)
                         .accessibilityHint(Text("Changes the order chapters are listed in."))
+                        SeriesDownloadsMenu(chapters: content.chapters.map(chapterRef), unread: unreadChapters(statuses: statuses).map(chapterRef))
                     }
                     .textCase(nil)
                 }
@@ -265,6 +274,16 @@ private struct SourceSeriesContent: View {
         .listStyle(.plain)
         .refreshable {
             await refresh()
+        }
+        .alert(
+            downloads.failure?.title ?? "",
+            isPresented: Binding { downloads.failure != nil } set: { if !$0 { downloads.failure = nil } }
+        ) {
+            Button("OK") {}
+        } message: {
+            if let message = downloads.failure?.message {
+                Text(message)
+            }
         }
         .task(id: content.chapters.count) {
             // Opening the series is seeing its chapters: none are new now.
@@ -287,6 +306,11 @@ private struct SourceSeriesContent: View {
 
     /// The chapter you opened last, or the one after it once it's
     /// finished, or else the first.
+    /// Chapters not yet finished, in reading order.
+    private func unreadChapters(statuses: [String: SourceReadingState]) -> [ChekAPI.SourceChapter] {
+        content.chapters.filter { statuses[$0.id]?.readingStatus != .finished }
+    }
+
     private func nextToRead(statuses: [String: SourceReadingState]) -> ChekAPI.SourceChapter? {
         let inOrder = content.chapters
         let opened = inOrder.filter { statuses[$0.id]?.lastOpenedAt != nil }
@@ -446,6 +470,7 @@ private struct SourceChapterRow: View {
     let chapter: SourceChapterRef
     let status: ReadingStatus
     var isNew = false
+    var download = ChapterDownloads.State.none
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
 
@@ -471,9 +496,99 @@ private struct SourceChapterRow: View {
                     // Most chapters are unread, so only the others say so.
                     StatusText(status: status, fallback: nil)
                 }
+                DownloadIndicator(state: download)
             }
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// A quiet mark of a chapter on the device, or on its way there.
+private struct DownloadIndicator: View {
+    let state: ChapterDownloads.State
+
+    var body: some View {
+        switch state {
+        case .none:
+            EmptyView()
+        case .waiting:
+            Image(systemName: "arrow.down.circle.dotted")
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Text("Waiting to download"))
+        case .downloading(let fraction):
+            // iOS draws a determinate circular progress as a spinner, so
+            // the ring is drawn here.
+            ZStack {
+                Circle()
+                    .stroke(.quaternary, lineWidth: 2)
+                Circle()
+                    .trim(from: 0, to: max(fraction, 0.02))
+                    .stroke(.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+            }
+            .frame(width: 16, height: 16)
+            .animation(.linear(duration: 0.2), value: fraction)
+            .accessibilityLabel(Text("Downloading"))
+            .accessibilityValue(Text(fraction, format: .percent.precision(.fractionLength(0))))
+        case .downloaded:
+            Image(systemName: "arrow.down.circle.fill")
+                .foregroundStyle(.secondary)
+                .accessibilityLabel(Text("Downloaded"))
+        }
+    }
+}
+
+/// The one download action that fits the chapter's state.
+private struct DownloadAction: View {
+    let chapter: SourceChapterRef
+    let state: ChapterDownloads.State
+    @Environment(ChapterDownloads.self) private var downloads
+
+    var body: some View {
+        switch state {
+        case .none:
+            Button("Download", systemImage: "arrow.down.circle") {
+                downloads.download([chapter])
+            }
+        case .waiting, .downloading:
+            Button("Cancel Download", systemImage: "xmark.circle") {
+                downloads.cancel(chapter)
+            }
+        case .downloaded:
+            Button("Remove Download", systemImage: "trash") {
+                downloads.remove(chapter)
+            }
+        }
+    }
+}
+
+/// Downloads for the whole series at once, from the chapters header.
+private struct SeriesDownloadsMenu: View {
+    let chapters: [SourceChapterRef]
+    let unread: [SourceChapterRef]
+    @Environment(ChapterDownloads.self) private var downloads
+
+    var body: some View {
+        let kept = chapters.filter(downloads.isDownloaded)
+        let pending = unread.filter { downloads.state(of: $0) == .none }
+        Menu("Downloads", systemImage: "arrow.down.circle") {
+            Button("Download \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
+                downloads.download(Array(pending.prefix(5)))
+            }
+            .disabled(pending.isEmpty)
+            Button("Download All Unread", systemImage: "arrow.down.circle.fill") {
+                downloads.download(pending)
+            }
+            .disabled(pending.count < 2)
+            if !kept.isEmpty {
+                Divider()
+                Button("Remove ^[\(kept.count) Download](inflect: true)", systemImage: "trash", role: .destructive) {
+                    downloads.remove(kept)
+                }
+            }
+        }
+        .font(.subheadline)
+        .labelStyle(.iconOnly)
     }
 }

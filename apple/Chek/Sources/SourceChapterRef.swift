@@ -55,6 +55,10 @@ nonisolated struct SourcePageSource: PageSource {
     }
 
     func pageCount() async throws -> Int {
+        // Downloaded chapters read from the device, offline or not.
+        if let count = ChapterFiles.downloadedPageCount(of: chapter) {
+            return count
+        }
         let pages = try await list.pages()
         guard !pages.isEmpty else {
             throw DisplayError(title: String(localized: "This chapter has no pages."), message: String(localized: "The source didn't list any. It may not be out yet."))
@@ -63,6 +67,9 @@ nonisolated struct SourcePageSource: PageSource {
     }
 
     func page(at index: Int) async throws -> Data {
+        if ChapterFiles.downloadedPageCount(of: chapter) != nil {
+            return try Data(contentsOf: ChapterFiles.page(index, of: chapter))
+        }
         let pages = try await list.pages()
         let client = try await server.client()
         guard pages.indices.contains(index), let request = client.imageRequest(pages[index]) else {

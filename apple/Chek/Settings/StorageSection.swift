@@ -5,9 +5,12 @@ import SwiftUI
 struct StorageSection: View {
     @State private var sizes: Sizes?
     @State private var isClearing = false
+    @State private var isConfirmingChapterRemoval = false
+    @Environment(ChapterDownloads.self) private var downloads
 
     struct Sizes: Equatable {
         var library: Int64
+        var chapters: Int64
         var downloads: Int64
         var covers: Int64
     }
@@ -15,9 +18,10 @@ struct StorageSection: View {
     var body: some View {
         Section {
             LabeledContent("Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file)) } ?? "…")
-            LabeledContent("Server Downloads", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file)) } ?? "…")
+            LabeledContent("Downloaded Chapters", value: sizes.map { $0.chapters.formatted(.byteCount(style: .file)) } ?? "…")
+            LabeledContent("Server Books", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file)) } ?? "…")
             LabeledContent("Covers", value: sizes.map { $0.covers.formatted(.byteCount(style: .file)) } ?? "…")
-            Button("Clear Downloads and Covers") {
+            Button("Clear Server Books and Covers") {
                 isClearing = true
                 Task {
                     await Self.clearCaches()
@@ -26,10 +30,22 @@ struct StorageSection: View {
                 }
             }
             .disabled(isClearing || sizes.map { $0.downloads + $0.covers == 0 } ?? true)
+            Button("Remove Downloaded Chapters…", role: .destructive) {
+                isConfirmingChapterRemoval = true
+            }
+            .disabled(downloads.downloaded.isEmpty)
         } header: {
             Text("Storage")
         } footer: {
-            Text("Downloads and covers come back as you read; your library and places stay.")
+            Text("Server books and covers come back as you read; your library, places and downloaded chapters stay until you remove them.")
+        }
+        .confirmationDialog("Remove All Downloaded Chapters?", isPresented: $isConfirmingChapterRemoval, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                downloads.removeAll()
+                Task { sizes = await Self.measure() }
+            }
+        } message: {
+            Text("They can be downloaded again from their series.")
         }
         .task {
             sizes = await Self.measure()
@@ -39,6 +55,7 @@ struct StorageSection: View {
     nonisolated private static func measure() async -> Sizes {
         Sizes(
             library: size(of: LibraryFiles.root),
+            chapters: size(of: ChapterFiles.root),
             downloads: size(of: URL.cachesDirectory.appending(path: "Servers")),
             covers: size(of: URL.cachesDirectory.appending(path: "Covers"))
         )

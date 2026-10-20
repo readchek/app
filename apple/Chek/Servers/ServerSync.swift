@@ -86,7 +86,7 @@ final class ServerSync {
     /// What the reader needs to open a chapter straight from a source,
     /// starting where you left it on this device.
     func readingItem(for chapter: SourceChapterRef) throws(DisplayError) -> ReadingItem {
-        guard servers.client(for: chapter.server) != nil else {
+        guard servers.client(for: chapter.server) != nil || ChapterFiles.downloadedPageCount(of: chapter) != nil else {
             throw DisplayError(ChekError.unauthorized)
         }
         let state = progress.sourceState(for: chapter)
