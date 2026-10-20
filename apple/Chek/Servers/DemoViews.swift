@@ -67,43 +67,37 @@ extension View {
 private struct DemoBanner: ViewModifier {
     @Environment(ServerStore.self) private var servers
     @Environment(AppRouter.self) private var router
-    @State private var isEnding = false
 
     func body(content: Content) -> some View {
         content.safeAreaInset(edge: .top, spacing: 0) {
             if servers.isDemo {
-                HStack(spacing: 12) {
+                // One word, out of the way, with the way out a tap away.
+                HStack(spacing: 6) {
                     Image(systemName: "sparkles")
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("Demo Mode")
-                            .font(.subheadline.weight(.semibold))
-                        Text("Sample books from demo.chek.page. Ends when Chek is closed.")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer(minLength: 0)
-                    Button(isEnding ? "Ending…" : "Exit") {
-                        isEnding = true
+                        .font(.caption2)
+                    Text("Demo")
+                        .font(.caption.weight(.semibold))
+                    Button("Exit", systemImage: "xmark") {
                         Task {
                             await servers.endDemo()
                             router.browsePath = []
                             router.homePath = []
                             router.searchPath = []
-                            isEnding = false
                         }
                     }
-                    .buttonStyle(.bordered)
-                    .buttonBorderShape(.capsule)
-                    .controlSize(.small)
-                    .disabled(isEnding)
+                    .labelStyle(.iconOnly)
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(Text("Exit the demo"))
                 }
-                .padding(.leading, 14)
-                .padding(.trailing, 8)
-                .padding(.vertical, 8)
-                .background(.yellow.opacity(0.22), in: .rect(cornerRadius: 16))
-                .glassEffect(.regular, in: .rect(cornerRadius: 16))
-                .padding(.horizontal, Metrics.margin)
-                .padding(.bottom, 4)
+                .padding(.leading, 10)
+                .padding(.trailing, 6)
+                .padding(.vertical, 4)
+                .foregroundStyle(.primary)
+                .background(.yellow.opacity(0.35), in: .capsule)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.trailing, Metrics.margin)
+                .padding(.bottom, 2)
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
