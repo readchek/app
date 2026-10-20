@@ -123,7 +123,7 @@ extension ChekError: LocalizedError {
         case .offline: String(localized: "Check your connection and the server's address.")
         case .invalidResponse: String(localized: "Make sure the address points at a Chek server.")
         case .server(_, "source_failed"): String(localized: "Its site may be down or slow. Try again in a moment.")
-        case .server(_, "source_unavailable"): String(localized: "Its extension may have been removed or turned off.")
+        case .server(_, "source_unavailable"): String(localized: "Its extension may need an update, or may have been removed or turned off. Check Manage Sources.")
         default: nil
         }
     }
