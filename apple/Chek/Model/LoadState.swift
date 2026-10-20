@@ -13,6 +13,10 @@ enum LoadState<Value> {
     var value: Value? {
         if case .loaded(let value) = self { value } else { nil }
     }
+
+    var isFailed: Bool {
+        if case .failed = self { true } else { false }
+    }
 }
 
 extension LoadState: Equatable where Value: Equatable {}

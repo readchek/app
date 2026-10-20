@@ -53,7 +53,10 @@ final class ServerSearchModel {
     @ObservationIgnored private var generation = 0
     /// Each server's installed sources, asked for once rather than with
     /// every search.
-    @ObservationIgnored private var sources: [UUID: [ChekAPI.InstalledExtension]] = [:]
+    /// Each server's installed sources, with when they were asked for.
+    /// Asked again after a while, so a source installed since shows up
+    /// in search without a relaunch.
+    @ObservationIgnored private var sources: [UUID: (at: Date, items: [ChekAPI.InstalledExtension])] = [:]
 
     func search(_ text: String, servers: ServerStore) async {
         generation += 1
@@ -66,15 +69,21 @@ final class ServerSearchModel {
             return
         }
         results = accounts.map { Results(account: $0.id, name: $0.name, state: .loading) }
-        for account in accounts where sources[account.id] == nil {
+        for account in accounts where sources[account.id].map({ Date.now.timeIntervalSince($0.at) > 120 }) ?? true {
             let id = account.id
-            sources[id] = (try? await servers.request(id) { client throws(ChekError) in
+            let items = (try? await servers.request(id) { client throws(ChekError) in
                 try await client.installedExtensionsIfSupported()
-            }).flatMap(\.self) ?? []
+            }).flatMap(\.self)
+            // A server that didn't answer keeps what it said last time.
+            if let items {
+                sources[id] = (.now, items)
+            } else if sources[id] == nil {
+                sources[id] = (.distantPast, [])
+            }
         }
         guard current == generation else { return }
         sourceResults = accounts.flatMap { account in
-            (sources[account.id] ?? []).filter(\.usable).map {
+            (sources[account.id]?.items ?? []).filter(\.usable).map {
                 SourceResults(account: account.id, source: $0, serverName: account.name, state: .loading)
             }
         }
@@ -165,10 +174,12 @@ private struct SearchResults: View {
                         }
                     }
                 }
-                ForEach(serverResults.results) { results in
+                // What was found comes first; a server that couldn't be
+                // reached says so after it, not above it.
+                ForEach(serverResults.results.sorted { !$0.state.isFailed && $1.state.isFailed }) { results in
                     ServerResultsSection(results: results)
                 }
-                ForEach(serverResults.sourceResults) { results in
+                ForEach(serverResults.sourceResults.sorted { !$0.state.isFailed && $1.state.isFailed }) { results in
                     SourceResultsSection(results: results)
                 }
             }
