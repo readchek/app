@@ -37,14 +37,21 @@ struct BrowseView: View {
                             // once, before you've confirmed, and the list then
                             // disagrees with the servers it shows.
                             .swipeActions(allowsFullSwipe: false) {
-                                Button("Remove", systemImage: "trash") {
-                                    editing = .remove(account)
+                                if account.id == DemoMode.accountID {
+                                    Button("Exit", systemImage: "xmark") {
+                                        Task { await servers.endDemo() }
+                                    }
+                                    .tint(.red)
+                                } else {
+                                    Button("Remove", systemImage: "trash") {
+                                        editing = .remove(account)
+                                    }
+                                    .tint(.red)
+                                    Button("Rename", systemImage: "pencil") {
+                                        editing = .rename(account)
+                                    }
+                                    .tint(.gray)
                                 }
-                                .tint(.red)
-                                Button("Rename", systemImage: "pencil") {
-                                    editing = .rename(account)
-                                }
-                                .tint(.gray)
                             }
                         }
                         .onMove(perform: move)
@@ -84,15 +91,18 @@ struct ServerRow: View {
     @Environment(ServerStore.self) private var servers
 
     var body: some View {
+        let isDemo = account.id == DemoMode.accountID
         Label {
             VStack(alignment: .leading, spacing: 2) {
                 Text(account.name)
-                Text(servers.state(of: account.id) == .signedOut ? "Signed out" : account.userName)
+                // The demo is a temporary account, which its row says
+                // rather than naming a user nobody signed in as.
+                Text(isDemo ? "Demo, until Chek is closed" : servers.state(of: account.id) == .signedOut ? "Signed out" : account.userName)
                     .font(.subheadline)
                     .foregroundStyle(servers.state(of: account.id) == .signedOut ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
             }
         } icon: {
-            Image(systemName: "server.rack")
+            Image(systemName: isDemo ? "sparkles" : "server.rack")
         }
     }
 }
@@ -146,21 +156,27 @@ struct ServerActions: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        Button("Rename", systemImage: "pencil") {
-            editing = .rename(account)
-        }
-        if servers.state(of: account.id) == .signedIn {
-            Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
-                Task { await servers.signOut(account) }
+        if account.id == DemoMode.accountID {
+            Button("Exit the Demo", systemImage: "xmark", role: .destructive) {
+                Task { await servers.endDemo() }
             }
         } else {
-            Button("Sign In", systemImage: "person.crop.circle") {
-                router.sheet = .signIn(account.id)
+            Button("Rename", systemImage: "pencil") {
+                editing = .rename(account)
             }
-        }
-        Divider()
-        Button("Remove", systemImage: "trash", role: .destructive) {
-            editing = .remove(account)
+            if servers.state(of: account.id) == .signedIn {
+                Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
+                    Task { await servers.signOut(account) }
+                }
+            } else {
+                Button("Sign In", systemImage: "person.crop.circle") {
+                    router.sheet = .signIn(account.id)
+                }
+            }
+            Divider()
+            Button("Remove", systemImage: "trash", role: .destructive) {
+                editing = .remove(account)
+            }
         }
     }
 }

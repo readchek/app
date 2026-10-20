@@ -165,37 +165,62 @@ private struct ServerAccountForm: View {
     @State private var name = ""
     @State private var isConfirmingRemoval = false
 
+    private var isDemo: Bool { account.id == DemoMode.accountID }
+
     var body: some View {
         Form {
             Section {
-                LabeledContent("Name") {
-                    TextField("Name", text: $name)
-                        .multilineTextAlignment(.trailing)
-                        .onSubmit { servers.rename(account, to: name) }
+                if isDemo {
+                    LabeledContent("Name", value: account.name)
+                } else {
+                    LabeledContent("Name") {
+                        TextField("Name", text: $name)
+                            .multilineTextAlignment(.trailing)
+                            .onSubmit { servers.rename(account, to: name) }
+                    }
                 }
                 LabeledContent("Address", value: account.baseURL.absoluteString)
                 LabeledContent("Account", value: account.userName)
             }
-            Section {
-                if servers.state(of: account.id) == .signedIn {
-                    Button("Sign Out") {
-                        Task { await servers.signOut(account) }
+            if isDemo {
+                // The demo has one way out, not a sign-out and a removal
+                // that would need its public password to undo.
+                Section {
+                    Button("Exit the Demo", role: .destructive) {
+                        Task {
+                            await servers.endDemo()
+                            dismiss()
+                        }
                     }
-                } else {
-                    Button("Sign In") {
-                        router.sheet = .signIn(account.id)
+                } footer: {
+                    Text("The demo ends on its own when Chek is closed. Exiting now forgets it straight away.")
+                }
+            } else {
+                Section {
+                    if servers.state(of: account.id) == .signedIn {
+                        Button("Sign Out") {
+                            Task { await servers.signOut(account) }
+                        }
+                    } else {
+                        Button("Sign In") {
+                            router.sheet = .signIn(account.id)
+                        }
                     }
+                    Button("Remove Server", role: .destructive) {
+                        isConfirmingRemoval = true
+                    }
+                } footer: {
+                    Text("Removing the server forgets your places in its publications on this device, and deletes what you downloaded from it. Your places stay saved on the server.")
                 }
-                Button("Remove Server", role: .destructive) {
-                    isConfirmingRemoval = true
-                }
-            } footer: {
-                Text("Removing the server forgets your places in its publications on this device, and deletes what you downloaded from it. Your places stay saved on the server.")
             }
         }
         .navigationTitle(account.name)
         .onAppear { name = account.name }
-        .onDisappear { servers.rename(account, to: name) }
+        .onDisappear {
+            if !isDemo {
+                servers.rename(account, to: name)
+            }
+        }
         .confirmationDialog("Remove \(account.name)?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
             Button("Remove Server", role: .destructive) {
                 Task {
