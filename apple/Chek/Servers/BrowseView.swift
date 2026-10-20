@@ -214,6 +214,7 @@ private struct ServerEditing: ViewModifier {
                     if router.browsePath.first == .server(id) {
                         router.browsePath = []
                     }
+                    router.serverRemoved(account.id)
                     Task { await servers.remove(account) }
                 }
             } message: {

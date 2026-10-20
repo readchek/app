@@ -67,7 +67,7 @@ private struct DemoSection: View {
                 Button("Exit the Demo", role: .destructive) {
                     Task {
                         await servers.endDemo()
-                        router.browsePath = []
+                        router.serverRemoved(DemoMode.accountID)
                     }
                 }
             } else {
@@ -223,6 +223,7 @@ private struct ServerAccountForm: View {
         }
         .confirmationDialog("Remove \(account.name)?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
             Button("Remove Server", role: .destructive) {
+                router.serverRemoved(account.id)
                 Task {
                     await servers.remove(account)
                     dismiss()

@@ -2,8 +2,11 @@ import Foundation
 import Observation
 
 /// The app's top-level sections.
-enum AppTab: String, Hashable {
+enum AppTab: Hashable {
     case home, library, browse, search
+    /// A server of its own in the iPad sidebar, where there's room to put
+    /// each one a tap away.
+    case server(UUID)
 }
 
 /// A screen pushed onto a tab's navigation stack.
@@ -38,6 +41,8 @@ final class AppRouter {
     var homePath: [Route] = []
     var browsePath: [Route] = []
     var searchPath: [Route] = []
+    /// Each server tab's own stack, by server.
+    var serverPaths: [UUID: [Route]] = [:]
     var sheet: AppSheet?
     /// The publication open in the reader.
     var reading: ReadingItem?
@@ -55,6 +60,16 @@ final class AppRouter {
     func open(_ item: ReadingItem) {
         sheet = nil
         reading = item
+    }
+
+    /// A server is gone, so nothing points at it any more: its tab, if
+    /// selected, gives way to Browse, and its stack goes.
+    func serverRemoved(_ account: UUID) {
+        serverPaths[account] = nil
+        if tab == .server(account) {
+            tab = .browse
+        }
+        browsePath.removeAll { if case .server(account) = $0 { true } else { false } }
     }
 
     /// Goes to `route` on Reading Now, over whatever is open, as a tapped

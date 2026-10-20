@@ -80,7 +80,7 @@ private struct DemoBanner: ViewModifier {
                     Button("Exit", systemImage: "xmark") {
                         Task {
                             await servers.endDemo()
-                            router.browsePath = []
+                            router.serverRemoved(DemoMode.accountID)
                             router.homePath = []
                             router.searchPath = []
                         }

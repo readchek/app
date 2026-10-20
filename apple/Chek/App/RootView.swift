@@ -9,6 +9,7 @@ struct RootView: View {
     /// Followed series, for the count of new chapters on the Reading Now
     /// tab, so there's a sign of them from anywhere in the app.
     @Query private var follows: [FollowedSeries]
+    @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
 
     var body: some View {
         @Bindable var router = router
@@ -27,6 +28,16 @@ struct RootView: View {
             Tab(value: AppTab.search, role: .search) {
                 SearchView()
             }
+            // Each server is a section of the iPad sidebar, so its shelves
+            // are one tap away there. On iPhone these stay in Browse.
+            TabSection("Servers") {
+                ForEach(accounts) { account in
+                    Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "server.rack", value: AppTab.server(account.id)) {
+                        ServerTab(account: account)
+                    }
+                }
+            }
+            .defaultVisibility(.hidden, for: .tabBar)
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -61,6 +72,23 @@ struct RootView: View {
         .importFailureAlert()
         .openingFailureAlert()
         .syncTriggers()
+    }
+}
+
+/// One server's screen as a tab of its own, with its own stack.
+private struct ServerTab: View {
+    let account: ServerAccount
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        @Bindable var router = router
+        NavigationStack(path: Binding(
+            get: { router.serverPaths[account.id] ?? [] },
+            set: { router.serverPaths[account.id] = $0 }
+        )) {
+            ServerHomeView(account: account.id)
+                .routeDestinations()
+        }
     }
 }
 
