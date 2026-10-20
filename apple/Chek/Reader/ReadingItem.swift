@@ -26,6 +26,9 @@ struct ReadingItem: Identifiable {
     /// when it's one of a series, since a manga reads the same way
     /// throughout. Nil when the publication is only itself.
     var seriesKey: String?
+    /// Whether every page is on the device, so reading it needs nothing
+    /// from its server, such as a session.
+    var isOnDevice = false
 
     var id: PublicationRef { ref }
 

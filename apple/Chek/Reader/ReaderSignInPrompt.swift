@@ -15,7 +15,8 @@ private struct ReaderSignInPrompt: ViewModifier {
     func body(content: Content) -> some View {
         @Bindable var session = session
         let account = session.item.ref.server
-        let isSignedOut = account.map { servers.state(of: $0) == .signedOut } ?? false
+        // A publication that's all on the device needs no session to read.
+        let isSignedOut = !session.item.isOnDevice && (account.map { servers.state(of: $0) == .signedOut } ?? false)
         content
             .overlay(alignment: .bottom) {
                 // Pages that failed show their own notice; this says what

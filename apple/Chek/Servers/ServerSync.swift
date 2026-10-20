@@ -86,6 +86,7 @@ final class ServerSync {
         if let series = publication.seriesID {
             item.seriesKey = "server/\(publication.server.uuidString)/series/\(series)"
         }
+        item.isOnDevice = isDownloaded
         return item
     }
 
@@ -110,6 +111,7 @@ final class ServerSync {
         )
         item.sourceChapter = chapter
         item.seriesKey = "source/\(chapter.server.uuidString)/\(chapter.source)/\(chapter.seriesID)"
+        item.isOnDevice = ChapterFiles.downloadedPageCount(of: chapter) != nil
         return item
     }
 
