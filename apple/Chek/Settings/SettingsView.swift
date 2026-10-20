@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UserNotifications
 
 /// App settings: reading defaults and information about Chek.
 struct SettingsView: View {
@@ -17,6 +18,7 @@ struct SettingsView: View {
                         Label("Reading", systemImage: "textformat.size")
                     }
                 }
+                NewChapterAlertsSection()
                 StorageSection()
                 Section {
                     LabeledContent("Version", value: Bundle.main.versionDescription)
@@ -49,6 +51,57 @@ private extension Bundle {
         let version = object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let build = object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         return "\(version) (\(build))"
+    }
+}
+
+/// Whether new chapters in followed series are announced, which iOS
+/// decides, with the way to change it.
+private struct NewChapterAlertsSection: View {
+    @State private var status: UNAuthorizationStatus?
+    @Environment(\.scenePhase) private var scenePhase
+
+    var body: some View {
+        Section {
+            LabeledContent {
+                switch status {
+                case .authorized, .provisional, .ephemeral:
+                    Text("On")
+                case .denied:
+                    Text("Off")
+                case .notDetermined, nil:
+                    Text("Not Yet Asked")
+                @unknown default:
+                    Text("Off")
+                }
+            } label: {
+                Label("New Chapter Alerts", systemImage: "bell.badge")
+            }
+            if status == .notDetermined {
+                Button("Turn On Alerts") {
+                    Task {
+                        await FollowNotifications.askIfNeeded()
+                        await refresh()
+                    }
+                }
+            } else if status != nil, let url = URL(string: UIApplication.openNotificationSettingsURLString) {
+                Link("Change in Settings", destination: url)
+            }
+        } header: {
+            Text("Following")
+        } footer: {
+            Text("Chek checks the series you follow a few times a day and tells you when a chapter is out.")
+        }
+        .task { await refresh() }
+        .onChange(of: scenePhase) { _, phase in
+            // Back from the Settings app, where it may have changed.
+            if phase == .active {
+                Task { await refresh() }
+            }
+        }
+    }
+
+    private func refresh() async {
+        status = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
 }
 
