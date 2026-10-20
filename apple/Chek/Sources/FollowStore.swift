@@ -7,6 +7,16 @@ import SwiftData
 @MainActor
 @Observable
 final class FollowStore {
+    /// New chapters one check found in a series.
+    struct NewChapters: Sendable {
+        let key: String
+        let server: UUID
+        let source: String
+        let seriesID: String
+        let title: String
+        let count: Int
+    }
+
     /// Whether a check for new chapters is running.
     private(set) var isChecking = false
 
@@ -31,8 +41,12 @@ final class FollowStore {
             chapterCount: chapters.count
         )
         follow.lastCheckedAt = .now
+        let isFirst = ((try? context.fetchCount(FetchDescriptor<FollowedSeries>())) ?? 0) == 0
         context.insert(follow)
         save()
+        if isFirst {
+            Task { await FollowNotifications.askIfNeeded() }
+        }
     }
 
     func unfollow(_ follow: FollowedSeries) {
@@ -59,16 +73,20 @@ final class FollowStore {
     }
 
     /// Asks each followed series' source for its chapters and notes the
-    /// ones you haven't seen. Skipped when checked recently, since every
-    /// check is a request to the source's site per series.
-    func checkForNewChapters(force: Bool = false) async {
-        if !force, let lastCheck, Date.now.timeIntervalSince(lastCheck) < 15 * 60 { return }
-        guard !isChecking else { return }
+    /// ones you haven't seen, giving back what this check turned up.
+    /// Skipped when checked recently, since every check is a request to
+    /// the source's site per series.
+    @discardableResult
+    func checkForNewChapters(force: Bool = false) async -> [NewChapters] {
+        if !force, let lastCheck, Date.now.timeIntervalSince(lastCheck) < 15 * 60 { return [] }
+        guard !isChecking else { return [] }
         isChecking = true
         defer { isChecking = false }
         lastCheck = .now
+        var found: [NewChapters] = []
         let follows = (try? context.fetch(FetchDescriptor<FollowedSeries>())) ?? []
         for follow in follows where servers.state(of: follow.serverID) == .signedIn {
+            if Task.isCancelled { break }
             let server = follow.serverID
             let source = follow.sourceID
             let seriesID = follow.seriesID
@@ -83,10 +101,14 @@ final class FollowStore {
                 let fresh = chapters.suffix(chapters.count - follow.chapterCount).map(\.id).filter { !known.contains($0) && !read.contains($0) }
                 follow.unseenChapterIDs.append(contentsOf: fresh)
                 follow.chapterCount = chapters.count
+                if !fresh.isEmpty {
+                    found.append(NewChapters(key: follow.key, server: server, source: source, seriesID: seriesID, title: follow.title, count: fresh.count))
+                }
             }
             follow.lastCheckedAt = .now
         }
         save()
+        return found
     }
 
     private func readChapterIDs(_ follow: FollowedSeries) -> [String] {

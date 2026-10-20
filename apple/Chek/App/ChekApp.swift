@@ -5,6 +5,8 @@ import SwiftUI
 @main
 struct ChekApp: App {
     private let app: AppDependencies
+    private let notifications: NotificationOpener
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         ReaderFormats.registerDefaults()
@@ -15,6 +17,8 @@ struct ChekApp: App {
             // so failing here means the device's storage is unusable.
             fatalError("Couldn't open the library: \(error)")
         }
+        FollowRefresh.register(follows: app.follows)
+        notifications = NotificationOpener(router: app.router)
     }
 
     var body: some Scene {
@@ -24,6 +28,11 @@ struct ChekApp: App {
                 .task { await app.library.carryOverChibiMangaLibrary() }
         }
         .modelContainer(app.container)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                FollowRefresh.schedule()
+            }
+        }
     }
 }
 

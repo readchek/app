@@ -57,6 +57,15 @@ final class AppRouter {
         reading = item
     }
 
+    /// Goes to `route` on Reading Now, over whatever is open, as a tapped
+    /// notification does.
+    func show(_ route: Route) {
+        sheet = nil
+        reading = nil
+        tab = .home
+        homePath = [route]
+    }
+
     /// Opens a server publication once ``ServerSync`` has it ready. A second
     /// tap while one is opening is ignored.
     func open(_ publication: RemotePublication, using sync: ServerSync) {
