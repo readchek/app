@@ -26,8 +26,12 @@ struct SettingsView: View {
                     Link(destination: URL(string: "https://chek.page")!) {
                         Label("chek.page", systemImage: "safari")
                     }
-                    Link(destination: URL(string: "https://github.com/readchek/app/issues")!) {
+                    // Email or GitHub, so reporting needs no GitHub account.
+                    Link(destination: URL(string: "https://chek.page/support")!) {
                         Label("Report a Problem", systemImage: "exclamationmark.bubble")
+                    }
+                    Link(destination: URL(string: "https://chek.page/privacy")!) {
+                        Label("Privacy Policy", systemImage: "hand.raised")
                     }
                 } header: {
                     Text("About")
