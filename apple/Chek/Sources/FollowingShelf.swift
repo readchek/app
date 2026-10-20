@@ -11,7 +11,9 @@ struct FollowingShelf: View {
     var body: some View {
         if !follows.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
-                SectionHeader(title: "Following")
+                SectionHeader(title: "Following") {
+                    UpdatesView()
+                }
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
                         // Series with something new come first.

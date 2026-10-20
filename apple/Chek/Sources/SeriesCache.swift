@@ -34,6 +34,15 @@ nonisolated enum SeriesCache {
         try? data.write(to: url, options: .atomic)
     }
 
+    /// Replaces a series' chapters, keeping what's known of the series,
+    /// or starting from `fallback` when nothing was kept yet. For checks
+    /// that list chapters without loading the series.
+    @concurrent
+    static func updateChapters(_ chapters: [ChekAPI.SourceChapter], server: UUID, source: String, series fallback: ChekAPI.SourceSeries) async {
+        let series = await read(server: server, source: source, series: fallback.id)?.series ?? fallback
+        await write(series, chapters: chapters, server: server, source: source)
+    }
+
     static func removeAll(for server: UUID) {
         try? FileManager.default.removeItem(at: root.appending(path: server.uuidString))
     }

@@ -100,7 +100,7 @@ left on devices that update.
 | `ServerStore` | Connected accounts, their sign-in state and their clients. |
 | `ProgressStore` | Saving positions for every source, and syncing them to servers. |
 | `ReaderSettings` | Theme, text size and margins, kept in `UserDefaults`, and the reading direction chosen per series. |
-| `FollowStore` | Following series from sources and checking them for new chapters, in the app and from the background refresh task (`FollowRefresh`), which notifies. |
+| `FollowStore` | Following series from sources and checking them for new chapters, in the app and from the background refresh task (`FollowRefresh`), which notifies. New chapters across every followed series are listed on the Updates screen, from each series' kept listing. |
 | `Downloads` | Which source chapters and server comics are on the device, and the queue that fetches them one at a time. |
 
 All of them are `@MainActor`, created once in `ChekApp` and put in the

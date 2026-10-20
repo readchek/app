@@ -93,6 +93,16 @@ final class FollowStore {
             guard let chapters = try? await servers.request(server, { client throws(ChekError) in
                 try await client.chapters(ofSeries: seriesID, inSource: source)
             }) else { continue }
+            // The listing is kept, so the Updates list can name the new
+            // chapters without asking again.
+            await SeriesCache.updateChapters(chapters, server: server, source: source, series: ChekAPI.SourceSeries(
+                id: seriesID,
+                title: follow.title,
+                summary: nil,
+                coverUrl: follow.coverPath,
+                contributors: [],
+                readingDirection: follow.isRightToLeft ? "rtl" : nil
+            ))
             // A first check after following knows the chapters you saw;
             // anything beyond that count and not read is new.
             let read = Set(readChapterIDs(follow))
@@ -109,6 +119,22 @@ final class FollowStore {
         }
         save()
         return found
+    }
+
+    /// Notes that you've seen one new chapter, as when opening it from
+    /// the Updates list.
+    func markSeen(chapterID: String, in follow: FollowedSeries) {
+        guard follow.unseenChapterIDs.contains(chapterID) else { return }
+        follow.unseenChapterIDs.removeAll { $0 == chapterID }
+        save()
+    }
+
+    /// Clears what's new in every followed series.
+    func markAllSeen() {
+        for follow in (try? context.fetch(FetchDescriptor<FollowedSeries>())) ?? [] where !follow.unseenChapterIDs.isEmpty {
+            follow.unseenChapterIDs = []
+        }
+        save()
     }
 
     private func readChapterIDs(_ follow: FollowedSeries) -> [String] {
