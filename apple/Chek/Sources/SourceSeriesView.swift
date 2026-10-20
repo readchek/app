@@ -371,6 +371,7 @@ struct SourceSeriesHeader: View {
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         let isRegular = sizeClass == .regular
@@ -433,7 +434,11 @@ struct SourceSeriesHeader: View {
                 }
                 .accessibilityAddTraits(.isButton)
             }
-            HStack(spacing: 10) {
+            // Side by side, or one under the other at text sizes where
+            // two buttons would squeeze the reading one to nothing.
+            let stacked = dynamicTypeSize.isAccessibilitySize
+            let layout = stacked ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
+            layout {
                 if let (chapter, status) = next {
                     Button {
                         router.open(chapter, using: sync)
@@ -452,7 +457,8 @@ struct SourceSeriesHeader: View {
                     Label(isFollowing ? "Following" : "Follow", systemImage: isFollowing ? "checkmark" : "plus")
                         .labelStyle(.titleAndIcon)
                         .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
+                        .fixedSize(horizontal: !stacked, vertical: false)
+                        .frame(maxWidth: stacked ? .infinity : nil)
                 }
                 .buttonStyle(.bordered)
                 .tint(isFollowing ? .secondary : .accentColor)
