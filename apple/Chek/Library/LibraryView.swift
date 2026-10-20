@@ -11,12 +11,12 @@ struct LibraryView: View {
     /// The books chosen while selecting, nil when not.
     @State private var selection: Set<UUID>?
     /// One book at most, only to know whether there's anything to select.
-    @Query(Self.anyBook) private var anyBook: [Book]
+    @Query private var anyBook: [Book]
 
-    private static var anyBook: FetchDescriptor<Book> {
+    init() {
         var descriptor = FetchDescriptor<Book>()
         descriptor.fetchLimit = 1
-        return descriptor
+        _anyBook = Query(descriptor)
     }
 
     var body: some View {
