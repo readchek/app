@@ -134,28 +134,100 @@ final class HomeServersModel {
 
     private(set) var elsewhere: [Elsewhere] = []
     private(set) var newOnServers: [ServerShelf] = []
+    private var hasShownSnapshot = false
 
     func load(from servers: ServerStore) async {
-        var elsewhere: [Elsewhere] = []
-        var shelves: [ServerShelf] = []
-        for account in servers.accounts() where servers.state(of: account.id) == .signedIn {
-            let id = account.id
-            if let reading = try? await servers.request(id, { client throws(ChekError) in try await client.continueReading() }) {
-                for item in reading {
-                    let progress = item.progress.locator?.locations.totalProgression
-                    elsewhere.append(Elsewhere(
-                        publication: RemotePublication(item.publication, server: id),
-                        status: ReadingStatus(progress: progress, finished: false, opened: true),
-                        date: item.progress.updatedAt ?? .distantPast
-                    ))
+        let signedIn = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
+        // What the servers said last time shows at once, and stands in
+        // when they can't be reached, rather than empty shelves until
+        // every server has answered.
+        if !hasShownSnapshot {
+            hasShownSnapshot = true
+            if let snapshot = await HomeSnapshot.read() {
+                let names = Dictionary(signedIn.map { ($0.id, $0.name) }, uniquingKeysWith: { first, _ in first })
+                elsewhere = snapshot.elsewhere
+                    .filter { names[$0.publication.server] != nil }
+                    .map { Elsewhere(publication: $0.publication, status: ReadingStatus(progress: $0.progress, finished: false, opened: true), date: $0.date) }
+                newOnServers = snapshot.shelves.compactMap { shelf in
+                    names[shelf.id].map { ServerShelf(id: shelf.id, serverName: $0, publications: shelf.publications) }
                 }
             }
-            if let recent = try? await servers.request(id, { client throws(ChekError) in try await client.recentlyAdded(cursor: nil) }), !recent.items.isEmpty {
-                shelves.append(ServerShelf(id: id, serverName: account.name, publications: recent.items.prefix(20).map { RemotePublication($0, server: id) }))
+        }
+        var elsewhere: [Elsewhere] = []
+        var snapshotElsewhere: [HomeSnapshot.Elsewhere] = []
+        var shelves: [ServerShelf] = []
+        var reached: Set<UUID> = []
+        for account in signedIn {
+            let id = account.id
+            if let reading = try? await servers.request(id, { client throws(ChekError) in try await client.continueReading() }) {
+                reached.insert(id)
+                for item in reading {
+                    let progress = item.progress.locator?.locations.totalProgression
+                    let publication = RemotePublication(item.publication, server: id)
+                    let date = item.progress.updatedAt ?? .distantPast
+                    elsewhere.append(Elsewhere(
+                        publication: publication,
+                        status: ReadingStatus(progress: progress, finished: false, opened: true),
+                        date: date
+                    ))
+                    snapshotElsewhere.append(HomeSnapshot.Elsewhere(publication: publication, progress: progress, date: date))
+                }
             }
+            if let recent = try? await servers.request(id, { client throws(ChekError) in try await client.recentlyAdded(cursor: nil) }) {
+                reached.insert(id)
+                if !recent.items.isEmpty {
+                    shelves.append(ServerShelf(id: id, serverName: account.name, publications: recent.items.prefix(20).map { RemotePublication($0, server: id) }))
+                }
+            }
+        }
+        // A server that didn't answer keeps what it showed before.
+        for shelf in newOnServers where !reached.contains(shelf.id) && signedIn.contains(where: { $0.id == shelf.id }) {
+            shelves.append(shelf)
+        }
+        for item in self.elsewhere where !reached.contains(item.publication.server) && signedIn.contains(where: { $0.id == item.publication.server }) {
+            elsewhere.append(item)
+            snapshotElsewhere.append(HomeSnapshot.Elsewhere(publication: item.publication, progress: item.status.progress, date: item.date))
         }
         self.elsewhere = elsewhere
         newOnServers = shelves
+        await HomeSnapshot(
+            elsewhere: snapshotElsewhere,
+            shelves: shelves.map { HomeSnapshot.Shelf(id: $0.id, serverName: $0.serverName, publications: $0.publications) }
+        ).write()
+    }
+}
+
+/// What Home last showed from servers, kept between launches.
+nonisolated private struct HomeSnapshot: Codable {
+    struct Elsewhere: Codable {
+        var publication: RemotePublication
+        var progress: Double?
+        var date: Date
+    }
+
+    struct Shelf: Codable {
+        var id: UUID
+        var serverName: String
+        var publications: [RemotePublication]
+    }
+
+    var elsewhere: [Elsewhere]
+    var shelves: [Shelf]
+
+    /// In Caches: it's remade from the servers on every launch that
+    /// reaches them, so losing it costs nothing.
+    private static let url = URL.cachesDirectory.appending(path: "home-servers.json")
+
+    @concurrent
+    static func read() async -> HomeSnapshot? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(HomeSnapshot.self, from: data)
+    }
+
+    @concurrent
+    func write() async {
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        try? data.write(to: Self.url, options: .atomic)
     }
 }
 

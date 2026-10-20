@@ -2,7 +2,7 @@ import Foundation
 
 /// A publication on a server, with what the app needs to show and open it.
 /// Made from the server's listing, or from your saved place when offline.
-nonisolated struct RemotePublication: Identifiable, Hashable, Sendable {
+nonisolated struct RemotePublication: Identifiable, Hashable, Codable, Sendable {
     let server: UUID
     let id: Int64
     let title: String
