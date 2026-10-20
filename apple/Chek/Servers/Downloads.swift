@@ -74,14 +74,23 @@ final class Downloads {
 
     init(servers: ServerStore) {
         self.servers = servers
+        // Downloads for a server that's gone, removed while the app wasn't
+        // running to clean up, go with it now.
+        let known = Set(servers.accounts().map(\.id))
         var found: [PublicationRef: Item] = [:]
-        for chapter in ChapterFiles.downloaded() {
+        for chapter in ChapterFiles.downloaded() where known.contains(chapter.server) {
             found[chapter.ref] = .chapter(chapter)
         }
-        for publication in PublicationFiles.downloaded() {
+        for publication in PublicationFiles.downloaded() where known.contains(publication.server) {
             found[publication.ref] = .comic(publication)
         }
         downloaded = found
+        for root in [ChapterFiles.root, PublicationFiles.root] {
+            for folder in (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? []
+            where UUID(uuidString: folder.lastPathComponent).map({ !known.contains($0) }) ?? true {
+                try? FileManager.default.removeItem(at: folder)
+            }
+        }
     }
 
     func state(of ref: PublicationRef) -> State {
@@ -282,8 +291,16 @@ final class Downloads {
             }
         }
         switch item {
-        case .chapter(let chapter): try ChapterFiles.markComplete(chapter, pageCount: requests.count)
-        case .comic(let publication): try PublicationFiles.markComplete(publication, pageCount: requests.count)
+        case .chapter(let chapter):
+            try ChapterFiles.markComplete(chapter, pageCount: requests.count)
+        case .comic(let publication):
+            // The cover too, so the comic's cell shows without the server.
+            // Not having one is no reason to fail the download.
+            if publication.hasCover, let client = try? await access.client(),
+               let data = try? await access.data(for: client.coverRequest(of: publication.id)) {
+                try? data.write(to: PublicationFiles.cover(of: publication.id, on: publication.server), options: .atomic)
+            }
+            try PublicationFiles.markComplete(publication, pageCount: requests.count)
         }
         return requests.count
     }

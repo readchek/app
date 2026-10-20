@@ -94,9 +94,17 @@ final class ServerStore {
         }
     }
 
-    /// The cover of `publication`, fetched with `account`'s credentials.
+    /// The cover of `publication`: the one saved with its download, else
+    /// fetched with `account`'s credentials. Signed out, the request can
+    /// only fail, but the copy on disk from last time still shows.
     func cover(of publication: Int64, on account: UUID) -> CoverSource {
-        guard let client = client(for: account) else { return .none }
+        let saved = PublicationFiles.cover(of: publication, on: account)
+        if FileManager.default.fileExists(atPath: saved.path(percentEncoded: false)) {
+            return .file(saved)
+        }
+        guard let client = client(for: account) ?? self.account(account).map({ ChekClient(baseURL: $0.baseURL, token: "") }) else {
+            return .none
+        }
         return .remote(key: "server/\(account.uuidString)/\(publication)/cover", request: client.coverRequest(of: publication))
     }
 

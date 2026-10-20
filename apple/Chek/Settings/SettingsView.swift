@@ -161,7 +161,7 @@ private struct ServerAccountForm: View {
                     isConfirmingRemoval = true
                 }
             } footer: {
-                Text("Removing the server forgets your places in its publications on this device. They stay saved on the server.")
+                Text("Removing the server forgets your places in its publications on this device, and deletes what you downloaded from it. Your places stay saved on the server.")
             }
         }
         .navigationTitle(account.name)

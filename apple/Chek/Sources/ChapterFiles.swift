@@ -123,6 +123,12 @@ nonisolated enum PublicationFiles {
         try folder(for: publication).markComplete(publication, pageCount: pageCount)
     }
 
+    /// Where the comic's cover is kept with its pages, so its shelf cell
+    /// shows without the server.
+    static func cover(of publication: Int64, on server: UUID) -> URL {
+        folder(for: publication, on: server).url.appending(path: "cover.img")
+    }
+
     static func removeAll(for server: UUID) {
         try? FileManager.default.removeItem(at: folder(for: server))
     }

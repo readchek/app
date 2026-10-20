@@ -178,15 +178,25 @@ private struct ServerHomeContent: View {
 
     var body: some View {
         if servers.state(of: account.id) == .signedOut {
-            ContentUnavailableView {
-                Label("Signed Out", systemImage: "person.crop.circle.badge.exclamationmark")
-            } description: {
-                Text("Sign in to \(account.name) again to read from it.")
-            } actions: {
-                Button("Sign In") {
-                    router.sheet = .signIn(account.id)
+            let kept = downloads.comics(on: account.id)
+            ScrollView {
+                VStack(spacing: Metrics.sectionSpacing) {
+                    ContentUnavailableView {
+                        Label("Signed Out", systemImage: "person.crop.circle.badge.exclamationmark")
+                    } description: {
+                        Text("Sign in to \(account.name) again to read from it.")
+                    } actions: {
+                        Button("Sign In") {
+                            router.sheet = .signIn(account.id)
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .frame(minHeight: kept.isEmpty ? 480 : 320)
+                    if !kept.isEmpty {
+                        // What's on the device needs no session.
+                        Shelf(title: "Downloaded", items: kept.map { servers.item($0, status: ReadingStatuses(states)[$0.id]) })
+                    }
                 }
-                .buttonStyle(.borderedProminent)
             }
         } else {
             switch model?.state ?? .idle {
