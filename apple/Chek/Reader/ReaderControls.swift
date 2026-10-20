@@ -35,6 +35,7 @@ private struct ReaderToolbars: ViewModifier {
                     Button("Contents", systemImage: "list.bullet") {
                         session.show(.contents)
                     }
+                    .disabled(session.controller.state != .ready)
                 }
                 ToolbarItem(placement: .bottomBar) {
                     ReaderScrubber(controller: session.controller)
@@ -52,7 +53,10 @@ private struct ReaderToolbars: ViewModifier {
             // themselves draw nothing, so no band of another color shows.
             .toolbarBackgroundVisibility(.hidden, for: .navigationBar, .bottomBar)
 
-            .toolbarVisibility(session.isShowingControls ? .visible : .hidden, for: .navigationBar, .bottomBar)
+            // Contents and the scrubber need an open publication; while
+            // there isn't one, only Close is of any use.
+            .toolbarVisibility(session.isShowingControls ? .visible : .hidden, for: .navigationBar)
+            .toolbarVisibility(session.isShowingControls && session.controller.state == .ready ? .visible : .hidden, for: .bottomBar)
             .animation(.smooth(duration: 0.25), value: session.isShowingControls)
             .sheet(item: Bindable(session).panel) { panel in
                 switch panel {

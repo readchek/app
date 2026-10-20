@@ -228,22 +228,54 @@ private struct ReaderFailureView: View {
     let error: DisplayError
     let session: ReaderSession
     @Environment(AppRouter.self) private var router
+    @Environment(LibraryStore.self) private var library
+    @State private var isConfirmingRemoval = false
+
+    /// Whether this is a file on the device that can't be read, where
+    /// trying again can't help and removing it can.
+    private var isDamagedLocalFile: Bool {
+        if case .local = session.item.ref, case .source(.file) = session.item.content { return !isNetworkError }
+        return false
+    }
+
+    private var isNetworkError: Bool {
+        error.title.localizedCaseInsensitiveContains("reach") || error.title.localizedCaseInsensitiveContains("connection")
+    }
 
     var body: some View {
         ContentUnavailableView {
-            Label(error.title, systemImage: "book.closed")
+            Label(isDamagedLocalFile ? String(localized: "This File Can't Be Opened") : error.title, systemImage: "book.closed")
         } description: {
-            if let message = error.message {
+            if isDamagedLocalFile {
+                Text("It may be damaged or not a format Chek reads. Removing it from the library leaves the original where you got it.")
+            } else if let message = error.message {
                 Text(message)
             }
         } actions: {
-            Button("Try Again") {
-                Task { await session.open() }
+            if isDamagedLocalFile {
+                Button("Remove from Library", role: .destructive) {
+                    isConfirmingRemoval = true
+                }
+                .buttonStyle(.bordered)
+            } else {
+                Button("Try Again") {
+                    Task { await session.open() }
+                }
+                .buttonStyle(.borderedProminent)
             }
-            .buttonStyle(.borderedProminent)
             Button("Close") {
                 router.closeReader()
             }
+        }
+        .confirmationDialog("Remove This Book?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
+            Button("Remove", role: .destructive) {
+                if case .local(let id) = session.item.ref, let book = library.book(id) {
+                    library.remove(book)
+                }
+                router.closeReader()
+            }
+        } message: {
+            Text("Its file and your place in it are deleted from this device.")
         }
     }
 }

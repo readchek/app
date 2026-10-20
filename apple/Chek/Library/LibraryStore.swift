@@ -72,14 +72,23 @@ final class LibraryStore {
         // One at a time, so a large library doesn't open every book at once.
         for (entry, job) in zip(entries, jobs) {
             defer { imports.removeAll { $0.id == job.id } }
-            guard let imported = try? await BookImporter.importBook(
-                from: ChibiMangaLibrary.file(for: entry),
-                moving: true,
-                page: entry.currentPage
-            ) else { continue }
+            let imported: ImportedBook
+            do {
+                imported = try await BookImporter.importBook(
+                    from: ChibiMangaLibrary.file(for: entry),
+                    moving: true,
+                    page: entry.currentPage
+                )
+            } catch {
+                // Said once, like a failed import, rather than vanishing.
+                failures.append(ImportFailure(fileName: entry.fileName, error: DisplayError(error)))
+                continue
+            }
             let book = Book(imported, at: entry.lastReadAt ?? .now)
-            if let lastReadAt = entry.lastReadAt, entry.currentPage > 0 {
-                book.lastOpenedAt = lastReadAt
+            // A page kept in Chibi Manga means it was being read, even for
+            // books whose pages don't map to a place here.
+            if entry.currentPage > 0 {
+                book.lastOpenedAt = entry.lastReadAt ?? .now
             }
             context.insert(book)
             save()
