@@ -18,7 +18,7 @@ nonisolated enum ChekAPI {
         var name: String
     }
 
-    struct Library: Decodable, Identifiable, Hashable, Sendable {
+    struct Library: Codable, Identifiable, Hashable, Sendable {
         var id: Int64
         var name: String
     }

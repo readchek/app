@@ -100,13 +100,65 @@ final class ServerHomeModel {
             }
             state = .loaded(content)
             staleError = nil
+            await ServerHomeSnapshot(content).write(for: account)
         } catch {
-            if state.value == nil {
+            // What the server said last time stands in when it can't be
+            // reached, so its libraries and sources stay reachable and
+            // downloaded chapters can be read offline.
+            if state.value == nil, let snapshot = await ServerHomeSnapshot.read(for: account) {
+                state = .loaded(snapshot.content(server: account))
+                staleError = DisplayError(error)
+            } else if state.value == nil {
                 state = .failed(DisplayError(error))
             } else {
                 staleError = DisplayError(error)
             }
         }
+    }
+}
+
+/// What a server's screen last showed, kept between launches.
+nonisolated private struct ServerHomeSnapshot: Codable {
+    var continueReading: [RemotePublication]
+    var serverProgress: [Int64: Double?]
+    var sources: [ChekAPI.InstalledExtension]?
+    var recentlyAdded: [RemotePublication]
+    var libraries: [ChekAPI.Library]
+
+    init(_ content: ServerHomeModel.Content) {
+        continueReading = content.continueReading
+        serverProgress = content.serverStatuses.mapValues(\.progress)
+        sources = content.sources
+        recentlyAdded = content.recentlyAdded
+        libraries = content.libraries
+    }
+
+    func content(server: UUID) -> ServerHomeModel.Content {
+        ServerHomeModel.Content(
+            continueReading: continueReading,
+            serverStatuses: serverProgress.mapValues { ReadingStatus(progress: $0, finished: false, opened: true) },
+            sources: sources,
+            recentlyAdded: recentlyAdded,
+            libraries: libraries
+        )
+    }
+
+    private static func url(for server: UUID) -> URL {
+        URL.cachesDirectory.appending(path: "Servers/\(server.uuidString)/home.json")
+    }
+
+    @concurrent
+    static func read(for server: UUID) async -> ServerHomeSnapshot? {
+        guard let data = try? Data(contentsOf: url(for: server)) else { return nil }
+        return try? JSONDecoder().decode(ServerHomeSnapshot.self, from: data)
+    }
+
+    @concurrent
+    func write(for server: UUID) async {
+        let url = Self.url(for: server)
+        guard let data = try? JSONEncoder().encode(self) else { return }
+        try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? data.write(to: url, options: .atomic)
     }
 }
 

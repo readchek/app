@@ -22,10 +22,34 @@ nonisolated enum ChapterFiles {
         folder(for: chapter).appending(path: String(format: "%04d.img", index))
     }
 
+    /// What's known about a downloaded chapter beyond its pages: enough
+    /// to list it and its series without the server.
+    struct Note: Codable, Hashable, Sendable {
+        var seriesID: String
+        var seriesTitle: String
+        var chapterTitle: String
+        var isRightToLeft: Bool
+        var seriesCoverPath: String?
+        var pageCount: Int
+
+        init(_ chapter: SourceChapterRef, pageCount: Int) {
+            seriesID = chapter.seriesID
+            seriesTitle = chapter.seriesTitle
+            chapterTitle = chapter.chapterTitle
+            isRightToLeft = chapter.isRightToLeft
+            seriesCoverPath = chapter.seriesCoverPath
+            self.pageCount = pageCount
+        }
+    }
+
     /// The marker written last, holding the page count, so a chapter is
     /// downloaded only once every page is.
     private static func marker(for chapter: SourceChapterRef) -> URL {
         folder(for: chapter).appending(path: "complete")
+    }
+
+    private static func noteURL(in folder: URL) -> URL {
+        folder.appending(path: "chapter.json")
     }
 
     /// How many pages the chapter has, when it's fully downloaded.
@@ -35,6 +59,8 @@ nonisolated enum ChapterFiles {
     }
 
     static func markComplete(_ chapter: SourceChapterRef, pageCount: Int) throws {
+        let note = try JSONEncoder().encode(Note(chapter, pageCount: pageCount))
+        try note.write(to: noteURL(in: folder(for: chapter)), options: .atomic)
         try String(pageCount).write(to: marker(for: chapter), atomically: true, encoding: .utf8)
     }
 
@@ -50,27 +76,41 @@ nonisolated enum ChapterFiles {
         try? FileManager.default.removeItem(at: root)
     }
 
-    /// Every chapter that's fully downloaded, by ``PublicationRef/storageKey``,
-    /// found by walking the folders once at launch. A chapter folder with
-    /// no marker was cut off partway, by the app being killed, and goes.
-    static func downloadedKeys() -> Set<String> {
-        var keys: Set<String> = []
+    /// Every chapter that's fully downloaded, as a chapter reference with
+    /// its note, found by walking the folders once at launch. A chapter
+    /// folder with no marker was cut off partway, by the app being killed,
+    /// and goes.
+    static func downloaded() -> [SourceChapterRef: Note] {
+        var found: [SourceChapterRef: Note] = [:]
         let manager = FileManager.default
+        let decoder = JSONDecoder()
         for serverFolder in (try? manager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
             guard let server = UUID(uuidString: serverFolder.lastPathComponent) else { continue }
             for sourceFolder in (try? manager.contentsOfDirectory(at: serverFolder, includingPropertiesForKeys: nil)) ?? [] {
                 guard let source = unhex(sourceFolder.lastPathComponent) else { continue }
                 for chapterFolder in (try? manager.contentsOfDirectory(at: sourceFolder, includingPropertiesForKeys: nil)) ?? [] {
-                    guard manager.fileExists(atPath: chapterFolder.appending(path: "complete").path(percentEncoded: false)) else {
+                    guard manager.fileExists(atPath: chapterFolder.appending(path: "complete").path(percentEncoded: false)),
+                          let data = try? Data(contentsOf: noteURL(in: chapterFolder)),
+                          let note = try? decoder.decode(Note.self, from: data)
+                    else {
                         try? manager.removeItem(at: chapterFolder)
                         continue
                     }
                     guard let chapter = unhex(chapterFolder.lastPathComponent) else { continue }
-                    keys.insert(PublicationRef.source(server, source, chapter).storageKey)
+                    found[SourceChapterRef(
+                        server: server,
+                        source: source,
+                        seriesID: note.seriesID,
+                        seriesTitle: note.seriesTitle,
+                        chapterID: chapter,
+                        chapterTitle: note.chapterTitle,
+                        isRightToLeft: note.isRightToLeft,
+                        seriesCoverPath: note.seriesCoverPath
+                    )] = note
                 }
             }
         }
-        return keys
+        return found
     }
 
     private static func hex(_ text: String) -> String {

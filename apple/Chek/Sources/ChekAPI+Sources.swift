@@ -6,7 +6,7 @@ import Foundation
 /// reads what they find, through the server.
 nonisolated extension ChekAPI {
     /// An extension you've installed, which is a source you can browse.
-    struct InstalledExtension: Decodable, Identifiable, Hashable, Sendable {
+    struct InstalledExtension: Codable, Identifiable, Hashable, Sendable {
         var id: String
         var name: String
         var version: String

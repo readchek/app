@@ -33,7 +33,7 @@ struct StorageSection: View {
             Button("Remove Downloaded Chapters…", role: .destructive) {
                 isConfirmingChapterRemoval = true
             }
-            .disabled(downloads.downloaded.isEmpty)
+            .disabled(downloads.isEmpty)
         } header: {
             Text("Storage")
         } footer: {

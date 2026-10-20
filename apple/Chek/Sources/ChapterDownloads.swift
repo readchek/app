@@ -15,8 +15,16 @@ final class ChapterDownloads {
         case downloaded
     }
 
-    /// Chapters fully on the device, by ``PublicationRef/storageKey``.
-    private(set) var downloaded: Set<String>
+    /// Chapters fully on the device, with what's known about each.
+    private(set) var downloaded: [SourceChapterRef: ChapterFiles.Note]
+
+    /// A series with chapters on the device.
+    struct DownloadedSeries: Identifiable, Hashable {
+        let id: String
+        let title: String
+        let coverPath: String?
+        let chapterCount: Int
+    }
     /// Chapters queued or being fetched, by storage key, with how far
     /// along the one being fetched is.
     private(set) var inProgress: [String: Double] = [:]
@@ -26,16 +34,16 @@ final class ChapterDownloads {
     private let servers: ServerStore
     private var queue: [SourceChapterRef] = []
     private var runner: Task<Void, Never>?
-    private var current: (chapter: SourceChapterRef, task: Task<Void, any Error>)?
+    private var current: (chapter: SourceChapterRef, task: Task<Int, any Error>)?
 
     init(servers: ServerStore) {
         self.servers = servers
-        downloaded = ChapterFiles.downloadedKeys()
+        downloaded = ChapterFiles.downloaded()
     }
 
     func state(of chapter: SourceChapterRef) -> State {
         let key = chapter.ref.storageKey
-        if downloaded.contains(key) { return .downloaded }
+        if downloaded[chapter] != nil { return .downloaded }
         if let progress = inProgress[key] {
             return current?.chapter.ref == chapter.ref ? .downloading(progress) : .waiting
         }
@@ -43,7 +51,21 @@ final class ChapterDownloads {
     }
 
     func isDownloaded(_ chapter: SourceChapterRef) -> Bool {
-        downloaded.contains(chapter.ref.storageKey)
+        downloaded[chapter] != nil
+    }
+
+    /// Whether anything at all is downloaded.
+    var isEmpty: Bool { downloaded.isEmpty }
+
+    /// The series with downloaded chapters from `source` on `server`,
+    /// most chapters first, for finding them without the server.
+    func series(on server: UUID, source: String) -> [DownloadedSeries] {
+        var bySeries: [String: DownloadedSeries] = [:]
+        for (chapter, note) in downloaded where chapter.server == server && chapter.source == source {
+            let count = (bySeries[note.seriesID]?.chapterCount ?? 0) + 1
+            bySeries[note.seriesID] = DownloadedSeries(id: note.seriesID, title: note.seriesTitle, coverPath: note.seriesCoverPath, chapterCount: count)
+        }
+        return bySeries.values.sorted { ($0.chapterCount, $1.title) > ($1.chapterCount, $0.title) }
     }
 
     /// Queues `chapters`, in the order given, skipping any already here
@@ -51,7 +73,7 @@ final class ChapterDownloads {
     func download(_ chapters: [SourceChapterRef]) {
         for chapter in chapters {
             let key = chapter.ref.storageKey
-            guard !downloaded.contains(key), inProgress[key] == nil else { continue }
+            guard downloaded[chapter] == nil, inProgress[key] == nil else { continue }
             inProgress[key] = 0
             queue.append(chapter)
         }
@@ -74,7 +96,7 @@ final class ChapterDownloads {
     /// Deletes a downloaded chapter's pages.
     func remove(_ chapter: SourceChapterRef) {
         ChapterFiles.remove(chapter)
-        downloaded.remove(chapter.ref.storageKey)
+        downloaded[chapter] = nil
     }
 
     func remove(_ chapters: [SourceChapterRef]) {
@@ -103,7 +125,7 @@ final class ChapterDownloads {
             current?.task.cancel()
         }
         ChapterFiles.removeAll(for: server)
-        downloaded = downloaded.filter { !$0.hasPrefix("source/\(server.uuidString)/") }
+        downloaded = downloaded.filter { $0.key.server != server }
     }
 
     private func run() async {
@@ -114,8 +136,8 @@ final class ChapterDownloads {
             let task = Task { try await self.fetch(chapter) }
             current = (chapter, task)
             do {
-                try await task.value
-                downloaded.insert(key)
+                let pageCount = try await task.value
+                downloaded[chapter] = ChapterFiles.Note(chapter, pageCount: pageCount)
             } catch is CancellationError {
                 ChapterFiles.remove(chapter)
             } catch {
@@ -131,8 +153,9 @@ final class ChapterDownloads {
     }
 
     /// Fetches every page of `chapter` through its server, a few at a
-    /// time, and marks the chapter complete once all are on disk.
-    private func fetch(_ chapter: SourceChapterRef) async throws {
+    /// time, and marks the chapter complete once all are on disk, giving
+    /// back how many pages it has.
+    private func fetch(_ chapter: SourceChapterRef) async throws -> Int {
         let access = ServerAccess(account: chapter.server, store: servers)
         let chapterID = chapter.chapterID
         let source = chapter.source
@@ -172,6 +195,7 @@ final class ChapterDownloads {
             }
         }
         try ChapterFiles.markComplete(chapter, pageCount: pages.count)
+        return pages.count
     }
 
     @concurrent
