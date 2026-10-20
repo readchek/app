@@ -327,12 +327,14 @@ private struct SourceSeriesHeader: View {
     @State private var isShowingFullSummary = false
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
+        let isRegular = sizeClass == .regular
         VStack(alignment: .leading, spacing: 16) {
             HStack(alignment: .bottom, spacing: 16) {
                 CoverView(source: cover, title: series.title)
-                    .frame(width: 96)
+                    .frame(width: isRegular ? 128 : 96)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(series.title)
                         .font(.title2.weight(.bold))
@@ -352,13 +354,24 @@ private struct SourceSeriesHeader: View {
                 Spacer(minLength: 0)
             }
             if let summary = Self.summary(series.summary) {
-                Text(summary)
-                    .font(.subheadline)
-                    .lineLimit(isShowingFullSummary ? nil : 3)
-                    .onTapGesture {
-                        withAnimation(.snappy) { isShowingFullSummary.toggle() }
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(summary)
+                        .font(.subheadline)
+                        .lineLimit(isShowingFullSummary ? nil : 3)
+                    // Whether three lines cut it off isn't known without
+                    // measuring, so the control shows for any summary long
+                    // enough that they might.
+                    if Self.mayBeCutOff(summary) {
+                        Text(isShowingFullSummary ? "Less" : "More")
+                            .font(.subheadline.weight(.medium))
+                            .foregroundStyle(.tint)
                     }
-                    .accessibilityAddTraits(.isButton)
+                }
+                .contentShape(.rect)
+                .onTapGesture {
+                    withAnimation(.snappy) { isShowingFullSummary.toggle() }
+                }
+                .accessibilityAddTraits(.isButton)
             }
             HStack(spacing: 10) {
                 if let (chapter, status) = next {
@@ -386,8 +399,17 @@ private struct SourceSeriesHeader: View {
             }
             .controlSize(.large)
             .fixedSize(horizontal: false, vertical: true)
+            // On a wide screen a button the width of the page is a bar,
+            // not a button.
+            .frame(maxWidth: isRegular ? 440 : .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
+    }
+
+    /// Whether `summary` might run past three lines at the summary's size.
+    static func mayBeCutOff(_ summary: AttributedString) -> Bool {
+        let text = String(summary.characters)
+        return text.count > 160 || text.contains("\n")
     }
 
     /// The summary with its Markdown drawn as styling, as sources such as
