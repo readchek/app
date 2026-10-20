@@ -10,6 +10,7 @@ struct RootView: View {
     /// tab, so there's a sign of them from anywhere in the app.
     @Query private var follows: [FollowedSeries]
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
         @Bindable var router = router
@@ -29,15 +30,18 @@ struct RootView: View {
                 SearchView()
             }
             // Each server is a section of the iPad sidebar, so its shelves
-            // are one tap away there. On iPhone these stay in Browse.
-            TabSection("Servers") {
-                ForEach(accounts) { account in
-                    Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "server.rack", value: AppTab.server(account.id)) {
-                        ServerTab(account: account)
+            // are one tap away there. A compact tab bar has no room, and
+            // hiding a section from it still pushes Search into More, so
+            // the section only exists where the sidebar does.
+            if sizeClass == .regular {
+                TabSection("Servers") {
+                    ForEach(accounts) { account in
+                        Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "server.rack", value: AppTab.server(account.id)) {
+                            ServerTab(account: account)
+                        }
                     }
                 }
             }
-            .defaultVisibility(.hidden, for: .tabBar)
         }
         .tabViewStyle(.sidebarAdaptable)
         .tabBarMinimizeBehavior(.onScrollDown)
