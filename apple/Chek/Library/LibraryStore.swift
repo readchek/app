@@ -97,24 +97,44 @@ final class LibraryStore {
     }
 
     func remove(_ book: Book) {
-        let id = book.id
-        context.delete(book)
+        remove([book])
+    }
+
+    func remove(_ books: [Book]) {
+        let ids = books.map(\.id)
+        for book in books {
+            context.delete(book)
+        }
         save()
-        LibraryFiles.remove(id)
+        for id in ids {
+            LibraryFiles.remove(id)
+        }
     }
 
     func markFinished(_ book: Book) {
-        book.finishedAt = .now
-        book.progress = 1
+        markFinished([book])
+    }
+
+    func markFinished(_ books: [Book]) {
+        for book in books {
+            book.finishedAt = .now
+            book.progress = 1
+        }
         save()
     }
 
     /// Clears the book's place, so it reads as new.
     func markUnread(_ book: Book) {
-        book.finishedAt = nil
-        book.progress = nil
-        book.location = nil
-        book.lastOpenedAt = nil
+        markUnread([book])
+    }
+
+    func markUnread(_ books: [Book]) {
+        for book in books {
+            book.finishedAt = nil
+            book.progress = nil
+            book.location = nil
+            book.lastOpenedAt = nil
+        }
         save()
     }
 
