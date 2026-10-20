@@ -12,6 +12,8 @@ final class PagedList<Item: Identifiable & Equatable & Sendable> {
 
     private(set) var items: [Item] = []
     private(set) var phase: PagedListPhase = .idle
+    /// Why the last reload failed while the items from before still show.
+    private(set) var staleError: DisplayError?
 
     @ObservationIgnored private let fetch: Fetch
     @ObservationIgnored private var cursor: String?
@@ -40,12 +42,19 @@ final class PagedList<Item: Identifiable & Equatable & Sendable> {
             items = page.items
             cursor = page.next
             phase = page.next == nil ? .complete : .loaded
+            staleError = nil
         } catch is CancellationError {
             guard current == generation else { return }
             phase = items.isEmpty ? .idle : .loaded
         } catch {
             guard current == generation else { return }
-            phase = .failed(DisplayError(error))
+            if items.isEmpty {
+                phase = .failed(DisplayError(error))
+            } else {
+                // The list stays, with a note that it may be out of date.
+                phase = cursor == nil ? .complete : .loaded
+                staleError = DisplayError(error)
+            }
         }
     }
 

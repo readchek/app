@@ -70,7 +70,11 @@ struct AddServerView: View {
                     }
                 }
             }
-            .disabled(phase == .connecting)
+            // Typing again after a failure means you're fixing it, so the
+            // old message goes rather than nagging under the new text.
+            .onChange(of: [address, name, password]) {
+                if case .failed = phase { phase = .editing }
+            }
             .navigationTitle("Connect a Server")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -103,7 +107,10 @@ struct AddServerView: View {
                 router.tab = .browse
                 router.browsePath = [.server(account.id)]
             } catch {
-                phase = .failed(DisplayError(error))
+                let failure = DisplayError(error)
+                phase = .failed(failure)
+                // Back to the field at fault, so fixing it is one tap fewer.
+                focus = failure.title == String(localized: "The name or password is wrong.") ? .password : .address
             }
         }
     }
@@ -113,7 +120,8 @@ extension AddServerView {
     /// The host name a server is called by when no name is given, shown as
     /// the name field's placeholder.
     static func suggestedName(for address: String) -> String? {
-        ServerStore.baseURL(from: address)?.host()
+        guard let host = ServerStore.baseURL(from: address)?.host(), host.contains(".") || host == "localhost" else { return nil }
+        return host
     }
 }
 
@@ -144,7 +152,9 @@ struct SignInView: View {
                         }
                     }
                 }
-                .disabled(phase == .connecting)
+                .onChange(of: password) {
+                    if case .failed = phase { phase = .editing }
+                }
                 .navigationTitle("Sign In")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -178,6 +188,7 @@ struct SignInView: View {
                 dismiss()
             } catch {
                 phase = .failed(DisplayError(error))
+                isFocused = true
             }
         }
     }

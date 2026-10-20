@@ -64,6 +64,11 @@ private struct SeriesContent: View {
     var body: some View {
         let statuses = ReadingStatuses(states)
         List {
+            if let error = publications.staleError {
+                StaleNotice(error: error)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+            }
             if let first = publications.items.first {
                 Section {
                     SeriesHeader(

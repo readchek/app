@@ -33,7 +33,7 @@ struct SourceSeriesView: View {
                     .buttonStyle(.bordered)
                 }
             case .loaded(let content):
-                SourceSeriesContent(account: account, source: source, content: content) {
+                SourceSeriesContent(account: account, source: source, content: content, staleError: model?.staleError) {
                     await model?.load()
                 }
             }
@@ -72,6 +72,8 @@ final class SourceSeriesModel {
     }
 
     private(set) var state: LoadState<Content> = .idle
+    /// Why the last refresh failed while the series from before still shows.
+    private(set) var staleError: DisplayError?
     private let account: UUID
     private let source: String
     private let seriesID: String
@@ -126,11 +128,14 @@ final class SourceSeriesModel {
                 }
             }
             state = .loaded(content)
+            staleError = nil
             onLoad?(content.series)
         } catch {
-            // A refresh that fails keeps what's already showing.
+            // A refresh that fails keeps what's already showing, and says so.
             if state.value == nil {
                 state = .failed(DisplayError(error))
+            } else {
+                staleError = DisplayError(error)
             }
         }
     }
@@ -141,6 +146,7 @@ private struct SourceSeriesContent: View {
     let account: UUID
     let source: String
     let content: SourceSeriesModel.Content
+    let staleError: DisplayError?
     let refresh: () async -> Void
     @Query private var states: [SourceReadingState]
     @Query private var follows: [FollowedSeries]
@@ -150,10 +156,11 @@ private struct SourceSeriesContent: View {
     /// Long-running series are easier to read from their latest chapter.
     @AppStorage("sourceSeries.newestFirst") private var newestFirst = false
 
-    init(account: UUID, source: String, content: SourceSeriesModel.Content, refresh: @escaping () async -> Void) {
+    init(account: UUID, source: String, content: SourceSeriesModel.Content, staleError: DisplayError?, refresh: @escaping () async -> Void) {
         self.account = account
         self.source = source
         self.content = content
+        self.staleError = staleError
         self.refresh = refresh
         let seriesID = content.series.id
         _states = Query(filter: #Predicate<SourceReadingState> {
@@ -166,6 +173,11 @@ private struct SourceSeriesContent: View {
     var body: some View {
         let statuses = Dictionary(states.map { ($0.chapterID, $0) }, uniquingKeysWith: { first, _ in first })
         List {
+            if let staleError {
+                StaleNotice(error: staleError)
+                    .listRowSeparator(.hidden)
+                    .listRowInsets(EdgeInsets())
+            }
             Section {
                 SourceSeriesHeader(
                     series: content.series,

@@ -81,3 +81,18 @@ struct NavigationRow<Value: Hashable>: View {
         .padding(.horizontal, Metrics.margin)
     }
 }
+
+/// A quiet line at the top of a screen whose refresh failed while it still
+/// shows what loaded earlier, so stale content never passes for fresh.
+struct StaleNotice: View {
+    let error: DisplayError
+
+    var body: some View {
+        Label(error.title, systemImage: "wifi.exclamationmark")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Metrics.margin)
+            .transition(.opacity)
+    }
+}

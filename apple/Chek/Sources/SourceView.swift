@@ -72,6 +72,10 @@ private struct SourceSeriesGrid: View {
 
     var body: some View {
         ScrollView {
+            if let error = series.staleError {
+                StaleNotice(error: error)
+                    .padding(.top, 8)
+            }
             LazyVGrid(columns: Metrics.gridColumns(regular: sizeClass == .regular), spacing: Metrics.gridRowSpacing) {
                 ForEach(series.items) { item in
                     SourceSeriesCell(account: account, source: source, series: item)

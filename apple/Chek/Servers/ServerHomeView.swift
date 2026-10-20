@@ -57,6 +57,8 @@ final class ServerHomeModel {
     }
 
     private(set) var state: LoadState<Content> = .idle
+    /// Why the last refresh failed while content from before still shows.
+    private(set) var staleError: DisplayError?
     private let account: UUID
     private let servers: ServerStore
 
@@ -97,9 +99,12 @@ final class ServerHomeModel {
                 }
             }
             state = .loaded(content)
+            staleError = nil
         } catch {
             if state.value == nil {
                 state = .failed(DisplayError(error))
+            } else {
+                staleError = DisplayError(error)
             }
         }
     }
@@ -152,6 +157,9 @@ private struct ServerHomeContent: View {
                 let statuses = ReadingStatuses(states)
                 ScrollView {
                     VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
+                        if let error = model?.staleError {
+                            StaleNotice(error: error)
+                        }
                         if !content.continueReading.isEmpty {
                             Shelf(
                                 title: "Continue Reading",
@@ -181,6 +189,7 @@ private struct ServerHomeContent: View {
                     }
                     .padding(.vertical, 8)
                 }
+                .animation(.default, value: model?.staleError)
                 .refreshable {
                     await model?.load()
                 }
