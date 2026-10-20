@@ -1,3 +1,4 @@
+import SwiftData
 import SwiftUI
 
 /// The tabs, and everything presented over them.
@@ -5,13 +6,18 @@ struct RootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
     @Namespace private var readerTransition
+    /// Followed series, for the count of new chapters on the Reading Now
+    /// tab, so there's a sign of them from anywhere in the app.
+    @Query private var follows: [FollowedSeries]
 
     var body: some View {
         @Bindable var router = router
+        let newChapters = follows.reduce(0) { $0 + $1.unseenChapterIDs.count }
         TabView(selection: $router.tab) {
             Tab("Reading Now", systemImage: "book", value: AppTab.home) {
                 HomeView()
             }
+            .badge(newChapters)
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 LibraryView()
             }

@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import SwiftData
+import UserNotifications
 
 /// Owns the series you follow from sources: following, unfollowing and
 /// checking them for new chapters. Views read follows with `@Query`.
@@ -70,6 +71,7 @@ final class FollowStore {
         follow.coverPath = series.coverUrl
         follow.lastCheckedAt = .now
         save()
+        updateBadge()
     }
 
     /// Asks each followed series' source for its chapters and notes the
@@ -118,6 +120,9 @@ final class FollowStore {
             follow.lastCheckedAt = .now
         }
         save()
+        if !found.isEmpty {
+            updateBadge()
+        }
         return found
     }
 
@@ -127,6 +132,7 @@ final class FollowStore {
         guard follow.unseenChapterIDs.contains(chapterID) else { return }
         follow.unseenChapterIDs.removeAll { $0 == chapterID }
         save()
+        updateBadge()
     }
 
     /// Clears what's new in every followed series.
@@ -135,6 +141,21 @@ final class FollowStore {
             follow.unseenChapterIDs = []
         }
         save()
+        updateBadge()
+    }
+
+    /// How many chapters are new across every followed series.
+    var unseenCount: Int {
+        ((try? context.fetch(FetchDescriptor<FollowedSeries>())) ?? []).reduce(0) { $0 + $1.unseenChapterIDs.count }
+    }
+
+    /// Puts the count of new chapters on the app's icon, as the Reading
+    /// Now tab shows it, and takes it off once they're seen.
+    func updateBadge() {
+        let count = unseenCount
+        Task {
+            try? await UNUserNotificationCenter.current().setBadgeCount(count)
+        }
     }
 
     private func readChapterIDs(_ follow: FollowedSeries) -> [String] {
