@@ -111,17 +111,25 @@ final class ReaderSession {
         if FileManager.default.fileExists(atPath: download.destination.path(percentEncoded: false)) {
             return download.destination
         }
-        let progress = DownloadProgress { [weak self] fraction in
+        let run = DownloadRun(download: download, resumeData: Self.partialDownloads.removeValue(forKey: download.destination)) { [weak self] fraction in
             Task { @MainActor in
                 guard let self, case .downloading = self.phase else { return }
                 self.phase = .downloading(fraction)
             }
         }
-        let (file, response) = try await URLSession.shared.download(for: download.request, delegate: progress)
-        let status = (response as? HTTPURLResponse)?.statusCode
-        guard status == 200 else {
-            try? FileManager.default.removeItem(at: file)
-            if status == 401 {
+        let file: URL
+        do {
+            file = try await run.file()
+        } catch let error as DownloadRun.Failure {
+            // What arrived is kept, so closing the reader by accident, or
+            // losing the connection, doesn't start over next time.
+            if let resumeData = error.resumeData {
+                Self.partialDownloads[download.destination] = resumeData
+            }
+            if error.isCancellation {
+                throw CancellationError()
+            }
+            if error.status == 401 {
                 throw DisplayError(ChekError.unauthorized)
             }
             throw DisplayError(
@@ -134,17 +142,64 @@ final class ReaderSession {
         try FileManager.default.moveItem(at: file, to: download.destination)
         return download.destination
     }
+
+    /// Downloads that stopped partway, by where they were going, so the
+    /// next open of the same publication picks up where they left off.
+    private static var partialDownloads: [URL: Data] = [:]
 }
 
-/// Reports how much of a download has arrived, in steps of a percent so
-/// the progress ring doesn't redraw for every packet.
-private nonisolated final class DownloadProgress: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+/// One download of a publication's file, reporting how much has arrived
+/// in steps of a percent so the progress ring doesn't redraw for every
+/// packet, and keeping what arrived when it's stopped.
+private nonisolated final class DownloadRun: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
+    struct Failure: Error {
+        var status: Int?
+        var isCancellation = false
+        /// What the system kept of the download, to resume it from.
+        var resumeData: Data?
+    }
+
+    private let download: Download
+    private let resumeData: Data?
     private let report: @Sendable (Double) -> Void
     // Only touched from the session's delegate queue, which is serial.
     private var reported = -1.0
+    private var finished: Result<URL, Failure>?
+    private var continuation: CheckedContinuation<URL, any Error>?
+    private var task: URLSessionDownloadTask?
+    private let lock = NSLock()
 
-    init(report: @escaping @Sendable (Double) -> Void) {
+    init(download: Download, resumeData: Data?, report: @escaping @Sendable (Double) -> Void) {
+        self.download = download
+        self.resumeData = resumeData
         self.report = report
+    }
+
+    /// The downloaded file, in a temporary place, once it's all arrived.
+    func file() async throws -> URL {
+        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+        defer { session.finishTasksAndInvalidate() }
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                lock.withLock {
+                    self.continuation = continuation
+                    let task = resumeData.map { session.downloadTask(withResumeData: $0) }
+                        ?? session.downloadTask(with: download.request)
+                    self.task = task
+                    task.resume()
+                    // Cancelled before it started: the handler below has
+                    // already run, so it's stopped here instead.
+                    if Task.isCancelled {
+                        task.cancel()
+                    }
+                }
+            }
+        } onCancel: {
+            lock.withLock { task }?.cancel { _ in
+                // The resume data also comes with the task's error, which
+                // is where it's picked up.
+            }
+        }
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
@@ -156,6 +211,37 @@ private nonisolated final class DownloadProgress: NSObject, URLSessionDownloadDe
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        // The async download call moves the file; nothing to do here.
+        // The file is deleted once this returns, so it moves aside first.
+        let status = (downloadTask.response as? HTTPURLResponse)?.statusCode
+        guard status == 200 else {
+            finished = .failure(Failure(status: status))
+            return
+        }
+        let kept = FileManager.default.temporaryDirectory.appending(path: UUID().uuidString)
+        do {
+            try FileManager.default.moveItem(at: location, to: kept)
+            finished = .success(kept)
+        } catch {
+            finished = .failure(Failure())
+        }
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: (any Error)?) {
+        let result: Result<URL, Failure>
+        if let finished {
+            result = finished
+        } else if let error = error as? URLError {
+            result = .failure(Failure(
+                isCancellation: error.code == .cancelled,
+                resumeData: error.userInfo[NSURLSessionDownloadTaskResumeData] as? Data
+            ))
+        } else {
+            result = .failure(Failure())
+        }
+        lock.withLock {
+            let continuation = self.continuation
+            self.continuation = nil
+            return continuation
+        }?.resume(with: result)
     }
 }

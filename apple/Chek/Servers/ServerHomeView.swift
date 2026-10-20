@@ -173,17 +173,25 @@ private struct ServerHomeContent: View {
                         if let sources = content.sources {
                             SourcesSection(account: account.id, sources: sources)
                         }
-                        if !content.libraries.isEmpty {
-                            VStack(alignment: .leading, spacing: 4) {
-                                SectionHeader(title: "Libraries")
-                                ForEach(content.libraries) { library in
-                                    NavigationRow(
-                                        title: library.name,
-                                        systemImage: "books.vertical",
-                                        value: Route.serverLibrary(account.id, library),
-                                        showsDivider: library.id != content.libraries.last?.id
-                                    )
-                                }
+                        VStack(alignment: .leading, spacing: 4) {
+                            SectionHeader(title: "Libraries")
+                            if content.libraries.isEmpty {
+                                // A reader starts with no libraries until
+                                // the admin shares some, which the server
+                                // can't say more about.
+                                Text("None shared with you yet. Ask the admin of \(account.name) for access to a library.")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                                    .padding(.horizontal, Metrics.margin)
+                                    .padding(.top, 4)
+                            }
+                            ForEach(content.libraries) { library in
+                                NavigationRow(
+                                    title: library.name,
+                                    systemImage: "books.vertical",
+                                    value: Route.serverLibrary(account.id, library),
+                                    showsDivider: library.id != content.libraries.last?.id
+                                )
                             }
                         }
                     }
