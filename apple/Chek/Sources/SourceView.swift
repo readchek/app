@@ -69,7 +69,7 @@ private struct SourceSeriesGrid: View {
     let series: PagedList<ChekAPI.SourceSeriesItem>
     let isSearching: Bool
     @Environment(\.horizontalSizeClass) private var sizeClass
-    @Environment(ChapterDownloads.self) private var downloads
+    @Environment(Downloads.self) private var downloads
 
     var body: some View {
         let kept = isSearching ? [] : downloads.series(on: account, source: source)
@@ -124,7 +124,7 @@ private struct SourceSeriesGrid: View {
 private struct DownloadedShelf: View {
     let account: UUID
     let source: String
-    let series: [ChapterDownloads.DownloadedSeries]
+    let series: [Downloads.DownloadedSeries]
     @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {

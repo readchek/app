@@ -161,7 +161,7 @@ private struct SourceSeriesContent: View {
     @Environment(ServerStore.self) private var servers
     @Environment(FollowStore.self) private var followStore
     @Environment(ProgressStore.self) private var progress
-    @Environment(ChapterDownloads.self) private var downloads
+    @Environment(Downloads.self) private var downloads
     /// Long-running series are easier to read from their latest chapter.
     @AppStorage("sourceSeries.newestFirst") private var newestFirst = false
 
@@ -236,10 +236,10 @@ private struct SourceSeriesContent: View {
                     ForEach(ordered) { chapter in
                         let ref = chapterRef(chapter)
                         let status = statuses[chapter.id]?.readingStatus ?? .new
-                        let download = downloads.state(of: ref)
+                        let download = downloads.state(of: ref.ref)
                         SourceChapterRow(chapter: ref, status: status, isNew: follows.first?.unseenChapterIDs.contains(chapter.id) == true, download: download)
                             .contextMenu {
-                                DownloadAction(chapter: ref, state: download)
+                                DownloadAction(item: .chapter(ref), state: download)
                                 Divider()
                                 if status == .finished {
                                     Button("Mark as Unread", systemImage: "circle") {
@@ -257,7 +257,7 @@ private struct SourceSeriesContent: View {
                                 }
                             }
                             .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                DownloadAction(chapter: ref, state: download)
+                                DownloadAction(item: .chapter(ref), state: download)
                                     .tint(download == .downloaded ? .secondary : .accentColor)
                             }
                     }
@@ -489,7 +489,7 @@ private struct SourceChapterRow: View {
     let chapter: SourceChapterRef
     let status: ReadingStatus
     var isNew = false
-    var download = ChapterDownloads.State.none
+    var download = Downloads.State.none
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
 
@@ -523,79 +523,20 @@ private struct SourceChapterRow: View {
     }
 }
 
-/// A quiet mark of a chapter on the device, or on its way there.
-private struct DownloadIndicator: View {
-    let state: ChapterDownloads.State
-
-    var body: some View {
-        switch state {
-        case .none:
-            EmptyView()
-        case .waiting:
-            Image(systemName: "arrow.down.circle.dotted")
-                .foregroundStyle(.secondary)
-                .accessibilityLabel(Text("Waiting to download"))
-        case .downloading(let fraction):
-            // iOS draws a determinate circular progress as a spinner, so
-            // the ring is drawn here.
-            ZStack {
-                Circle()
-                    .stroke(.quaternary, lineWidth: 2)
-                Circle()
-                    .trim(from: 0, to: max(fraction, 0.02))
-                    .stroke(.tint, style: StrokeStyle(lineWidth: 2, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-            }
-            .frame(width: 16, height: 16)
-            .animation(.linear(duration: 0.2), value: fraction)
-            .accessibilityLabel(Text("Downloading"))
-            .accessibilityValue(Text(fraction, format: .percent.precision(.fractionLength(0))))
-        case .downloaded:
-            Image(systemName: "arrow.down.circle.fill")
-                .foregroundStyle(.secondary)
-                .accessibilityLabel(Text("Downloaded"))
-        }
-    }
-}
-
-/// The one download action that fits the chapter's state.
-private struct DownloadAction: View {
-    let chapter: SourceChapterRef
-    let state: ChapterDownloads.State
-    @Environment(ChapterDownloads.self) private var downloads
-
-    var body: some View {
-        switch state {
-        case .none:
-            Button("Download", systemImage: "arrow.down.circle") {
-                downloads.download([chapter])
-            }
-        case .waiting, .downloading:
-            Button("Cancel Download", systemImage: "xmark.circle") {
-                downloads.cancel(chapter)
-            }
-        case .downloaded:
-            Button("Remove Download", systemImage: "trash") {
-                downloads.remove(chapter)
-            }
-        }
-    }
-}
-
 /// Downloads for the whole series at once, from the chapters header.
 private struct SeriesDownloadsMenu: View {
     let chapters: [SourceChapterRef]
     let unread: [SourceChapterRef]
-    @Environment(ChapterDownloads.self) private var downloads
+    @Environment(Downloads.self) private var downloads
     @State private var isConfirmingAll = false
 
     var body: some View {
-        let kept = chapters.filter(downloads.isDownloaded)
-        let pending = unread.filter { downloads.state(of: $0) == .none }
+        let kept = chapters.filter { downloads.isDownloaded($0.ref) }
+        let pending = unread.filter { downloads.state(of: $0.ref) == .none }
         Menu("Downloads", systemImage: "arrow.down.circle") {
             Section("Download") {
                 Button("Next \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
-                    downloads.download(Array(pending.prefix(5)))
+                    downloads.download(pending.prefix(5).map(Downloads.Item.chapter))
                 }
                 .disabled(pending.isEmpty)
                 Button("All Unread", systemImage: "arrow.down.circle.fill") {
@@ -604,15 +545,16 @@ private struct SeriesDownloadsMenu: View {
                     if pending.count > 10 {
                         isConfirmingAll = true
                     } else {
-                        downloads.download(pending)
+                        downloads.download(pending.map(Downloads.Item.chapter))
                     }
                 }
-                .disabled(pending.count < 2)
+                // Pointless when the next few are all there are.
+                .disabled(pending.count <= 5)
             }
             if !kept.isEmpty {
                 Divider()
                 Button("Remove ^[\(kept.count) Download](inflect: true)", systemImage: "trash", role: .destructive) {
-                    downloads.remove(kept)
+                    downloads.remove(kept.map(Downloads.Item.chapter))
                 }
             }
         }
@@ -620,7 +562,7 @@ private struct SeriesDownloadsMenu: View {
         .labelStyle(.iconOnly)
         .confirmationDialog("Download ^[\(pending.count) Chapter](inflect: true)?", isPresented: $isConfirmingAll, titleVisibility: .visible) {
             Button("Download All") {
-                downloads.download(pending)
+                downloads.download(pending.map(Downloads.Item.chapter))
             }
         } message: {
             Text("They download one after another while Chek is open, and stay on this device until you remove them.")

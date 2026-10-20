@@ -53,6 +53,7 @@ private struct SeriesContent: View {
     let publications: PagedList<RemotePublication>
     @Query private var states: [RemoteReadingState]
     @Environment(ServerStore.self) private var servers
+    @Environment(Downloads.self) private var downloads
 
     init(account: UUID, seriesID: Int64, title: String, publications: PagedList<RemotePublication>) {
         self.account = account
@@ -76,7 +77,9 @@ private struct SeriesContent: View {
                         count: publications.items.count,
                         isComplete: publications.phase == .complete,
                         cover: servers.cover(of: first.id, on: first.server),
-                        next: nextToRead(statuses: statuses)
+                        next: nextToRead(statuses: statuses),
+                        comics: publications.items.filter { $0.kind == .comic && $0.isAvailable },
+                        unreadComics: publications.items.filter { $0.kind == .comic && $0.isAvailable && statuses[$0.id] != .finished }
                     )
                     .listRowSeparator(.hidden)
                     .listSectionSeparator(.hidden)
@@ -109,6 +112,16 @@ private struct SeriesContent: View {
         .refreshable {
             await publications.reload()
         }
+        .alert(
+            downloads.failure?.title ?? "",
+            isPresented: Binding { downloads.failure != nil } set: { if !$0 { downloads.failure = nil } }
+        ) {
+            Button("OK") {}
+        } message: {
+            if let message = downloads.failure?.message {
+                Text(message)
+            }
+        }
     }
 
     /// The one you're partway through, or else the first you haven't finished.
@@ -132,8 +145,14 @@ private struct SeriesHeader: View {
     let isComplete: Bool
     let cover: CoverSource
     let next: (RemotePublication, ReadingStatus)?
+    /// The comics in the series, which can be kept on the device.
+    let comics: [RemotePublication]
+    let unreadComics: [RemotePublication]
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
+    @Environment(Downloads.self) private var downloads
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var isConfirmingAll = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -150,18 +169,65 @@ private struct SeriesHeader: View {
                 }
                 Spacer(minLength: 0)
             }
-            if let (publication, status) = next {
-                Button {
-                    router.open(publication, using: sync)
-                } label: {
-                    Text(status == .new ? "Start Reading" : "Continue \(publication.displayTitle)")
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
+            HStack(spacing: 10) {
+                if let (publication, status) = next {
+                    Button {
+                        router.open(publication, using: sync)
+                    } label: {
+                        Text(status == .new ? "Start Reading" : "Continue \(publication.displayTitle)")
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                if !comics.isEmpty {
+                    downloadsMenu
+                }
             }
+            .controlSize(.large)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: sizeClass == .regular ? 440 : .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
+    }
+
+    /// Keeping the series' comics on the device, a few or all at once.
+    private var downloadsMenu: some View {
+        let kept = comics.filter { downloads.isDownloaded($0.ref) }
+        let pending = unreadComics.filter { downloads.state(of: $0.ref) == .none }
+        return Menu {
+            Section("Download") {
+                Button("Next \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
+                    downloads.download(pending.prefix(5).map(Downloads.Item.comic))
+                }
+                .disabled(pending.isEmpty)
+                Button("All Unread", systemImage: "arrow.down.circle.fill") {
+                    if pending.count > 10 {
+                        isConfirmingAll = true
+                    } else {
+                        downloads.download(pending.map(Downloads.Item.comic))
+                    }
+                }
+                // Pointless when the next few are all there are.
+                .disabled(pending.count <= 5)
+            }
+            if !kept.isEmpty {
+                Divider()
+                Button("Remove ^[\(kept.count) Download](inflect: true)", systemImage: "trash", role: .destructive) {
+                    downloads.remove(kept.map(Downloads.Item.comic))
+                }
+            }
+        } label: {
+            Label("Downloads", systemImage: "arrow.down.circle")
+                .labelStyle(.iconOnly)
+        }
+        .buttonStyle(.bordered)
+        .confirmationDialog("Download ^[\(pending.count) Comic](inflect: true)?", isPresented: $isConfirmingAll, titleVisibility: .visible) {
+            Button("Download All") {
+                downloads.download(pending.map(Downloads.Item.comic))
+            }
+        } message: {
+            Text("They download one after another while Chek is open, and stay on this device until you remove them.")
+        }
     }
 }

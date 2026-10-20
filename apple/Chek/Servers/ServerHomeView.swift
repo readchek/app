@@ -167,6 +167,7 @@ private struct ServerHomeContent: View {
     let model: ServerHomeModel?
     @Environment(ServerStore.self) private var servers
     @Environment(AppRouter.self) private var router
+    @Environment(Downloads.self) private var downloads
     @Query private var states: [RemoteReadingState]
 
     init(account: ServerAccount, model: ServerHomeModel?) {
@@ -221,6 +222,12 @@ private struct ServerHomeContent: View {
                         }
                         if !content.recentlyAdded.isEmpty {
                             Shelf(title: "Recently Added", items: content.recentlyAdded.map { servers.item($0, status: statuses[$0.id]) })
+                        }
+                        let kept = downloads.comics(on: account.id)
+                        if !kept.isEmpty {
+                            // Comics kept on the device, there to open
+                            // whether or not the server answers.
+                            Shelf(title: "Downloaded", items: kept.map { servers.item($0, status: statuses[$0.id, or: content.serverStatuses[$0.id]]) })
                         }
                         if let sources = content.sources {
                             SourcesSection(account: account.id, sources: sources)

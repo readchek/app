@@ -47,23 +47,29 @@ final class ServerSync {
     /// What the reader needs to open `publication`, starting at your
     /// latest place on any device.
     func readingItem(for publication: RemotePublication) async throws(DisplayError) -> ReadingItem {
-        guard let client = servers.client(for: publication.server) else {
+        let isDownloaded = publication.kind == .comic && PublicationFiles.folder(for: publication).isComplete
+        let client = servers.client(for: publication.server)
+        guard client != nil || isDownloaded else {
             throw DisplayError(ChekError.unauthorized)
         }
         let state = readingState(for: publication)
-        await refresh(state, from: publication)
+        if client != nil {
+            await refresh(state, from: publication)
+        }
 
         let content: ReadingItem.Content
         switch publication.kind {
         case .comic:
             content = .source(.pages(ChekPageSource(server: ServerAccess(account: publication.server, store: servers), publication: publication.id, knownPageCount: publication.pageCount)))
         case .book where publication.format == "epub":
+            guard let client else { throw DisplayError(ChekError.unauthorized) }
             // EPUBs stream entry by entry with range requests.
             content = .source(.remote(
                 client.fileURL(of: publication.id),
                 RemoteOptions(identifier: publication.ref.storageKey) { request in client.authorize(request) }
             ))
         case .book:
+            guard let client else { throw DisplayError(ChekError.unauthorized) }
             content = .download(Download(
                 request: client.fileRequest(of: publication.id),
                 destination: ServerFiles.file(for: publication.id, format: publication.format, account: publication.server)

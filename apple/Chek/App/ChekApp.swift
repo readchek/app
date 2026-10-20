@@ -50,7 +50,7 @@ final class AppDependencies {
     let servers: ServerStore
     let sync: ServerSync
     let follows: FollowStore
-    let downloads: ChapterDownloads
+    let downloads: Downloads
 
     init(container: ModelContainer, defaults: UserDefaults = .standard) {
         self.container = container
@@ -61,7 +61,7 @@ final class AppDependencies {
         servers = ServerStore(context: container.mainContext)
         sync = ServerSync(servers: servers, progress: progress, context: container.mainContext)
         follows = FollowStore(context: container.mainContext, servers: servers)
-        downloads = ChapterDownloads(servers: servers)
+        downloads = Downloads(servers: servers)
         servers.onRemove = { [downloads] account in
             downloads.removeAll(for: account)
             SeriesCache.removeAll(for: account)

@@ -42,6 +42,9 @@ struct PublicationCell: View {
                     .overlay {
                         OpeningIndicator(ref: item.id)
                     }
+                    .overlay(alignment: .bottomTrailing) {
+                        ItemDownloadIndicator(item: item, onCover: true)
+                    }
                     .readerTransitionSource(item.id)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(item.title)
@@ -69,6 +72,7 @@ struct PublicationCell: View {
             }
             .contentShape(.rect)
         }
+        .comicDownloadMenu(for: item)
         .accessibilityElement(children: .combine)
     }
 }
@@ -99,9 +103,11 @@ struct PublicationRow: View {
                 }
                 Spacer(minLength: 8)
                 StatusText(status: item.status, fallback: nil)
+                ItemDownloadIndicator(item: item)
             }
             .contentShape(.rect)
         }
+        .comicDownloadMenu(for: item)
         .accessibilityElement(children: .combine)
     }
 }

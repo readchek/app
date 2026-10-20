@@ -313,7 +313,13 @@ nonisolated struct ChekPageSource: PageSource {
     let publication: Int64
     let knownPageCount: Int?
 
+    private var folder: PageFolder { PublicationFiles.folder(for: publication, on: server.account) }
+
     func pageCount() async throws -> Int {
+        // A downloaded comic reads from the device, offline or not.
+        if let count = folder.downloadedPageCount {
+            return count
+        }
         if let knownPageCount, knownPageCount > 0 {
             return knownPageCount
         }
@@ -322,6 +328,9 @@ nonisolated struct ChekPageSource: PageSource {
     }
 
     func page(at index: Int) async throws -> Data {
+        if folder.isComplete {
+            return try Data(contentsOf: folder.page(index))
+        }
         let client = try await server.client()
         return try await server.data(for: client.pageRequest(index, of: publication))
     }

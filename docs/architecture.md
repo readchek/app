@@ -84,7 +84,8 @@ once and still work when a server can't be reached:
 | --- | --- | --- |
 | Caches/Covers | Cover images, by `PublicationRef` key (`ImagePipeline`). | Settings, or iOS when space is short. |
 | Caches/Servers | Books downloaded from servers to open, and each server's last Reading Now and server screen (`HomeSnapshot`, `ServerHomeSnapshot`). | Settings, removing the server, or iOS. |
-| Application Support/Chapters | Source chapters downloaded to read offline, a folder of pages per chapter with a note of its series (`ChapterFiles`). | You, from the series or Settings; removing the server. |
+| Application Support/Chapters | Source chapters downloaded to read offline, a folder of pages per chapter with a note of its series (`ChapterFiles`, `PageFolder`). | You, from the series or Settings; removing the server. |
+| Application Support/Publications | Server comics downloaded to read offline, a folder of pages per publication with the publication as its note (`PublicationFiles`). | You, from the series or Settings; removing the server. |
 | Application Support/SourceSeries | Each source series' last listing (`SeriesCache`), so the series screen, the chapter list and Next Chapter work offline. | Removing the server. |
 
 The store is named `Chek` so it never opens the default store Chibi Manga
@@ -100,7 +101,7 @@ left on devices that update.
 | `ProgressStore` | Saving positions for every source, and syncing them to servers. |
 | `ReaderSettings` | Theme, text size and margins, kept in `UserDefaults`, and the reading direction chosen per series. |
 | `FollowStore` | Following series from sources and checking them for new chapters, in the app and from the background refresh task (`FollowRefresh`), which notifies. |
-| `ChapterDownloads` | Which source chapters are on the device, and the queue that fetches them one chapter at a time. |
+| `Downloads` | Which source chapters and server comics are on the device, and the queue that fetches them one at a time. |
 
 All of them are `@MainActor`, created once in `ChekApp` and put in the
 environment. Previews build them with in-memory storage.

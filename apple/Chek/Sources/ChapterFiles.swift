@@ -1,26 +1,9 @@
 import Foundation
 
 /// Where downloaded source chapters live: one folder per chapter under
-/// Application Support, since you chose to keep them, with a page per
-/// file and a marker once every page is there.
+/// Application Support, since you chose to keep them.
 nonisolated enum ChapterFiles {
     static let root = URL.applicationSupportDirectory.appending(path: "Chapters", directoryHint: .isDirectory)
-
-    static func folder(for server: UUID) -> URL {
-        root.appending(path: server.uuidString, directoryHint: .isDirectory)
-    }
-
-    static func folder(for chapter: SourceChapterRef) -> URL {
-        // Source and chapter ids are the source's own, so they're kept to
-        // safe file names.
-        folder(for: chapter.server)
-            .appending(path: hex(chapter.source), directoryHint: .isDirectory)
-            .appending(path: hex(chapter.chapterID), directoryHint: .isDirectory)
-    }
-
-    static func page(_ index: Int, of chapter: SourceChapterRef) -> URL {
-        folder(for: chapter).appending(path: String(format: "%04d.img", index))
-    }
 
     /// What's known about a downloaded chapter beyond its pages: enough
     /// to list it and its series without the server.
@@ -42,30 +25,29 @@ nonisolated enum ChapterFiles {
         }
     }
 
-    /// The marker written last, holding the page count, so a chapter is
-    /// downloaded only once every page is.
-    private static func marker(for chapter: SourceChapterRef) -> URL {
-        folder(for: chapter).appending(path: "complete")
+    static func folder(for server: UUID) -> URL {
+        root.appending(path: server.uuidString, directoryHint: .isDirectory)
     }
 
-    private static func noteURL(in folder: URL) -> URL {
-        folder.appending(path: "chapter.json")
+    static func folder(for chapter: SourceChapterRef) -> PageFolder {
+        // Source and chapter ids are the source's own, so they're kept to
+        // safe file names.
+        PageFolder(url: folder(for: chapter.server)
+            .appending(path: PageFolder.hex(chapter.source), directoryHint: .isDirectory)
+            .appending(path: PageFolder.hex(chapter.chapterID), directoryHint: .isDirectory))
     }
 
     /// How many pages the chapter has, when it's fully downloaded.
     static func downloadedPageCount(of chapter: SourceChapterRef) -> Int? {
-        guard let text = try? String(contentsOf: marker(for: chapter), encoding: .utf8) else { return nil }
-        return Int(text.trimmingCharacters(in: .whitespacesAndNewlines))
+        folder(for: chapter).downloadedPageCount
+    }
+
+    static func page(_ index: Int, of chapter: SourceChapterRef) -> URL {
+        folder(for: chapter).page(index)
     }
 
     static func markComplete(_ chapter: SourceChapterRef, pageCount: Int) throws {
-        let note = try JSONEncoder().encode(Note(chapter, pageCount: pageCount))
-        try note.write(to: noteURL(in: folder(for: chapter)), options: .atomic)
-        try String(pageCount).write(to: marker(for: chapter), atomically: true, encoding: .utf8)
-    }
-
-    static func remove(_ chapter: SourceChapterRef) {
-        try? FileManager.default.removeItem(at: folder(for: chapter))
+        try folder(for: chapter).markComplete(Note(chapter, pageCount: pageCount), pageCount: pageCount)
     }
 
     static func removeAll(for server: UUID) {
@@ -76,28 +58,21 @@ nonisolated enum ChapterFiles {
         try? FileManager.default.removeItem(at: root)
     }
 
-    /// Every chapter that's fully downloaded, as a chapter reference with
-    /// its note, found by walking the folders once at launch. A chapter
-    /// folder with no marker was cut off partway, by the app being killed,
-    /// and goes.
-    static func downloaded() -> [SourceChapterRef: Note] {
-        var found: [SourceChapterRef: Note] = [:]
+    /// Every chapter that's fully downloaded, found by walking the folders
+    /// once at launch. One cut off partway is dropped on the way.
+    static func downloaded() -> [SourceChapterRef] {
+        var found: [SourceChapterRef] = []
         let manager = FileManager.default
-        let decoder = JSONDecoder()
         for serverFolder in (try? manager.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
             guard let server = UUID(uuidString: serverFolder.lastPathComponent) else { continue }
             for sourceFolder in (try? manager.contentsOfDirectory(at: serverFolder, includingPropertiesForKeys: nil)) ?? [] {
                 guard let source = unhex(sourceFolder.lastPathComponent) else { continue }
-                for chapterFolder in (try? manager.contentsOfDirectory(at: sourceFolder, includingPropertiesForKeys: nil)) ?? [] {
-                    guard manager.fileExists(atPath: chapterFolder.appending(path: "complete").path(percentEncoded: false)),
-                          let data = try? Data(contentsOf: noteURL(in: chapterFolder)),
-                          let note = try? decoder.decode(Note.self, from: data)
-                    else {
-                        try? manager.removeItem(at: chapterFolder)
+                for folder in PageFolder.completed(under: sourceFolder) {
+                    guard let chapter = unhex(folder.url.lastPathComponent), let note = folder.readNote(Note.self) else {
+                        folder.remove()
                         continue
                     }
-                    guard let chapter = unhex(chapterFolder.lastPathComponent) else { continue }
-                    found[SourceChapterRef(
+                    found.append(SourceChapterRef(
                         server: server,
                         source: source,
                         seriesID: note.seriesID,
@@ -106,15 +81,11 @@ nonisolated enum ChapterFiles {
                         chapterTitle: note.chapterTitle,
                         isRightToLeft: note.isRightToLeft,
                         seriesCoverPath: note.seriesCoverPath
-                    )] = note
+                    ))
                 }
             }
         }
         return found
-    }
-
-    private static func hex(_ text: String) -> String {
-        Data(text.utf8).map { String(format: "%02x", $0) }.joined()
     }
 
     private static func unhex(_ name: String) -> String? {
@@ -128,5 +99,52 @@ nonisolated enum ChapterFiles {
             index = next
         }
         return String(decoding: bytes, as: UTF8.self)
+    }
+}
+
+/// Where downloaded server comics live: one folder per publication under
+/// Application Support, beside the chapters.
+nonisolated enum PublicationFiles {
+    static let root = URL.applicationSupportDirectory.appending(path: "Publications", directoryHint: .isDirectory)
+
+    static func folder(for server: UUID) -> URL {
+        root.appending(path: server.uuidString, directoryHint: .isDirectory)
+    }
+
+    static func folder(for publication: RemotePublication) -> PageFolder {
+        folder(for: publication.id, on: publication.server)
+    }
+
+    static func folder(for publication: Int64, on server: UUID) -> PageFolder {
+        PageFolder(url: folder(for: server).appending(path: String(publication), directoryHint: .isDirectory))
+    }
+
+    static func markComplete(_ publication: RemotePublication, pageCount: Int) throws {
+        try folder(for: publication).markComplete(publication, pageCount: pageCount)
+    }
+
+    static func removeAll(for server: UUID) {
+        try? FileManager.default.removeItem(at: folder(for: server))
+    }
+
+    static func removeAll() {
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    /// Every comic that's fully downloaded, as the publication it was
+    /// listed as, found by walking the folders once at launch.
+    static func downloaded() -> [RemotePublication] {
+        var found: [RemotePublication] = []
+        for serverFolder in (try? FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)) ?? [] {
+            guard UUID(uuidString: serverFolder.lastPathComponent) != nil else { continue }
+            for folder in PageFolder.completed(under: serverFolder) {
+                guard let publication = folder.readNote(RemotePublication.self) else {
+                    folder.remove()
+                    continue
+                }
+                found.append(publication)
+            }
+        }
+        return found
     }
 }
