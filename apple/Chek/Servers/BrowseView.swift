@@ -22,6 +22,7 @@ struct BrowseView: View {
                             router.sheet = .addServer
                         }
                         .buttonStyle(.borderedProminent)
+                        TryDemoButton()
                     }
                 } else {
                     List {
@@ -50,6 +51,7 @@ struct BrowseView: View {
                     }
                 }
             }
+            .demoBanner()
             .navigationTitle("Browse")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -99,20 +101,25 @@ extension View {
     /// The screens any tab can push for a server.
     func routeDestinations() -> some View {
         navigationDestination(for: Route.self) { route in
-            switch route {
-            case .server(let account):
-                ServerHomeView(account: account)
-            case .serverLibrary(let account, let library):
-                ServerLibraryView(account: account, library: library)
-            case .series(let account, let series, let title):
-                SeriesView(account: account, seriesID: series, title: title)
-            case .source(let account, let source):
-                SourceView(account: account, source: source)
-            case .sourceSeries(let account, let source, let series, let title):
-                SourceSeriesView(account: account, source: source, seriesID: series, title: title)
-            case .extensions(let account):
-                ExtensionsView(account: account)
+            Group {
+                switch route {
+                case .server(let account):
+                    ServerHomeView(account: account)
+                case .serverLibrary(let account, let library):
+                    ServerLibraryView(account: account, library: library)
+                case .series(let account, let series, let title):
+                    SeriesView(account: account, seriesID: series, title: title)
+                case .source(let account, let source):
+                    SourceView(account: account, source: source)
+                case .sourceSeries(let account, let source, let series, let title):
+                    SourceSeriesView(account: account, source: source, seriesID: series, title: title)
+                case .extensions(let account):
+                    ExtensionsView(account: account)
+                }
             }
+            // On every pushed screen too, so the demo is never mistaken
+            // for the real thing a few taps in.
+            .demoBanner()
         }
     }
 }

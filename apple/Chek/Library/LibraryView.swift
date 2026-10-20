@@ -24,6 +24,7 @@ struct LibraryView: View {
             // Searching is the Search tab's, which covers this library too,
             // so there's one place to search rather than two side by side.
             LibraryContent(sort: sort, filter: filter, layout: layout, selection: $selection)
+                .demoBanner()
                 .navigationTitle(selection.map { Text("^[\($0.count) Selected](inflect: true)") } ?? Text(filter.navigationTitle))
                 .toolbar {
                     if selection != nil {

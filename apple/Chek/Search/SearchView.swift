@@ -12,6 +12,7 @@ struct SearchView: View {
         @Bindable var router = router
         NavigationStack(path: $router.searchPath) {
             SearchResults(text: text, serverResults: serverResults)
+                .demoBanner()
                 .navigationTitle("Search")
                 .routeDestinations()
         }

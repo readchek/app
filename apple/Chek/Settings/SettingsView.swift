@@ -20,6 +20,7 @@ struct SettingsView: View {
                 }
                 NewChapterAlertsSection()
                 StorageSection()
+                DemoSection()
                 Section {
                     LabeledContent("Version", value: Bundle.main.versionDescription)
                     Link(destination: URL(string: "https://chek.page")!) {
@@ -51,6 +52,34 @@ private extension Bundle {
         let version = object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "?"
         let build = object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
         return "\(version) (\(build))"
+    }
+}
+
+/// The demo: a temporary connection to the public demo server, with
+/// sample publications of every kind Chek reads.
+private struct DemoSection: View {
+    @Environment(ServerStore.self) private var servers
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        Section {
+            if servers.isDemo {
+                Button("Exit the Demo", role: .destructive) {
+                    Task {
+                        await servers.endDemo()
+                        router.browsePath = []
+                    }
+                }
+            } else {
+                TryDemoButton()
+            }
+        } header: {
+            Text("Demo")
+        } footer: {
+            Text(servers.isDemo
+                ? "You're reading sample books from demo.chek.page. The demo ends on its own when Chek is closed, and your places in it stay on this device."
+                : "Connects to demo.chek.page for a look at books, comics and sources of every kind Chek reads. Nothing is kept once Chek is closed.")
+        }
     }
 }
 

@@ -81,7 +81,9 @@ final class ServerHomeModel {
                     async let recent = client.recentlyAdded(cursor: nil)
                     async let reading = client.continueReading()
                     async let sources = client.installedExtensionsIfSupported()
-                    let readingItems = try await reading
+                    // The demo account is shared, so what it's "reading"
+                    // is other people's; your own places are on the device.
+                    let readingItems = account == DemoMode.accountID ? [] : try await reading
                     return try await Content(
                         continueReading: readingItems.map { RemotePublication($0.publication, server: account) },
                         serverStatuses: Dictionary(readingItems.map { item in

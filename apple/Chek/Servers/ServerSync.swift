@@ -176,6 +176,8 @@ final class ServerSync {
     /// Brings the device's copy of your place up to date with the server's
     /// before opening. Your place here wins until you choose otherwise.
     private func refresh(_ state: RemoteReadingState, from publication: RemotePublication) async {
+        // Other people's places on the shared demo account aren't yours.
+        guard publication.server != DemoMode.accountID else { return }
         guard let remote = try? await servers.request(publication.server, { client throws(ChekError) in
             try await client.progress(of: publication.id)
         }) else { return }
@@ -261,7 +263,9 @@ final class ServerSync {
     func uploadPending() async {
         let descriptor = FetchDescriptor<RemoteReadingState>(predicate: #Predicate { $0.needsUpload })
         guard let pending = try? context.fetch(descriptor) else { return }
-        for state in pending where prompts[state.ref] == nil {
+        // The demo account is shared by everyone trying the app, so places
+        // read there stay on this device.
+        for state in pending where prompts[state.ref] == nil && state.serverID != DemoMode.accountID {
             await upload(state)
         }
     }

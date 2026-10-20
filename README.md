@@ -14,7 +14,7 @@
   <a href="https://github.com/readchek/app/issues">Issues</a>
 </p>
 
-> In development. The iOS app keeps a library of books on the device: add EPUB, PDF, CBZ and CBT comics, MOBI, AZW3, FictionBook, plain text and Markdown files from Files, and each one opens where you left it. Connect a Chek server to read its libraries and the sources its extensions add, follow series to hear about new chapters, and download chapters to read offline. Komga and Kavita come next.
+> In development. The iOS app keeps a library of books on the device: add EPUB, PDF, CBZ and CBT comics, MOBI, AZW3, FictionBook, plain text and Markdown files from Files, and each one opens where you left it. Connect a Chek server to read its libraries and the sources its extensions add, follow series to hear about new chapters, and download chapters to read offline. Try the Demo, from Settings or an empty screen, connects to demo.chek.page until the app is closed. Komga and Kavita come next.
 
 ## Overview
 

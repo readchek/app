@@ -10,6 +10,7 @@ struct HomeView: View {
         @Bindable var router = router
         NavigationStack(path: $router.homePath) {
             HomeContent()
+                .demoBanner()
                 .navigationTitle("Reading Now")
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
@@ -159,7 +160,8 @@ final class HomeServersModel {
         var reached: Set<UUID> = []
         for account in signedIn {
             let id = account.id
-            if let reading = try? await servers.request(id, { client throws(ChekError) in try await client.continueReading() }) {
+            // The shared demo account's places aren't yours.
+            if id != DemoMode.accountID, let reading = try? await servers.request(id, { client throws(ChekError) in try await client.continueReading() }) {
                 reached.insert(id)
                 for item in reading {
                     let progress = item.progress.locator?.locations.totalProgression
@@ -274,6 +276,9 @@ private struct HomeEmptyView: View {
             Button("Connect a Server") {
                 router.sheet = .addServer
             }
+            // Nothing to read yet is the moment to show what reading
+            // from a server is like.
+            TryDemoButton()
         }
     }
 }

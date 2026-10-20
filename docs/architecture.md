@@ -97,7 +97,7 @@ left on devices that update.
 | --- | --- |
 | `AppRouter` | Tabs, navigation paths, the open reader and sheets. |
 | `LibraryStore` | Importing, removing and marking local books. Views read books with `@Query`. |
-| `ServerStore` | Connected accounts, their sign-in state and their clients. |
+| `ServerStore` | Connected accounts, their sign-in state and their clients. Also the demo: a temporary account on demo.chek.page with a fixed id (`DemoMode`), dropped at the next launch, whose reading places never sync since the account is shared. |
 | `ProgressStore` | Saving positions for every source, and syncing them to servers. |
 | `ReaderSettings` | Theme, text size and margins, kept in `UserDefaults`, and the reading direction chosen per series. |
 | `FollowStore` | Following series from sources and checking them for new chapters, in the app and from the background refresh task (`FollowRefresh`), which notifies. New chapters across every followed series are listed on the Updates screen, from each series' kept listing. |

@@ -30,10 +30,64 @@ final class ServerStore {
     init(context: ModelContext, keychain: Keychain = .serverTokens) {
         self.context = context
         self.keychain = keychain
+        forgetDemo()
         for account in accounts() where keychain.token(for: account.id) == nil {
             signedOut.insert(account.id)
         }
         removeOrphanedReadingStates()
+    }
+
+    // MARK: - Demo
+
+    /// Whether the demo server is connected. Stored, so views showing the
+    /// banner redraw when it starts and ends.
+    private(set) var isDemo = false
+
+    /// Connects the demo server, as a temporary account.
+    func startDemo() async throws(DisplayError) {
+        if isDemo { return }
+        let session = try await signIn(at: DemoMode.baseURL, name: DemoMode.user, password: DemoMode.password)
+        let account = ServerAccount(
+            id: DemoMode.accountID,
+            kind: .chek,
+            name: DemoMode.name,
+            baseURL: DemoMode.baseURL,
+            userName: session.user.name,
+            userID: session.user.id,
+            sortIndex: (accounts().map(\.sortIndex).max() ?? -1) + 1
+        )
+        context.insert(account)
+        try? context.save()
+        keep(session, for: account)
+        isDemo = true
+    }
+
+    /// Ends the demo, forgetting the account and everything kept for it.
+    func endDemo() async {
+        guard let account = account(DemoMode.accountID) else { return }
+        await remove(account)
+    }
+
+    /// The demo doesn't survive a relaunch: whatever a previous run left
+    /// of it goes before the accounts are read.
+    private func forgetDemo() {
+        guard let account = account(DemoMode.accountID) else { return }
+        let id = account.id
+        keychain.removeToken(for: id)
+        for state in (try? context.fetch(FetchDescriptor<RemoteReadingState>(predicate: #Predicate { $0.serverID == id }))) ?? [] {
+            context.delete(state)
+        }
+        for state in (try? context.fetch(FetchDescriptor<SourceReadingState>(predicate: #Predicate { $0.serverID == id }))) ?? [] {
+            context.delete(state)
+        }
+        for follow in (try? context.fetch(FetchDescriptor<FollowedSeries>(predicate: #Predicate { $0.serverID == id }))) ?? [] {
+            context.delete(follow)
+        }
+        context.delete(account)
+        try? context.save()
+        try? FileManager.default.removeItem(at: ServerFiles.folder(for: id))
+        // Downloads and kept listings go when their stores start, which
+        // drop whatever belongs to a server that's no longer here.
     }
 
     /// Places kept for servers that are no longer connected. Older builds
@@ -182,6 +236,9 @@ final class ServerStore {
         context.delete(account)
         try? context.save()
         signedOut.remove(id)
+        if id == DemoMode.accountID {
+            isDemo = false
+        }
         try? FileManager.default.removeItem(at: ServerFiles.folder(for: id))
         onRemove?(id)
         await client?.signOut()
