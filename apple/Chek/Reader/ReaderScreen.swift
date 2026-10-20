@@ -211,18 +211,33 @@ private struct ReaderDownloadView: View {
     var body: some View {
         VStack(spacing: 16) {
             if let fraction {
-                ProgressView(value: fraction)
-                    .progressViewStyle(.circular)
-                    .controlSize(.large)
-                Text(fraction, format: .percent.precision(.fractionLength(0)))
-                    .font(.footnote.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                // iOS draws a determinate circular progress as a spinner,
+                // so the ring is drawn here, with the number inside it.
+                ZStack {
+                    Circle()
+                        .stroke(.quaternary, lineWidth: 5)
+                    Circle()
+                        .trim(from: 0, to: max(fraction, 0.01))
+                        .stroke(.tint, style: StrokeStyle(lineWidth: 5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .animation(.linear(duration: 0.25), value: fraction)
+                    Text(fraction, format: .percent.precision(.fractionLength(0)))
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .contentTransition(.numericText(value: fraction))
+                }
+                .frame(width: 72, height: 72)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("Downloading"))
+                .accessibilityValue(Text(fraction, format: .percent.precision(.fractionLength(0))))
             } else {
                 ProgressView()
                     .controlSize(.large)
             }
             Text("Downloading")
                 .font(.headline)
+            Text("This format opens once the whole file is here.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
         }
     }
 }
