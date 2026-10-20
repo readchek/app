@@ -5,10 +5,12 @@ import SwiftUI
 struct AppearancePanel: View {
     var showsTextSettings = true
     var showsComicSettings = false
+    /// What a reading direction chosen here applies to, nil to offer none.
+    var directionKey: String?
 
     var body: some View {
         NavigationStack {
-            ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsComicSettings: showsComicSettings)
+            ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsComicSettings: showsComicSettings, directionKey: directionKey)
                 .navigationTitle("Appearance")
                 .navigationBarTitleDisplayMode(.inline)
         }
@@ -26,6 +28,9 @@ struct ReaderAppearanceForm: View {
     var showsTextSettings = true
     /// Whether comic layouts apply, which they do to comics and Settings.
     var showsComicSettings = true
+    /// What a reading direction chosen here applies to, usually a series.
+    /// Nil in Settings, where there's nothing open to choose it for.
+    var directionKey: String?
     @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
@@ -50,6 +55,24 @@ struct ReaderAppearanceForm: View {
                     Text("Comic Layout")
                 } footer: {
                     Text("Automatic scrolls webtoons and other tall-strip comics, and turns pages for the rest.")
+                }
+            }
+            if let directionKey {
+                Section {
+                    Picker("Reading Direction", selection: Binding(
+                        get: { settings.readingDirection(for: directionKey) },
+                        set: { settings.setReadingDirection($0, for: directionKey) }
+                    )) {
+                        Text("Automatic").tag(Publication.ReadingProgression?.none)
+                        Text("Left to Right").tag(Publication.ReadingProgression?.some(.leftToRight))
+                        Text("Right to Left").tag(Publication.ReadingProgression?.some(.rightToLeft))
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                } header: {
+                    Text("Reading Direction")
+                } footer: {
+                    Text("For this series. Manga reads right to left; Automatic follows what the file or source says.")
                 }
             }
             Section("Page Turn") {

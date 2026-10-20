@@ -65,7 +65,7 @@ private struct ReaderHost: View {
     @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
-        ReaderScreen(item: item, preferences: settings.preferences)
+        ReaderScreen(item: item, preferences: settings.preferences(for: item.settingsKey))
     }
 }
 

@@ -69,7 +69,7 @@ final class ServerSync {
                 destination: ServerFiles.file(for: publication.id, format: publication.format, account: publication.server)
             ))
         }
-        return ReadingItem(
+        var item = ReadingItem(
             ref: publication.ref,
             title: publication.displayTitle,
             subtitle: publication.seriesTitle,
@@ -77,6 +77,10 @@ final class ServerSync {
             content: content,
             startLocation: state.savedLocation
         )
+        if let series = publication.seriesID {
+            item.seriesKey = "server/\(publication.server.uuidString)/series/\(series)"
+        }
+        return item
     }
 
     /// What the reader needs to open a chapter straight from a source,
@@ -99,6 +103,7 @@ final class ServerSync {
             startLocation: state.savedLocation
         )
         item.sourceChapter = chapter
+        item.seriesKey = "source/\(chapter.server.uuidString)/\(chapter.source)/\(chapter.seriesID)"
         return item
     }
 

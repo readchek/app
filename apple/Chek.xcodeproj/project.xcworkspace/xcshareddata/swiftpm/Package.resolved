@@ -1,14 +1,14 @@
 {
-  "pins" : [
+  "pins": [
     {
-      "identity" : "chek-reader",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/readchek/chek-reader",
-      "state" : {
-        "branch" : "main",
-        "revision" : "e7e8a5c7dff2ead4323b6c8eb620762f2feab44a"
+      "identity": "chek-reader",
+      "kind": "remoteSourceControl",
+      "location": "https://github.com/readchek/chek-reader",
+      "state": {
+        "branch": "main",
+        "revision": "8184a5c9c13bfdffe311192ecede5d0d5ce3410c"
       }
     }
   ],
-  "version" : 3
+  "version": 3
 }

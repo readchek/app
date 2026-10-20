@@ -85,7 +85,7 @@ struct ReaderScreen: View {
     private func continueReading(_ item: ReadingItem) {
         let finished = session
         Task { await finished.controller.close() }
-        session = ReaderSession(item: item, preferences: settings.preferences)
+        session = ReaderSession(item: item, preferences: settings.preferences(for: item.settingsKey))
     }
 }
 

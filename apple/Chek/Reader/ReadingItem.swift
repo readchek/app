@@ -22,8 +22,16 @@ struct ReadingItem: Identifiable {
     /// The chapter this is, when it's read straight from a source, so the
     /// reader can offer the one after it.
     var sourceChapter: SourceChapterRef?
+    /// What settings made for this publication also apply to: its series,
+    /// when it's one of a series, since a manga reads the same way
+    /// throughout. Nil when the publication is only itself.
+    var seriesKey: String?
 
     var id: PublicationRef { ref }
+
+    /// Where settings made while reading this are kept: its series when
+    /// it has one, otherwise the publication itself.
+    var settingsKey: String { seriesKey ?? ref.storageKey }
 
     init(ref: PublicationRef, title: String, subtitle: String? = nil, kind: PublicationKind, content: Content, startLocation: Locator?) {
         self.ref = ref

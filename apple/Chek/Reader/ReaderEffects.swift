@@ -12,7 +12,7 @@ extension View {
         self
             .modifier(PositionRecorder(session: session))
             .modifier(MiddleTapHandler(controller: session.controller, session: session))
-            .modifier(PreferencesApplier(controller: session.controller))
+            .modifier(PreferencesApplier(session: session))
     }
 }
 
@@ -54,11 +54,13 @@ private struct MiddleTapHandler: ViewModifier {
 
 /// Lays the text out again when reading settings change.
 private struct PreferencesApplier: ViewModifier {
-    let controller: ReaderController
+    let session: ReaderSession
     @Environment(ReaderSettings.self) private var settings
 
     func body(content: Content) -> some View {
-        content.onChange(of: settings.preferences) { _, preferences in
+        let preferences = settings.preferences(for: session.item.settingsKey)
+        content.onChange(of: preferences) { _, preferences in
+            let controller = session.controller
             Task { await controller.setPreferences(preferences) }
         }
     }

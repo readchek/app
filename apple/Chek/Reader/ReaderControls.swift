@@ -67,7 +67,13 @@ private struct ReaderToolbars: ViewModifier {
                         ContentsPanel(session: session)
                     }
                 case .appearance:
-                    AppearancePanel(showsTextSettings: session.showsTextSettings, showsComicSettings: session.item.kind == .comic)
+                    AppearancePanel(
+                        showsTextSettings: session.showsTextSettings,
+                        showsComicSettings: session.item.kind == .comic,
+                        // Only pictures have a direction to get wrong;
+                        // text follows its language.
+                        directionKey: session.showsTextSettings ? nil : session.item.settingsKey
+                    )
                 }
             }
     }

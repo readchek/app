@@ -68,6 +68,11 @@ final class ReaderSettings {
     /// so views that apply it observe one property.
     private(set) var preferences = ReaderPreferences()
 
+    /// Which way pages turn, where a reader has said so, by the series or
+    /// publication it was said for. Sources and files often get manga
+    /// wrong, and the choice is about the series rather than how you read.
+    private(set) var readingDirections: [String: Publication.ReadingProgression] = [:]
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -80,7 +85,28 @@ final class ReaderSettings {
         margins = defaults.string(forKey: Key.margins.rawValue).flatMap(Margins.init(rawValue:)) ?? .regular
         pageTransition = defaults.string(forKey: Key.pageTransition.rawValue).flatMap(ReaderPreferences.PageTransition.init(rawValue:)) ?? .curl
         comicFlow = defaults.string(forKey: Key.comicFlow.rawValue).flatMap(ReaderPreferences.ComicFlow.init(rawValue:)) ?? .automatic
+        let directions = defaults.dictionary(forKey: Key.readingDirections.rawValue) as? [String: String] ?? [:]
+        readingDirections = directions.compactMapValues(Publication.ReadingProgression.init(rawValue:))
         update()
+    }
+
+    /// The preferences for reading what `settingsKey` names: the ones
+    /// above, with the reading direction chosen for it, if any.
+    func preferences(for settingsKey: String) -> ReaderPreferences {
+        var preferences = preferences
+        preferences.readingProgression = readingDirections[settingsKey]
+        return preferences
+    }
+
+    /// The reading direction chosen for what `settingsKey` names, nil
+    /// where the publication's own applies.
+    func readingDirection(for settingsKey: String) -> Publication.ReadingProgression? {
+        readingDirections[settingsKey]
+    }
+
+    func setReadingDirection(_ direction: Publication.ReadingProgression?, for settingsKey: String) {
+        readingDirections[settingsKey] = direction
+        store(readingDirections.mapValues(\.rawValue), for: .readingDirections)
     }
 
     var canMakeTextSmaller: Bool {
@@ -134,6 +160,7 @@ final class ReaderSettings {
         case margins = "reader.margins"
         case pageTransition = "reader.pageTransition"
         case comicFlow = "reader.comicFlow"
+        case readingDirections = "reader.readingDirections"
     }
 
     private func store(_ value: Any, for key: Key) {
