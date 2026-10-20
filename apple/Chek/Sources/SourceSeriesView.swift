@@ -576,6 +576,7 @@ private struct SeriesDownloadsMenu: View {
     let chapters: [SourceChapterRef]
     let unread: [SourceChapterRef]
     @Environment(ChapterDownloads.self) private var downloads
+    @State private var isConfirmingAll = false
 
     var body: some View {
         let kept = chapters.filter(downloads.isDownloaded)
@@ -587,7 +588,13 @@ private struct SeriesDownloadsMenu: View {
                 }
                 .disabled(pending.isEmpty)
                 Button("All Unread", systemImage: "arrow.down.circle.fill") {
-                    downloads.download(pending)
+                    // A long series is a lot of space and a lot of requests
+                    // to the source's site, so the count is put to you first.
+                    if pending.count > 10 {
+                        isConfirmingAll = true
+                    } else {
+                        downloads.download(pending)
+                    }
                 }
                 .disabled(pending.count < 2)
             }
@@ -600,5 +607,12 @@ private struct SeriesDownloadsMenu: View {
         }
         .font(.subheadline)
         .labelStyle(.iconOnly)
+        .confirmationDialog("Download ^[\(pending.count) Chapter](inflect: true)?", isPresented: $isConfirmingAll, titleVisibility: .visible) {
+            Button("Download All") {
+                downloads.download(pending)
+            }
+        } message: {
+            Text("They download one after another while Chek is open, and stay on this device until you remove them.")
+        }
     }
 }

@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import UIKit
 
 /// Owns the source chapters kept on the device for reading offline:
 /// which are downloaded, which are on their way, and the queue that
@@ -129,7 +130,20 @@ final class ChapterDownloads {
     }
 
     private func run() async {
-        defer { runner = nil }
+        // Going to the background mid-chapter needn't stop it: iOS gives
+        // a little while to finish, which one chapter usually fits in.
+        var assertion = UIBackgroundTaskIdentifier.invalid
+        assertion = UIApplication.shared.beginBackgroundTask(withName: "chapter download") {
+            self.current?.task.cancel()
+            UIApplication.shared.endBackgroundTask(assertion)
+            assertion = .invalid
+        }
+        defer {
+            runner = nil
+            if assertion != .invalid {
+                UIApplication.shared.endBackgroundTask(assertion)
+            }
+        }
         while !queue.isEmpty {
             let chapter = queue.removeFirst()
             let key = chapter.ref.storageKey
