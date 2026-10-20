@@ -56,7 +56,7 @@ final class ServerSync {
         let content: ReadingItem.Content
         switch publication.kind {
         case .comic:
-            content = .source(.pages(ChekPageSource(client: client, publication: publication.id, knownPageCount: publication.pageCount)))
+            content = .source(.pages(ChekPageSource(server: ServerAccess(account: publication.server, store: servers), publication: publication.id, knownPageCount: publication.pageCount)))
         case .book where publication.format == "epub":
             // EPUBs stream entry by entry with range requests.
             content = .source(.remote(
@@ -82,7 +82,7 @@ final class ServerSync {
     /// What the reader needs to open a chapter straight from a source,
     /// starting where you left it on this device.
     func readingItem(for chapter: SourceChapterRef) throws(DisplayError) -> ReadingItem {
-        guard let client = servers.client(for: chapter.server) else {
+        guard servers.client(for: chapter.server) != nil else {
             throw DisplayError(ChekError.unauthorized)
         }
         let state = progress.sourceState(for: chapter)
@@ -92,7 +92,7 @@ final class ServerSync {
             subtitle: chapter.seriesTitle,
             kind: .comic,
             content: .source(.pages(SourcePageSource(
-                client: client,
+                server: ServerAccess(account: chapter.server, store: servers),
                 chapter: chapter,
                 readingProgression: chapter.isRightToLeft ? .rightToLeft : .auto
             ))),

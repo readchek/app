@@ -87,7 +87,7 @@ final class ServerStore {
         do {
             return try await operation(client)
         } catch .unauthorized {
-            endSession(account)
+            sessionEnded(account)
             throw .unauthorized
         }
     }
@@ -145,7 +145,7 @@ final class ServerStore {
 
     func signOut(_ account: ServerAccount) async {
         let client = client(for: account.id)
-        endSession(account.id)
+        sessionEnded(account.id)
         await client?.signOut()
     }
 
@@ -155,7 +155,7 @@ final class ServerStore {
         // Gone from the device first, so it leaves the list at once; ending
         // the session on the server can wait for the network.
         let client = client(for: id)
-        endSession(id)
+        sessionEnded(id)
         // One by one: a batch delete doesn't reach `@Query`, so the
         // now-reading bar would keep showing a book from a server that's gone.
         let states = (try? context.fetch(FetchDescriptor<RemoteReadingState>(predicate: #Predicate { $0.serverID == id }))) ?? []
@@ -192,7 +192,9 @@ final class ServerStore {
         try? context.save()
     }
 
-    private func endSession(_ account: UUID) {
+    /// The server said `account`'s session ended, so its token is dropped
+    /// and screens show it signed out until it signs in again.
+    func sessionEnded(_ account: UUID) {
         keychain.removeToken(for: account)
         clients[account] = nil
         signedOut.insert(account)

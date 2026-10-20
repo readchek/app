@@ -42,16 +42,16 @@ extension SourceChapterRef {
 /// indicator, rather than before, so tapping a chapter opens the reader at
 /// once however slow the source's site is.
 nonisolated struct SourcePageSource: PageSource {
-    let client: ChekClient
+    let server: ServerAccess
     let chapter: SourceChapterRef
     let readingProgression: Publication.ReadingProgression
     private let list: PageList
 
-    init(client: ChekClient, chapter: SourceChapterRef, readingProgression: Publication.ReadingProgression) {
-        self.client = client
+    init(server: ServerAccess, chapter: SourceChapterRef, readingProgression: Publication.ReadingProgression) {
+        self.server = server
         self.chapter = chapter
         self.readingProgression = readingProgression
-        list = PageList(client: client, chapter: chapter)
+        list = PageList(server: server, chapter: chapter)
     }
 
     func pageCount() async throws -> Int {
@@ -64,26 +64,21 @@ nonisolated struct SourcePageSource: PageSource {
 
     func page(at index: Int) async throws -> Data {
         let pages = try await list.pages()
+        let client = try await server.client()
         guard pages.indices.contains(index), let request = client.imageRequest(pages[index]) else {
             throw ChekError.notFound
         }
-        let (data, response) = try await client.session.data(for: request)
-        guard let http = response as? HTTPURLResponse else { throw ChekError.invalidResponse }
-        switch http.statusCode {
-        case 200: return data
-        case 401: throw ChekError.unauthorized
-        default: throw ChekError.server(status: http.statusCode, code: nil)
-        }
+        return try await server.data(for: request)
     }
 
     /// The chapter's page paths, fetched once and shared by every page.
     private actor PageList {
-        let client: ChekClient
+        let server: ServerAccess
         let chapter: SourceChapterRef
         private var task: Task<[String], any Error>?
 
-        init(client: ChekClient, chapter: SourceChapterRef) {
-            self.client = client
+        init(server: ServerAccess, chapter: SourceChapterRef) {
+            self.server = server
             self.chapter = chapter
         }
 
@@ -91,10 +86,13 @@ nonisolated struct SourcePageSource: PageSource {
             if let task {
                 return try await task.value
             }
-            let client = client
+            let server = server
             let chapter = chapter
             let task = Task<[String], any Error> {
-                try await client.pages(ofChapter: chapter.chapterID, inSource: chapter.source).map(\.url)
+                try await server.request { client throws(ChekError) in
+                    try await client.pages(ofChapter: chapter.chapterID, inSource: chapter.source)
+                }
+                .map(\.url)
             }
             self.task = task
             do {

@@ -309,7 +309,7 @@ nonisolated struct ChekClient: Sendable {
 /// Streams a comic's pages from the server one at a time, so the first
 /// page shows without fetching the rest.
 nonisolated struct ChekPageSource: PageSource {
-    let client: ChekClient
+    let server: ServerAccess
     let publication: Int64
     let knownPageCount: Int?
 
@@ -317,16 +317,12 @@ nonisolated struct ChekPageSource: PageSource {
         if let knownPageCount, knownPageCount > 0 {
             return knownPageCount
         }
-        return try await client.pageCount(of: publication)
+        let publication = publication
+        return try await server.request { client throws(ChekError) in try await client.pageCount(of: publication) }
     }
 
     func page(at index: Int) async throws -> Data {
-        let (data, response) = try await client.session.data(for: client.pageRequest(index, of: publication))
-        guard let http = response as? HTTPURLResponse else { throw ChekError.invalidResponse }
-        switch http.statusCode {
-        case 200: return data
-        case 401: throw ChekError.unauthorized
-        default: throw ChekError.server(status: http.statusCode, code: nil)
-        }
+        let client = try await server.client()
+        return try await server.data(for: client.pageRequest(index, of: publication))
     }
 }

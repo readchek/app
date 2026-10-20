@@ -29,6 +29,9 @@ final class ReaderSession {
     private(set) var phase: Phase
     private(set) var isShowingControls = true
     var panel: Panel?
+    /// Whether the sign-in form is up, for a server that ended its session
+    /// while you were reading from it.
+    var isSigningIn = false
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         self.item = item
@@ -59,6 +62,18 @@ final class ReaderSession {
         phase = .reading
         // Failures show through the controller's state.
         try? await controller.open(source, at: item.startLocation)
+    }
+
+    /// Opens the publication again at the current place, as after signing
+    /// in to its server again, so pages that failed load afresh.
+    func reopen() async {
+        let place = controller.location
+        if case .source(let source) = item.content, let place {
+            phase = .reading
+            try? await controller.open(source, at: place)
+        } else {
+            await open()
+        }
     }
 
     /// Text settings only reach text that reflows, so comics and PDFs
@@ -103,8 +118,12 @@ final class ReaderSession {
             }
         }
         let (file, response) = try await URLSession.shared.download(for: download.request, delegate: progress)
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+        let status = (response as? HTTPURLResponse)?.statusCode
+        guard status == 200 else {
             try? FileManager.default.removeItem(at: file)
+            if status == 401 {
+                throw DisplayError(ChekError.unauthorized)
+            }
             throw DisplayError(
                 title: String(localized: "Couldn't download this publication."),
                 message: String(localized: "Check your connection and try again.")

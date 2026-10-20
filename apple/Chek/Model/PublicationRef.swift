@@ -13,6 +13,14 @@ nonisolated enum PublicationRef: Hashable, Codable, Sendable {
     /// the extension's id and the source's own chapter id.
     case source(UUID, String, String)
 
+    /// The server a publication is read from, nil for a book on the device.
+    var server: UUID? {
+        switch self {
+        case .local: nil
+        case .server(let server, _), .source(let server, _, _): server
+        }
+    }
+
     /// A stable string form, for unique keys in storage.
     var storageKey: String {
         switch self {

@@ -69,6 +69,7 @@ struct ReaderScreen: View {
         .persistentSystemOverlays(session.isShowingControls ? .automatic : .hidden)
         .readerEffects(session: session)
         .otherDevicePrompt(session: session)
+        .readerSignIn(session: session)
         .modifier(ReaderColorScheme(kind: session.item.kind))
         // Reading is looking without touching, which the idle timer takes
         // for inactivity.
@@ -197,7 +198,7 @@ private struct ReaderStateView: View {
             ProgressView()
                 .controlSize(.large)
         case .failed(let error):
-            ReaderFailureView(error: DisplayError(error), session: session)
+            ReaderFailureView(error: DisplayError(reader: error, kind: session.item.kind), isRetryable: error.isRetryable, session: session)
         case .ready, .closing, .closed:
             EmptyView()
         }
@@ -228,27 +229,40 @@ private struct ReaderDownloadView: View {
 
 private struct ReaderFailureView: View {
     let error: DisplayError
+    /// Whether the same thing might work next time, as a network failure
+    /// might and a damaged file can't.
+    var isRetryable = true
     let session: ReaderSession
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
+    @Environment(ServerStore.self) private var servers
     @State private var isConfirmingRemoval = false
+
+    /// The server this is read from, when it signed you out, so trying
+    /// again can't help and signing in can.
+    private var signedOutServer: ServerAccount? {
+        guard let id = session.item.ref.server, servers.state(of: id) == .signedOut else { return nil }
+        return servers.account(id)
+    }
 
     /// Whether this is a file on the device that can't be read, where
     /// trying again can't help and removing it can.
     private var isDamagedLocalFile: Bool {
-        if case .local = session.item.ref, case .source(.file) = session.item.content { return !isNetworkError }
+        if case .local = session.item.ref, case .source(.file) = session.item.content { return !isRetryable }
         return false
-    }
-
-    private var isNetworkError: Bool {
-        error.title.localizedCaseInsensitiveContains("reach") || error.title.localizedCaseInsensitiveContains("connection")
     }
 
     var body: some View {
         ContentUnavailableView {
-            Label(isDamagedLocalFile ? String(localized: "This File Can't Be Opened") : error.title, systemImage: "book.closed")
+            if let server = signedOutServer {
+                Label("You're signed out of \(server.name).", systemImage: "person.crop.circle.badge.xmark")
+            } else {
+                Label(isDamagedLocalFile ? String(localized: "This File Can't Be Opened") : error.title, systemImage: "book.closed")
+            }
         } description: {
-            if isDamagedLocalFile {
+            if signedOutServer != nil {
+                Text("Sign in again to keep reading from it.")
+            } else if isDamagedLocalFile {
                 Text("It may be damaged or not a format Chek reads. Removing it from the library leaves the original where you got it.")
             } else if let message = error.message {
                 Text(message)
@@ -259,6 +273,11 @@ private struct ReaderFailureView: View {
                     isConfirmingRemoval = true
                 }
                 .buttonStyle(.bordered)
+            } else if signedOutServer != nil {
+                Button("Sign In") {
+                    session.isSigningIn = true
+                }
+                .buttonStyle(.borderedProminent)
             } else {
                 Button("Try Again") {
                     Task { await session.open() }
