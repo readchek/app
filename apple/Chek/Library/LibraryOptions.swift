@@ -28,7 +28,7 @@ enum LibrarySort: String, CaseIterable, Identifiable {
 
 /// Which kinds of publication the library shows.
 enum LibraryFilter: String, CaseIterable, Identifiable {
-    case all, books, comics
+    case all, books, comics, finished
 
     var id: Self { self }
 
@@ -37,6 +37,7 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
         case .all: "All"
         case .books: "Books"
         case .comics: "Comics"
+        case .finished: "Finished"
         }
     }
 
@@ -45,14 +46,15 @@ enum LibraryFilter: String, CaseIterable, Identifiable {
         case .all: "Library"
         case .books: "Books"
         case .comics: "Comics"
+        case .finished: "Finished"
         }
     }
 
     var kind: PublicationKind? {
         switch self {
-        case .all: nil
         case .books: .book
         case .comics: .comic
+        case .all, .finished: nil
         }
     }
 }
@@ -66,13 +68,14 @@ enum LibraryLayout: String, CaseIterable, Identifiable {
 
 extension Book {
     /// Books of `kind` whose title or authors contain `search`.
-    static func predicate(kind: PublicationKind?, search: String) -> Predicate<Book> {
+    static func predicate(kind: PublicationKind?, search: String, finishedOnly: Bool = false) -> Predicate<Book> {
         let kindValue = kind?.rawValue ?? ""
         let anyKind = kind == nil
         let text = search.trimmingCharacters(in: .whitespacesAndNewlines)
         let anyText = text.isEmpty
         return #Predicate<Book> { book in
             (anyKind || book.kindRawValue == kindValue)
+                && (!finishedOnly || book.finishedAt != nil)
                 && (anyText || book.title.localizedStandardContains(text) || book.authors.localizedStandardContains(text))
         }
     }

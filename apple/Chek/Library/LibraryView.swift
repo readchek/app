@@ -87,13 +87,15 @@ private struct LibraryContent: View {
     init(sort: LibrarySort, filter: LibraryFilter, layout: LibraryLayout) {
         self.filter = filter
         self.layout = layout
-        _books = Query(filter: Book.predicate(kind: filter.kind, search: ""), sort: sort.descriptors, animation: .default)
+        _books = Query(filter: Book.predicate(kind: filter.kind, search: "", finishedOnly: filter == .finished), sort: sort.descriptors, animation: .default)
     }
 
     var body: some View {
         Group {
             if books.isEmpty {
-                if filter != .all {
+                if filter == .finished {
+                    ContentUnavailableView("Nothing Finished Yet", systemImage: "checkmark.circle", description: Text("Books you finish, or mark as finished, collect here."))
+                } else if filter != .all {
                     ContentUnavailableView(filter == .comics ? "No Comics" : "No Books", systemImage: "books.vertical")
                 } else {
                     EmptyLibraryView()
