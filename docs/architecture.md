@@ -43,8 +43,9 @@ every write to a piece of state in one place you can search for.
    `ConnectionState`, a reading session is `ReaderController.State`. There is
    no `isLoading` next to an `error` next to `items` that can disagree.
 3. **Identity is stable and typed.** Anything you can open is a
-   `PublicationRef`: `.local(UUID)` or `.server(ServerID, Int64)`. Routes,
-   zoom transitions, reading positions and caches are all keyed by it.
+   `PublicationRef`: `.local(UUID)`, `.server(ServerID, Int64)` or
+   `.source(ServerID, extension, chapter)`. Routes, zoom transitions,
+   reading positions and caches are all keyed by it.
 4. **Async work belongs to a lifetime.** Screen loads run in `.task(id:)`, so
    leaving the screen cancels them. Stores tag long work with a generation
    and drop results from work that was replaced. Pagination keeps at most one
@@ -74,9 +75,17 @@ migrate instead of resetting:
 | `SourceReadingState` | Your position in a chapter read straight from a server's source (an extension). Sources keep no positions on the server, so this copy is the only one. Added in `ChekSchemaV2`. |
 
 Server catalogs (libraries, series, publications) and what sources list
-(series, chapters, pages) are not stored. Sources run on the server, so the
-app reaches them only through its API. Screen models load them page by page,
-and covers go through `ImageLoader`'s memory and disk cache.
+(series, chapters, pages) are loaded page by page by screen models, not
+stored in SwiftData. Sources run on the server, so the app reaches them only
+through its API. What was shown last is kept as files, so screens open at
+once and still work when a server can't be reached:
+
+| Where | What | Cleared by |
+| --- | --- | --- |
+| Caches/Covers | Cover images, by `PublicationRef` key (`ImagePipeline`). | Settings, or iOS when space is short. |
+| Caches/Servers | Books downloaded from servers to open, and each server's last Reading Now and server screen (`HomeSnapshot`, `ServerHomeSnapshot`). | Settings, removing the server, or iOS. |
+| Application Support/Chapters | Source chapters downloaded to read offline, a folder of pages per chapter with a note of its series (`ChapterFiles`). | You, from the series or Settings; removing the server. |
+| Application Support/SourceSeries | Each source series' last listing (`SeriesCache`), so the series screen, the chapter list and Next Chapter work offline. | Removing the server. |
 
 The store is named `Chek` so it never opens the default store Chibi Manga
 left on devices that update.
@@ -89,8 +98,9 @@ left on devices that update.
 | `LibraryStore` | Importing, removing and marking local books. Views read books with `@Query`. |
 | `ServerStore` | Connected accounts, their sign-in state and their clients. |
 | `ProgressStore` | Saving positions for every source, and syncing them to servers. |
-| `ReaderSettings` | Theme, text size and margins, kept in `UserDefaults`. |
-| `FollowStore` | Following series from sources and checking them for new chapters. |
+| `ReaderSettings` | Theme, text size and margins, kept in `UserDefaults`, and the reading direction chosen per series. |
+| `FollowStore` | Following series from sources and checking them for new chapters, in the app and from the background refresh task (`FollowRefresh`), which notifies. |
+| `ChapterDownloads` | Which source chapters are on the device, and the queue that fetches them one chapter at a time. |
 
 All of them are `@MainActor`, created once in `ChekApp` and put in the
 environment. Previews build them with in-memory storage.
@@ -104,7 +114,12 @@ whether the controls are showing, and which panel is open. Only
 
 Server publications open without downloading first. EPUBs stream with range
 requests, comics stream page by page, and other formats download to the
-cache before they open.
+cache before they open; a download that's stopped keeps what arrived and
+continues next time. Page sources reach their server through
+`ServerAccess`, which looks up the signed-in client on every request and
+tells `ServerStore` when the server ends the session, so the reader can
+offer to sign in again and pick up at the same page. A downloaded source
+chapter reads from its folder instead.
 
 ## Server sync
 

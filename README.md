@@ -14,7 +14,7 @@
   <a href="https://github.com/readchek/app/issues">Issues</a>
 </p>
 
-> In development. The iOS app keeps a library of books on the device: add EPUB, PDF, CBZ and CBT comics, MOBI, AZW3, FictionBook, plain text and Markdown files from Files, and each one opens where you left it. Reading from Chek's server, Komga and Kavita comes next.
+> In development. The iOS app keeps a library of books on the device: add EPUB, PDF, CBZ and CBT comics, MOBI, AZW3, FictionBook, plain text and Markdown files from Files, and each one opens where you left it. Connect a Chek server to read its libraries and the sources its extensions add, follow series to hear about new chapters, and download chapters to read offline. Komga and Kavita come next.
 
 ## Overview
 
@@ -44,6 +44,13 @@ xcodebuild build -project apple/Chek.xcodeproj -scheme Chek \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
 ```
 
+The unit tests run on an iPhone simulator:
+
+```sh
+xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
+```
+
 Chek Reader comes from its `main` branch through Swift Package Manager, so
 **File → Packages → Update to Latest Package Versions** picks up its newest
 changes.
@@ -54,8 +61,18 @@ changes.
 apple/
   Chek.xcodeproj/   The app project
   Chek/             App sources
+    App/            Entry point, routing and the root tabs
+    Home/           Reading Now: what you're reading, following and what's new
     Library/        The on-device library: import, storage, covers and the grid
     Reader/         The reading screen around Chek Reader
+    Servers/        Chek servers: connecting, browsing, syncing positions
+    Sources/        A server's sources: browsing, following, downloads
+    Search/         Searching everything at once
+    Settings/       Settings and storage
+    Model/          SwiftData models and their schema versions
+    Components/     Views and image loading shared across screens
+  ChekTests/        Unit tests
+docs/               Architecture notes
 .github/workflows/  CI
 ```
 
