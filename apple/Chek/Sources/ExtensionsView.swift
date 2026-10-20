@@ -162,8 +162,23 @@ private struct ExtensionsList: View {
 
     var body: some View {
         let installed = Dictionary(content.installed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        // Installed from a repository that's gone or no longer allowed, so
+        // no listing shows it; it still needs a way to be removed.
+        let offered = Set(content.available.map(\.id))
+        let orphans = content.installed.filter { !offered.contains($0.id) }
         List {
-            if content.available.isEmpty {
+            if !orphans.isEmpty {
+                Section {
+                    ForEach(orphans) { item in
+                        OrphanExtensionRow(item: item, isChanging: model.changing.contains(item.id), model: model)
+                    }
+                } header: {
+                    Text("Installed")
+                } footer: {
+                    Text("No repository the server can read offers these now, so they can't be updated, only removed.")
+                }
+            }
+            if content.available.isEmpty, orphans.isEmpty {
                 Section {
                     ContentUnavailableView(
                         "No Extensions",
@@ -171,7 +186,7 @@ private struct ExtensionsList: View {
                         description: Text("The server's repositories don't offer any yet.")
                     )
                 }
-            } else {
+            } else if !content.available.isEmpty {
                 Section {
                     ForEach(content.available, id: \.listingID) { item in
                         ExtensionRow(item: item, installed: installed[item.id], isChanging: model.changing.contains(item.id), model: model)
@@ -253,7 +268,13 @@ private struct ExtensionRow: View {
     }
 
     private var details: String {
-        var parts = [String(localized: "Version \(item.version)")]
+        let version: String
+        if let installed, installed.version != item.version {
+            version = String(localized: "Version \(installed.version), \(item.version) available")
+        } else {
+            version = String(localized: "Version \(item.version)")
+        }
+        var parts = [version]
         if let site = item.sites.first(where: { !$0.hasPrefix("*") }) ?? item.sites.first {
             parts.append(site)
         }
@@ -261,6 +282,34 @@ private struct ExtensionRow: View {
             parts.append(String(localized: "Uses the server's browser"))
         }
         return parts.joined(separator: " · ")
+    }
+}
+
+/// An installed extension no repository offers any more.
+private struct OrphanExtensionRow: View {
+    let item: ChekAPI.InstalledExtension
+    let isChanging: Bool
+    let model: ExtensionsModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(item.name)
+                Text(item.usable ? String(localized: "Version \(item.version)") : String(localized: "Version \(item.version) · Not allowed on this server"))
+                    .font(.caption)
+                    .foregroundStyle(item.usable ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
+            }
+            Spacer(minLength: 8)
+            if isChanging {
+                ProgressView()
+            } else {
+                Button("Remove", role: .destructive) {
+                    Task { await model.uninstall(item.id) }
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+            }
+        }
     }
 }
 
