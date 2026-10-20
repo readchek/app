@@ -35,6 +35,7 @@ private struct HomeContent: View {
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
     @Environment(ServerStore.self) private var servers
     @Environment(ServerSync.self) private var sync
+    @Environment(FollowStore.self) private var followStore
     @State private var model = HomeServersModel()
 
     var body: some View {
@@ -49,6 +50,7 @@ private struct HomeContent: View {
                         if !continueReading.isEmpty {
                             Shelf(title: "Continue", items: continueReading, isFeatured: true)
                         }
+                        FollowingShelf()
                         if !newBooks.isEmpty {
                             Shelf(title: "Recently Added", items: newBooks.prefix(20).map(PublicationItem.init))
                         }
@@ -62,12 +64,14 @@ private struct HomeContent: View {
                 }
                 .refreshable {
                     await model.load(from: servers)
+                    await followStore.checkForNewChapters(force: true)
                 }
             }
         }
         .task(id: servers.signedOut) {
             await model.load(from: servers)
             await sync.fillMissingSourceCovers()
+            await followStore.checkForNewChapters()
         }
     }
 

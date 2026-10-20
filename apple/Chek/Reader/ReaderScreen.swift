@@ -33,7 +33,7 @@ struct ReaderScreen: View {
                 // A new chapter is a new page view, not the last one's
                 // reused with its old pages.
                 .id(session.item.id)
-                .readerToolbars(session: session, width: proxy.size.width)
+                .readerToolbars(session: session, width: proxy.size.width, openChapter: continueReading)
                 // The bars' edge effect darkens the page's top and bottom
                 // even with the bars hidden; the page should run clean.
                 .scrollEdgeEffectHidden(true, for: .all)
@@ -65,6 +65,10 @@ struct ReaderScreen: View {
         .readerEffects(session: session)
         .otherDevicePrompt(session: session)
         .modifier(ReaderColorScheme(kind: session.item.kind))
+        // Reading is looking without touching, which the idle timer takes
+        // for inactivity.
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         // Opens again for the next chapter, which replaces the session.
         .task(id: session.item.id) {
             await session.open()

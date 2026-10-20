@@ -120,6 +120,30 @@ final class ProgressStore {
         }
     }
 
+    /// Marks source chapters read without opening them, as when you've
+    /// read them elsewhere.
+    func markRead(_ chapters: [SourceChapterRef]) {
+        for chapter in chapters {
+            let state = sourceState(for: chapter)
+            state.progress = 1
+            state.lastOpenedAt = state.lastOpenedAt ?? .now
+        }
+        save()
+    }
+
+    func markRead(_ chapter: SourceChapterRef) {
+        markRead([chapter])
+    }
+
+    /// Clears your place in a source chapter, so it reads as new.
+    func markUnread(_ chapter: SourceChapterRef) {
+        guard let state = sourceState(chapter.ref) else { return }
+        state.progress = nil
+        state.location = nil
+        state.lastOpenedAt = nil
+        save()
+    }
+
     /// The device's record of a source chapter, made the first time it opens.
     func sourceState(for chapter: SourceChapterRef) -> SourceReadingState {
         if let state = sourceState(chapter.ref) {

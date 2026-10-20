@@ -40,6 +40,7 @@ final class AppDependencies {
     let readerSettings: ReaderSettings
     let servers: ServerStore
     let sync: ServerSync
+    let follows: FollowStore
 
     init(container: ModelContainer, defaults: UserDefaults = .standard) {
         self.container = container
@@ -49,6 +50,7 @@ final class AppDependencies {
         readerSettings = ReaderSettings(defaults: defaults)
         servers = ServerStore(context: container.mainContext)
         sync = ServerSync(servers: servers, progress: progress, context: container.mainContext)
+        follows = FollowStore(context: container.mainContext, servers: servers)
     }
 }
 
@@ -62,5 +64,6 @@ extension View {
             .environment(app.readerSettings)
             .environment(app.servers)
             .environment(app.sync)
+            .environment(app.follows)
     }
 }

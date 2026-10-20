@@ -143,7 +143,10 @@ private struct SourceSeriesContent: View {
     let content: SourceSeriesModel.Content
     let refresh: () async -> Void
     @Query private var states: [SourceReadingState]
+    @Query private var follows: [FollowedSeries]
     @Environment(ServerStore.self) private var servers
+    @Environment(FollowStore.self) private var followStore
+    @Environment(ProgressStore.self) private var progress
     /// Long-running series are easier to read from their latest chapter.
     @AppStorage("sourceSeries.newestFirst") private var newestFirst = false
 
@@ -156,6 +159,8 @@ private struct SourceSeriesContent: View {
         _states = Query(filter: #Predicate<SourceReadingState> {
             $0.serverID == account && $0.sourceID == source && $0.seriesID == seriesID
         })
+        let key = FollowedSeries.key(server: account, source: source, series: seriesID)
+        _follows = Query(filter: #Predicate<FollowedSeries> { $0.key == key })
     }
 
     var body: some View {
@@ -166,8 +171,15 @@ private struct SourceSeriesContent: View {
                     series: content.series,
                     count: content.chapters.count,
                     cover: servers.sourceImage(content.series.coverUrl, on: account),
-                    next: nextToRead(statuses: statuses).map { (chapterRef($0), statuses[$0.id]?.readingStatus ?? .new) }
-                )
+                    next: nextToRead(statuses: statuses).map { (chapterRef($0), statuses[$0.id]?.readingStatus ?? .new) },
+                    isFollowing: !follows.isEmpty
+                ) {
+                    if let follow = follows.first {
+                        followStore.unfollow(follow)
+                    } else {
+                        followStore.follow(content.series, chapters: content.chapters, server: account, source: source)
+                    }
+                }
                 .listRowSeparator(.hidden)
                 .listSectionSeparator(.hidden)
                 .onScrollVisibilityChange(threshold: 0.2) { visible in
@@ -199,8 +211,27 @@ private struct SourceSeriesContent: View {
                     )
                     .listRowSeparator(.hidden)
                 } else {
-                    ForEach(newestFirst ? content.chapters.reversed() : content.chapters) { chapter in
-                        SourceChapterRow(chapter: chapterRef(chapter), status: statuses[chapter.id]?.readingStatus ?? .new)
+                    let ordered = newestFirst ? content.chapters.reversed() : content.chapters
+                    ForEach(ordered) { chapter in
+                        let ref = chapterRef(chapter)
+                        let status = statuses[chapter.id]?.readingStatus ?? .new
+                        SourceChapterRow(chapter: ref, status: status, isNew: follows.first?.unseenChapterIDs.contains(chapter.id) == true)
+                            .contextMenu {
+                                if status == .finished {
+                                    Button("Mark as Unread", systemImage: "circle") {
+                                        progress.markUnread(ref)
+                                    }
+                                } else {
+                                    Button("Mark as Read", systemImage: "checkmark.circle") {
+                                        progress.markRead(ref)
+                                    }
+                                }
+                                if let index = content.chapters.firstIndex(of: chapter), index > 0 {
+                                    Button("Mark Previous as Read", systemImage: "checkmark.circle.badge.questionmark") {
+                                        progress.markRead(content.chapters[..<index].map(chapterRef))
+                                    }
+                                }
+                            }
                     }
                 }
             } header: {
@@ -222,6 +253,10 @@ private struct SourceSeriesContent: View {
         .listStyle(.plain)
         .refreshable {
             await refresh()
+        }
+        .task(id: content.chapters.count) {
+            // Opening the series is seeing its chapters: none are new now.
+            followStore.didOpen(server: account, source: source, series: content.series, chapters: content.chapters)
         }
     }
 
@@ -275,6 +310,8 @@ private struct SourceSeriesHeader: View {
     let count: Int
     let cover: CoverSource
     let next: (SourceChapterRef, ReadingStatus)?
+    let isFollowing: Bool
+    let toggleFollow: () -> Void
     @State private var isShowingFullSummary = false
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
@@ -311,17 +348,32 @@ private struct SourceSeriesHeader: View {
                     }
                     .accessibilityAddTraits(.isButton)
             }
-            if let (chapter, status) = next {
-                Button {
-                    router.open(chapter, using: sync)
-                } label: {
-                    Text(status == .new ? "Start Reading" : "Continue \(chapter.chapterTitle)")
-                        .lineLimit(1)
-                        .frame(maxWidth: .infinity)
+            HStack(spacing: 10) {
+                if let (chapter, status) = next {
+                    Button {
+                        router.open(chapter, using: sync)
+                    } label: {
+                        Text(status == .new ? "Start Reading" : "Continue \(chapter.chapterTitle)")
+                            .lineLimit(1)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+                // Following keeps the series on Reading Now, with its new
+                // chapters counted, so you don't have to search again.
+                Button {
+                    toggleFollow()
+                } label: {
+                    Label(isFollowing ? "Following" : "Follow", systemImage: isFollowing ? "checkmark" : "plus")
+                        .labelStyle(.titleAndIcon)
+                        .lineLimit(1)
+                        .fixedSize(horizontal: true, vertical: false)
+                }
+                .buttonStyle(.bordered)
+                .tint(isFollowing ? .secondary : .accentColor)
             }
+            .controlSize(.large)
+            .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.vertical, 8)
     }
@@ -335,6 +387,10 @@ private struct SourceSeriesHeader: View {
             text = String(text[..<rule.lowerBound])
         }
         text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Sources sometimes end a cut-off summary with a line of dots.
+        while text.hasSuffix("...") || text.hasSuffix("\u{2026}") {
+            text = String(text.dropLast(text.hasSuffix("...") ? 3 : 1)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
         guard !text.isEmpty else { return nil }
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace, failurePolicy: .returnPartiallyParsedIfPossible)
         var summary = (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
@@ -355,6 +411,7 @@ private struct SourceSeriesHeader: View {
 private struct SourceChapterRow: View {
     let chapter: SourceChapterRef
     let status: ReadingStatus
+    var isNew = false
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
 
@@ -363,6 +420,12 @@ private struct SourceChapterRow: View {
             router.open(chapter, using: sync)
         } label: {
             HStack(spacing: 12) {
+                if isNew {
+                    Circle()
+                        .fill(.tint)
+                        .frame(width: 8, height: 8)
+                        .accessibilityLabel(Text("New"))
+                }
                 Text(chapter.chapterTitle)
                     .font(.body)
                     .foregroundStyle(status == .finished ? .secondary : .primary)

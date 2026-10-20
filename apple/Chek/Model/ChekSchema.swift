@@ -34,21 +34,32 @@ enum ChekSchemaV3: VersionedSchema {
     }
 }
 
+/// Adds the series you follow from sources.
+enum ChekSchemaV4: VersionedSchema {
+    static let versionIdentifier = Schema.Version(4, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [ChekSchemaV1.Book.self, ChekSchemaV1.ServerAccount.self, ChekSchemaV1.RemoteReadingState.self, ChekSchemaV3.SourceReadingState.self, FollowedSeries.self]
+    }
+}
+
 enum ChekMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [ChekSchemaV1.self, ChekSchemaV2.self, ChekSchemaV3.self]
+        [ChekSchemaV1.self, ChekSchemaV2.self, ChekSchemaV3.self, ChekSchemaV4.self]
     }
 
     static var stages: [MigrationStage] {
         [
             .lightweight(fromVersion: ChekSchemaV1.self, toVersion: ChekSchemaV2.self),
             .lightweight(fromVersion: ChekSchemaV2.self, toVersion: ChekSchemaV3.self),
+            .lightweight(fromVersion: ChekSchemaV3.self, toVersion: ChekSchemaV4.self),
         ]
     }
 }
 
 /// The current schema, which the store opens with.
-typealias ChekSchema = ChekSchemaV3
+typealias ChekSchema = ChekSchemaV4
+typealias FollowedSeries = ChekSchemaV4.FollowedSeries
 
 typealias Book = ChekSchemaV1.Book
 typealias ServerAccount = ChekSchemaV1.ServerAccount

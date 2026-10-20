@@ -166,6 +166,9 @@ final class ServerStore {
         for state in sourceStates {
             context.delete(state)
         }
+        for follow in (try? context.fetch(FetchDescriptor<FollowedSeries>(predicate: #Predicate { $0.serverID == id }))) ?? [] {
+            context.delete(follow)
+        }
         context.delete(account)
         try? context.save()
         signedOut.remove(id)

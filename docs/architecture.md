@@ -70,6 +70,7 @@ migrate instead of resetting:
 | `Book` | A publication imported to the device: metadata, file name, position. |
 | `ServerAccount` | A connected server: kind, address, user. The token is in the Keychain under the account's id. |
 | `RemoteReadingState` | Your position in a server publication, with enough to show it in Continue Reading offline, its last synced revision and whether it still needs uploading. |
+| `FollowedSeries` | A series you follow from a source: its title and cover, how many chapters it had when last checked, and which chapters you haven't seen. Added in `ChekSchemaV4`. |
 | `SourceReadingState` | Your position in a chapter read straight from a server's source (an extension). Sources keep no positions on the server, so this copy is the only one. Added in `ChekSchemaV2`. |
 
 Server catalogs (libraries, series, publications) and what sources list
@@ -89,6 +90,7 @@ left on devices that update.
 | `ServerStore` | Connected accounts, their sign-in state and their clients. |
 | `ProgressStore` | Saving positions for every source, and syncing them to servers. |
 | `ReaderSettings` | Theme, text size and margins, kept in `UserDefaults`. |
+| `FollowStore` | Following series from sources and checking them for new chapters. |
 
 All of them are `@MainActor`, created once in `ChekApp` and put in the
 environment. Previews build them with in-memory storage.

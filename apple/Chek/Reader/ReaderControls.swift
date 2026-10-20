@@ -3,8 +3,8 @@ import SwiftUI
 
 extension View {
     /// The reader's toolbars, shown and hidden together.
-    func readerToolbars(session: ReaderSession, width: CGFloat) -> some View {
-        modifier(ReaderToolbars(session: session, width: width))
+    func readerToolbars(session: ReaderSession, width: CGFloat, openChapter: @escaping (ReadingItem) -> Void) -> some View {
+        modifier(ReaderToolbars(session: session, width: width, openChapter: openChapter))
     }
 }
 
@@ -13,6 +13,8 @@ private struct ReaderToolbars: ViewModifier {
     /// The screen's width. Toolbar items size to their content, and a
     /// slider has none, so the scrubber is given its width.
     let width: CGFloat
+    /// Opens another chapter of the same series in place.
+    let openChapter: (ReadingItem) -> Void
     @Environment(AppRouter.self) private var router
 
     func body(content: Content) -> some View {
@@ -55,7 +57,11 @@ private struct ReaderToolbars: ViewModifier {
             .sheet(item: Bindable(session).panel) { panel in
                 switch panel {
                 case .contents:
-                    ContentsPanel(session: session)
+                    if let chapter = session.item.sourceChapter {
+                        ChaptersPanel(session: session, chapter: chapter, open: openChapter)
+                    } else {
+                        ContentsPanel(session: session)
+                    }
                 case .appearance:
                     AppearancePanel(showsTextSettings: session.showsTextSettings, showsComicSettings: session.item.kind == .comic)
                 }
