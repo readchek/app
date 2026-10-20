@@ -9,12 +9,12 @@ struct NextChapterButton: View {
     let chapter: SourceChapterRef
     let open: (ReadingItem) -> Void
     @Environment(ServerSync.self) private var sync
-    @State private var lookup: LoadState<SourceChapterRef?> = .idle
+    @State private var lookup: LoadState<ServerSync.NextChapter> = .idle
 
     var body: some View {
         VStack {
             Spacer()
-            if isOnLastPage, case .loaded(let next?) = lookup {
+            if isOnLastPage, case .loaded(.next(let next)) = lookup {
                 Button {
                     if let item = try? sync.readingItem(for: next) {
                         open(item)
@@ -38,13 +38,26 @@ struct NextChapterButton: View {
                 .buttonStyle(.glass)
                 .controlSize(.large)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
-            } else if isOnLastPage, case .loaded(nil) = lookup {
+            } else if isOnLastPage, case .loaded(.end) = lookup {
                 Text("You're up to date")
                     .font(.subheadline.weight(.medium))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
                     .glassEffect(.regular, in: .capsule)
                     .transition(.opacity)
+            } else if isOnLastPage, case .loaded(.unknown) = lookup {
+                // Offline, most likely: not the end, just not known.
+                Button {
+                    lookup = .idle
+                    look()
+                } label: {
+                    Label("Couldn't check for the next chapter", systemImage: "arrow.clockwise")
+                        .font(.subheadline.weight(.medium))
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 4)
+                }
+                .buttonStyle(.glass)
+                .transition(.opacity)
             }
         }
         .padding(.bottom, 16)
@@ -53,11 +66,17 @@ struct NextChapterButton: View {
         .animation(.snappy, value: isOnLastPage)
         .animation(.snappy, value: lookup)
         .onChange(of: isOnLastPage, initial: true) { _, last in
-            guard last, case .idle = lookup else { return }
-            lookup = .loading
-            Task {
-                lookup = .loaded(await sync.chapter(after: chapter))
+            if last {
+                look()
             }
+        }
+    }
+
+    private func look() {
+        guard case .idle = lookup else { return }
+        lookup = .loading
+        Task {
+            lookup = .loaded(await sync.chapter(after: chapter))
         }
     }
 

@@ -130,9 +130,17 @@ final class SourceSeriesModel {
             state = .loaded(content)
             staleError = nil
             onLoad?(content.series)
+            if content.chaptersFailure == nil {
+                await SeriesCache.write(content.series, chapters: content.chapters, server: account, source: source)
+            }
         } catch {
-            // A refresh that fails keeps what's already showing, and says so.
-            if state.value == nil {
+            // A refresh that fails keeps what's already showing, and says
+            // so; with nothing showing yet, what the source said last time
+            // stands in, so downloaded chapters can be read offline.
+            if state.value == nil, let snapshot = await SeriesCache.read(server: account, source: source, series: seriesID) {
+                state = .loaded(Content(series: snapshot.series, chapters: snapshot.chapters, chaptersFailure: nil))
+                staleError = DisplayError(error)
+            } else if state.value == nil {
                 state = .failed(DisplayError(error))
             } else {
                 staleError = DisplayError(error)

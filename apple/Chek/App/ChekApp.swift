@@ -62,7 +62,10 @@ final class AppDependencies {
         sync = ServerSync(servers: servers, progress: progress, context: container.mainContext)
         follows = FollowStore(context: container.mainContext, servers: servers)
         downloads = ChapterDownloads(servers: servers)
-        servers.onRemove = { [downloads] account in downloads.removeAll(for: account) }
+        servers.onRemove = { [downloads] account in
+            downloads.removeAll(for: account)
+            SeriesCache.removeAll(for: account)
+        }
     }
 }
 

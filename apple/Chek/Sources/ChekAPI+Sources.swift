@@ -61,8 +61,8 @@ nonisolated extension ChekAPI {
         var hasMore: Bool
     }
 
-    struct SourceSeries: Decodable, Hashable, Sendable {
-        struct Contributor: Decodable, Hashable, Sendable {
+    struct SourceSeries: Codable, Hashable, Sendable {
+        struct Contributor: Codable, Hashable, Sendable {
             var name: String
             var role: String
         }
@@ -76,7 +76,7 @@ nonisolated extension ChekAPI {
         var readingDirection: String?
     }
 
-    struct SourceChapter: Decodable, Identifiable, Hashable, Sendable {
+    struct SourceChapter: Codable, Identifiable, Hashable, Sendable {
         var id: String
         var title: String
         /// As the source writes it, such as "12" or "Vol. 2".

@@ -128,14 +128,32 @@ final class ServerSync {
 
     /// The chapter after `chapter` in its series, in reading order, or nil
     /// at the last one or when the list can't be read.
-    func chapter(after chapter: SourceChapterRef) async -> SourceChapterRef? {
-        guard let chapters = try? await servers.request(chapter.server, { client throws(ChekError) in
-            try await client.chapters(ofSeries: chapter.seriesID, inSource: chapter.source)
-        }), let index = chapters.firstIndex(where: { $0.id == chapter.chapterID }), chapters.indices.contains(index + 1) else {
-            return nil
+    /// What follows a chapter in its series.
+    enum NextChapter: Equatable {
+        case next(SourceChapterRef)
+        /// The chapter is the series' last.
+        case end
+        /// The server couldn't say and nothing on the device can either.
+        case unknown
+    }
+
+    /// The chapter after `chapter`, from the server, or from what it said
+    /// last time when it can't be reached.
+    func chapter(after chapter: SourceChapterRef) async -> NextChapter {
+        let seriesID = chapter.seriesID
+        let source = chapter.source
+        var chapters = try? await servers.request(chapter.server) { client throws(ChekError) in
+            try await client.chapters(ofSeries: seriesID, inSource: source)
         }
+        if chapters == nil {
+            chapters = await SeriesCache.read(server: chapter.server, source: source, series: seriesID)?.chapters
+        }
+        guard let chapters, let index = chapters.firstIndex(where: { $0.id == chapter.chapterID }) else {
+            return .unknown
+        }
+        guard chapters.indices.contains(index + 1) else { return .end }
         let next = chapters[index + 1]
-        return SourceChapterRef(
+        return .next(SourceChapterRef(
             server: chapter.server,
             source: chapter.source,
             seriesID: chapter.seriesID,
@@ -144,7 +162,7 @@ final class ServerSync {
             chapterTitle: next.displayTitle,
             isRightToLeft: chapter.isRightToLeft,
             seriesCoverPath: chapter.seriesCoverPath
-        )
+        ))
     }
 
     /// Brings the device's copy of your place up to date with the server's

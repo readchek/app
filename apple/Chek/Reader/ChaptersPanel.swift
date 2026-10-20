@@ -91,7 +91,12 @@ struct ChaptersPanel: View {
                 }
                 chapters = .loaded(listed)
             } catch {
-                chapters = .failed(DisplayError(error))
+                // What the source said last time, when it can't be reached.
+                if let cached = await SeriesCache.read(server: chapter.server, source: chapter.source, series: chapter.seriesID) {
+                    chapters = .loaded(cached.chapters)
+                } else {
+                    chapters = .failed(DisplayError(error))
+                }
             }
         }
     }
