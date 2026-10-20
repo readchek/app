@@ -1,3 +1,4 @@
+import CryptoKit
 import Foundation
 import UIKit
 
@@ -47,16 +48,30 @@ final class ImagePipeline {
     nonisolated private static let diskFolder = URL.cachesDirectory.appending(path: "Covers", directoryHint: .isDirectory)
 
     nonisolated private static func diskURL(for key: String) -> URL {
-        // Keys hold slashes; hex keeps them a single safe file name.
-        let name = Data(key.utf8).map { String(format: "%02x", $0) }.joined()
-        return diskFolder.appending(path: name)
+        // Keys hold slashes and can run to hundreds of characters, as a
+        // source image's does, past what a file name allows; a digest is
+        // always one short safe name.
+        let digest = SHA256.hash(data: Data(key.utf8)).map { String(format: "%02x", $0) }.joined()
+        return diskFolder.appending(path: digest)
     }
 
+    /// Files named the old way, by the key itself in hex, are never read
+    /// again, so the folder is emptied once and marked.
+    nonisolated private static let diskFolderReady: Void = {
+        let marker = diskFolder.appending(path: ".v2")
+        guard !FileManager.default.fileExists(atPath: marker.path(percentEncoded: false)) else { return }
+        try? FileManager.default.removeItem(at: diskFolder)
+        try? FileManager.default.createDirectory(at: diskFolder, withIntermediateDirectories: true)
+        try? Data().write(to: marker)
+    }()
+
     nonisolated static func diskData(for key: String) -> Data? {
-        try? Data(contentsOf: diskURL(for: key))
+        _ = diskFolderReady
+        return try? Data(contentsOf: diskURL(for: key))
     }
 
     nonisolated static func storeOnDisk(_ data: Data, for key: String) {
+        _ = diskFolderReady
         try? FileManager.default.createDirectory(at: diskFolder, withIntermediateDirectories: true)
         try? data.write(to: diskURL(for: key), options: .atomic)
     }
