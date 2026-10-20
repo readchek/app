@@ -10,6 +10,14 @@ struct LibraryView: View {
     @AppStorage("library.layout") private var layout = LibraryLayout.grid
     /// The books chosen while selecting, nil when not.
     @State private var selection: Set<UUID>?
+    /// One book at most, only to know whether there's anything to select.
+    @Query(Self.anyBook) private var anyBook: [Book]
+
+    private static var anyBook: FetchDescriptor<Book> {
+        var descriptor = FetchDescriptor<Book>()
+        descriptor.fetchLimit = 1
+        return descriptor
+    }
 
     var body: some View {
         NavigationStack {
@@ -26,7 +34,7 @@ struct LibraryView: View {
                         }
                     } else {
                         ToolbarItemGroup(placement: .primaryAction) {
-                            LibraryOptionsMenu(sort: $sort, filter: $filter, layout: $layout) {
+                            LibraryOptionsMenu(sort: $sort, filter: $filter, layout: $layout, canSelect: !anyBook.isEmpty) {
                                 withAnimation(.snappy) { selection = [] }
                             }
                             AddBooksButton()
@@ -64,11 +72,13 @@ private struct LibraryOptionsMenu: View {
     @Binding var sort: LibrarySort
     @Binding var filter: LibraryFilter
     @Binding var layout: LibraryLayout
+    let canSelect: Bool
     let select: () -> Void
 
     var body: some View {
         Menu("View Options", systemImage: "line.3.horizontal.decrease") {
             Button("Select Books", systemImage: "checkmark.circle", action: select)
+                .disabled(!canSelect)
             Picker("Show", selection: $filter) {
                 ForEach(LibraryFilter.allCases) { filter in
                     Text(filter.title).tag(filter)

@@ -581,14 +581,16 @@ private struct SeriesDownloadsMenu: View {
         let kept = chapters.filter(downloads.isDownloaded)
         let pending = unread.filter { downloads.state(of: $0) == .none }
         Menu("Downloads", systemImage: "arrow.down.circle") {
-            Button("Download \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
-                downloads.download(Array(pending.prefix(5)))
+            Section("Download") {
+                Button("Next \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
+                    downloads.download(Array(pending.prefix(5)))
+                }
+                .disabled(pending.isEmpty)
+                Button("All Unread", systemImage: "arrow.down.circle.fill") {
+                    downloads.download(pending)
+                }
+                .disabled(pending.count < 2)
             }
-            .disabled(pending.isEmpty)
-            Button("Download All Unread", systemImage: "arrow.down.circle.fill") {
-                downloads.download(pending)
-            }
-            .disabled(pending.count < 2)
             if !kept.isEmpty {
                 Divider()
                 Button("Remove ^[\(kept.count) Download](inflect: true)", systemImage: "trash", role: .destructive) {
