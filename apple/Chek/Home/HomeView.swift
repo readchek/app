@@ -34,6 +34,7 @@ private struct HomeContent: View {
     private var sourceStates: [SourceReadingState]
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
     @Environment(ServerStore.self) private var servers
+    @Environment(ServerSync.self) private var sync
     @State private var model = HomeServersModel()
 
     var body: some View {
@@ -66,6 +67,7 @@ private struct HomeContent: View {
         }
         .task(id: servers.signedOut) {
             await model.load(from: servers)
+            await sync.fillMissingSourceCovers()
         }
     }
 

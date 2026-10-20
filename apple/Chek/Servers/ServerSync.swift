@@ -102,6 +102,25 @@ final class ServerSync {
         return item
     }
 
+    /// Asks sources for the covers of series you've read chapters of but
+    /// whose cover isn't kept, such as places saved before covers were,
+    /// so Continue Reading shows them. Each series is asked for once.
+    func fillMissingSourceCovers() async {
+        let missing = (try? context.fetch(FetchDescriptor<SourceReadingState>(predicate: #Predicate { $0.seriesCoverPath == nil }))) ?? []
+        var seen = Set<String>()
+        for state in missing {
+            let key = "\(state.serverID)/\(state.sourceID)/\(state.seriesID)"
+            guard seen.insert(key).inserted, servers.state(of: state.serverID) == .signedIn else { continue }
+            let server = state.serverID
+            let source = state.sourceID
+            let seriesID = state.seriesID
+            guard let series = try? await servers.request(server, { client throws(ChekError) in
+                try await client.series(seriesID, inSource: source)
+            }) else { continue }
+            progress.updateSourceSeries(series, server: server, source: source)
+        }
+    }
+
     /// The chapter after `chapter` in its series, in reading order, or nil
     /// at the last one or when the list can't be read.
     func chapter(after chapter: SourceChapterRef) async -> SourceChapterRef? {
