@@ -58,8 +58,13 @@ nonisolated struct ChekClient: Sendable {
         return page.items
     }
 
-    func search(_ text: String, cursor: String?) async throws(ChekError) -> ChekAPI.Page<ChekAPI.PublicationSummary> {
-        try await get("api/v1/search", query: [URLQueryItem(name: "q", value: String(text.prefix(200)))], cursor: cursor)
+    /// Searches the server, or only `library` when given.
+    func search(_ text: String, inLibrary library: Int64? = nil, cursor: String?) async throws(ChekError) -> ChekAPI.Page<ChekAPI.PublicationSummary> {
+        var query = [URLQueryItem(name: "q", value: String(text.prefix(200)))]
+        if let library {
+            query.append(URLQueryItem(name: "libraryId", value: String(library)))
+        }
+        return try await get("api/v1/search", query: query, cursor: cursor)
     }
 
     // MARK: - Sources

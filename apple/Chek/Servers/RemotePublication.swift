@@ -33,7 +33,9 @@ nonisolated struct RemotePublication: Identifiable, Hashable, Codable, Sendable 
         id = summary.id
         title = summary.title
         seriesID = summary.series.id
-        seriesTitle = summary.series.title
+        // Series scanned from folders are named after them.
+        let series = summary.series.title
+        seriesTitle = series.contains(" ") ? series : BookImporter.title(fromFileName: series)
         numberLabel = summary.numberLabel
         format = summary.format
         pageCount = summary.pageCount
@@ -52,5 +54,14 @@ nonisolated struct RemotePublication: Identifiable, Hashable, Codable, Sendable 
         pageCount = nil
         hasCover = state.hasCover
         isAvailable = true
+    }
+}
+
+extension ChekAPI.Series {
+    /// The title as people read it. A series scanned from a folder is named
+    /// after the folder, such as "cole-voyage-of-life", so one with no
+    /// spaces is turned into words like a file name is.
+    var displayTitle: String {
+        title.contains(" ") ? title : BookImporter.title(fromFileName: title)
     }
 }

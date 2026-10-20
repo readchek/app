@@ -27,7 +27,7 @@ struct SourceView: View {
             }
         }
         .navigationTitle(source.name)
-        .searchable(text: $query, prompt: Text("Search \(source.name)"))
+        .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search \(source.name)"))
         .onSubmit(of: .search) {
             submittedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
         }
