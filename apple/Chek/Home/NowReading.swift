@@ -25,6 +25,10 @@ struct NowReading {
 
     /// The newest of the latest book, server publication and source chapter.
     static func latest(book: Book?, remote: RemoteReadingState?, chapter: SourceReadingState?, servers: ServerStore) -> NowReading? {
+        // Server content you're signed out of would open to an alert, so
+        // the bar falls back to what can open.
+        let remote = remote.flatMap { servers.state(of: $0.serverID) == .signedIn ? $0 : nil }
+        let chapter = chapter.flatMap { servers.state(of: $0.serverID) == .signedIn ? $0 : nil }
         let bookDate = book?.lastOpenedAt ?? .distantPast
         let remoteDate = remote?.lastOpenedAt ?? .distantPast
         let chapterDate = chapter?.lastOpenedAt ?? .distantPast

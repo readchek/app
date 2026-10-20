@@ -48,6 +48,9 @@ final class AppRouter {
     private(set) var opening: PublicationRef?
     /// Why the last server publication couldn't open.
     var openingFailure: OpeningFailure?
+    /// What was being opened when a sign-in was needed, opened again once
+    /// you've signed in rather than making you find it a second time.
+    private(set) var pendingAfterSignIn: PendingOpen?
 
     func open(_ item: ReadingItem) {
         sheet = nil
@@ -64,10 +67,9 @@ final class AppRouter {
             do {
                 open(try await sync.readingItem(for: publication))
             } catch {
-                openingFailure = OpeningFailure(
-                    error: DisplayError(error),
-                    signIn: sync.isSignedOut(of: publication.server) ? publication.server : nil
-                )
+                let needsSignIn = sync.isSignedOut(of: publication.server)
+                openingFailure = OpeningFailure(error: DisplayError(error), signIn: needsSignIn ? publication.server : nil)
+                if needsSignIn { pendingAfterSignIn = .publication(publication) }
             }
         }
     }
@@ -80,11 +82,24 @@ final class AppRouter {
         do {
             open(try sync.readingItem(for: chapter))
         } catch {
-            openingFailure = OpeningFailure(
-                error: error,
-                signIn: sync.isSignedOut(of: chapter.server) ? chapter.server : nil
-            )
+            let needsSignIn = sync.isSignedOut(of: chapter.server)
+            openingFailure = OpeningFailure(error: error, signIn: needsSignIn ? chapter.server : nil)
+            if needsSignIn { pendingAfterSignIn = .chapter(chapter) }
         }
+    }
+
+    /// Opens what a sign-in was needed for, now that it's done.
+    func resumePendingOpen(using sync: ServerSync) {
+        guard let pending = pendingAfterSignIn else { return }
+        pendingAfterSignIn = nil
+        switch pending {
+        case .publication(let publication): open(publication, using: sync)
+        case .chapter(let chapter): open(chapter, using: sync)
+        }
+    }
+
+    func dropPendingOpen() {
+        pendingAfterSignIn = nil
     }
 
     func closeReader() {
@@ -102,4 +117,10 @@ final class AppRouter {
 struct OpeningFailure: Hashable {
     var error: DisplayError
     var signIn: UUID?
+}
+
+/// Something that was being opened when a sign-in got in the way.
+enum PendingOpen {
+    case publication(RemotePublication)
+    case chapter(SourceChapterRef)
 }

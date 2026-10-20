@@ -114,7 +114,7 @@ private struct OpeningFailureAlert: ViewModifier {
         ) { failure in
             if let account = failure.signIn {
                 Button("Sign In") { router.sheet = .signIn(account) }
-                Button("Not Now", role: .cancel) {}
+                Button("Not Now", role: .cancel) { router.dropPendingOpen() }
             } else {
                 Button("OK") {}
             }

@@ -86,8 +86,11 @@ private struct ServerAccountForm: View {
     var body: some View {
         Form {
             Section {
-                TextField("Name", text: $name)
-                    .onSubmit { servers.rename(account, to: name) }
+                LabeledContent("Name") {
+                    TextField("Name", text: $name)
+                        .multilineTextAlignment(.trailing)
+                        .onSubmit { servers.rename(account, to: name) }
+                }
                 LabeledContent("Address", value: account.baseURL.absoluteString)
                 LabeledContent("Account", value: account.userName)
             }

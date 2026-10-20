@@ -28,6 +28,8 @@ struct ReaderScreen: View {
                         NextChapterButton(session: session, chapter: chapter) { next in
                             continueReading(next)
                         }
+                    } else {
+                        BookEndButton(session: session)
                     }
                     if session.controller.state == .ready {
                         ReadingHint(session: session)

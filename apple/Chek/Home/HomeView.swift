@@ -33,6 +33,7 @@ private struct HomeContent: View {
     @Query(filter: #Predicate<SourceReadingState> { $0.lastOpenedAt != nil }, sort: \SourceReadingState.lastOpenedAt, order: .reverse)
     private var sourceStates: [SourceReadingState]
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
+    @Query private var follows: [FollowedSeries]
     @Environment(ServerStore.self) private var servers
     @Environment(ServerSync.self) private var sync
     @Environment(FollowStore.self) private var followStore
@@ -40,10 +41,15 @@ private struct HomeContent: View {
 
     var body: some View {
         let continueReading = continueReadingItems()
-        let isEmpty = continueReading.isEmpty && newBooks.isEmpty && accounts.isEmpty
+        let signedOut = accounts.filter { servers.state(of: $0.id) == .signedOut }
+        let hasShelves = !continueReading.isEmpty || !newBooks.isEmpty || !model.newOnServers.isEmpty || !follows.isEmpty
         Group {
-            if isEmpty {
+            if !hasShelves, accounts.isEmpty {
                 HomeEmptyView()
+            } else if !hasShelves, !signedOut.isEmpty {
+                // Everything here came from servers you're signed out of, so
+                // the way back in is the one thing worth showing.
+                SignedOutHomeView(accounts: signedOut)
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
@@ -154,6 +160,32 @@ final class HomeServersModel {
 }
 
 /// Shown before there's anything to read, with the two ways to start.
+/// Reading Now when every server is signed out and nothing else is here.
+private struct SignedOutHomeView: View {
+    let accounts: [ServerAccount]
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        ContentUnavailableView {
+            Label("Signed Out", systemImage: "person.crop.circle.badge.exclamationmark")
+        } description: {
+            Text(accounts.count == 1
+                ? "Sign in to \(accounts[0].name) again to pick up where you left off."
+                : "Sign in to your servers again to pick up where you left off.")
+        } actions: {
+            ForEach(accounts) { account in
+                Button(accounts.count == 1 ? String(localized: "Sign In") : String(localized: "Sign In to \(account.name)")) {
+                    router.sheet = .signIn(account.id)
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            Button("Add Books") {
+                router.addBooks()
+            }
+        }
+    }
+}
+
 private struct HomeEmptyView: View {
     @Environment(AppRouter.self) private var router
 

@@ -129,6 +129,8 @@ extension AddServerView {
 struct SignInView: View {
     let account: UUID
     @Environment(ServerStore.self) private var servers
+    @Environment(ServerSync.self) private var sync
+    @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var password = ""
     @State private var phase = AddServerView.Phase.editing
@@ -160,6 +162,7 @@ struct SignInView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Cancel", systemImage: "xmark") {
+                            router.dropPendingOpen()
                             dismiss()
                         }
                     }
@@ -186,6 +189,7 @@ struct SignInView: View {
             do {
                 try await servers.signIn(server, password: password)
                 dismiss()
+                router.resumePendingOpen(using: sync)
             } catch {
                 phase = .failed(DisplayError(error))
                 isFocused = true
