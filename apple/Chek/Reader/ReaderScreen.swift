@@ -29,6 +29,9 @@ struct ReaderScreen: View {
                             continueReading(next)
                         }
                     }
+                    if session.controller.state == .ready {
+                        ReadingHint(session: session)
+                    }
                 }
                 // A new chapter is a new page view, not the last one's
                 // reused with its old pages.

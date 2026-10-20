@@ -17,6 +17,7 @@ struct SettingsView: View {
                         Label("Reading", systemImage: "textformat.size")
                     }
                 }
+                StorageSection()
                 Section {
                     LabeledContent("Version", value: Bundle.main.versionDescription)
                     Link(destination: URL(string: "https://chek.page")!) {
