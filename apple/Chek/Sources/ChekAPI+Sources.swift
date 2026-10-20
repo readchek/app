@@ -74,6 +74,25 @@ nonisolated extension ChekAPI {
         var contributors: [Contributor]
         /// `ltr`, `rtl` or `ttb`, when the source knows.
         var readingDirection: String?
+        /// `ongoing`, `completed`, `hiatus` or `cancelled`, when the source
+        /// knows. Absent from servers older than the 0.3.0 source contract.
+        var status: String?
+        /// The year the series started, when the source knows.
+        var year: Int?
+        /// Genres and themes as the source names them, most important first.
+        var tags: [String]?
+
+        init(id: String, title: String, summary: String?, coverUrl: String?, contributors: [Contributor], readingDirection: String?, status: String? = nil, year: Int? = nil, tags: [String]? = nil) {
+            self.id = id
+            self.title = title
+            self.summary = summary
+            self.coverUrl = coverUrl
+            self.contributors = contributors
+            self.readingDirection = readingDirection
+            self.status = status
+            self.year = year
+            self.tags = tags
+        }
     }
 
     struct SourceChapter: Codable, Identifiable, Hashable, Sendable {

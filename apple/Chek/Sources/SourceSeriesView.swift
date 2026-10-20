@@ -360,7 +360,7 @@ extension ChekAPI.SourceChapter {
 
 /// The series' cover beside its title and authors, its summary, and the
 /// button that picks up where you are.
-private struct SourceSeriesHeader: View {
+struct SourceSeriesHeader: View {
     let series: ChekAPI.SourceSeries
     let count: Int
     let cover: CoverSource
@@ -388,13 +388,30 @@ private struct SourceSeriesHeader: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
-                    if count > 0 {
-                        Text("^[\(count) chapter](inflect: true)")
+                    if let detail = Self.detail(count: count, status: series.status, year: series.year) {
+                        Text(detail)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 0)
+            }
+            if let tags = series.tags, !tags.isEmpty {
+                // Genres as a row of pills, scrolling past the edge rather
+                // than wrapping into a block that pushes the summary down.
+                ScrollView(.horizontal) {
+                    HStack(spacing: 6) {
+                        ForEach(tags, id: \.self) { tag in
+                            Text(tag)
+                                .font(.caption.weight(.medium))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(.quaternary, in: .capsule)
+                        }
+                    }
+                }
+                .scrollIndicators(.hidden)
+                .scrollClipDisabled()
             }
             if let summary = Self.summary(series.summary) {
                 VStack(alignment: .leading, spacing: 4) {
@@ -447,6 +464,28 @@ private struct SourceSeriesHeader: View {
             .frame(maxWidth: isRegular ? 440 : .infinity, alignment: .leading)
         }
         .padding(.vertical, 8)
+    }
+
+    /// "97 chapters · Ongoing · 2018", from whatever is known.
+    static func detail(count: Int, status: String?, year: Int?) -> String? {
+        var parts: [String] = []
+        // Inflection markup only works in `Text`, so the plural is spelt out.
+        if count == 1 {
+            parts.append(String(localized: "1 chapter"))
+        } else if count > 1 {
+            parts.append(String(localized: "\(count) chapters"))
+        }
+        switch status {
+        case "ongoing": parts.append(String(localized: "Ongoing"))
+        case "completed": parts.append(String(localized: "Completed"))
+        case "hiatus": parts.append(String(localized: "On Hiatus"))
+        case "cancelled": parts.append(String(localized: "Cancelled"))
+        default: break
+        }
+        if let year {
+            parts.append(String(year))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
     /// Whether `summary` might run past three lines at the summary's size.

@@ -25,3 +25,13 @@ struct TitlesTests {
         #expect(ChekAPI.SourceChapter(id: "a", title: "  ", number: nil, published: nil).displayTitle == "Chapter")
     }
 }
+
+/// The line under a source series' title.
+struct SeriesDetailTests {
+    @Test func joinsWhatIsKnown() {
+        #expect(SourceSeriesHeader.detail(count: 97, status: "ongoing", year: 2018) == "97 chapters · Ongoing · 2018")
+        #expect(SourceSeriesHeader.detail(count: 1, status: "completed", year: nil) == "1 chapter · Completed")
+        #expect(SourceSeriesHeader.detail(count: 0, status: nil, year: 1989) == "1989")
+        #expect(SourceSeriesHeader.detail(count: 0, status: "weird", year: nil) == nil)
+    }
+}
