@@ -292,6 +292,10 @@ final class ServerSync {
                 state.revision = current.revision
                 state.needsUpload = state.location != sent
             }
+        } catch .server(status: 403, "demo_account") {
+            // A shared demo account keeps no one's place, so there's no
+            // point asking again; the place stays on this device.
+            state.needsUpload = false
         } catch {
             // Offline or signed out: the place stays waiting for next time.
             return

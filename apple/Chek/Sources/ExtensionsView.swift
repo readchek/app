@@ -142,6 +142,8 @@ final class ExtensionsModel {
         defer { changing.remove(id) }
         do {
             try await servers.request(account, operation)
+        } catch .server(status: 403, "demo_account") {
+            failure = DisplayError(title: String(localized: "The demo account can't change its sources."), message: String(localized: "Connect a server of your own to install sources."))
         } catch .server(status: 403, _) {
             failure = DisplayError(title: String(localized: "The server's admin hasn't allowed this repository."))
         } catch .server(status: 422, _) {

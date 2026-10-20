@@ -109,6 +109,7 @@ extension ChekError: LocalizedError {
         case .unauthorized: String(localized: "You're signed out of this server.")
         case .notFound: String(localized: "This isn't on the server anymore.")
         case .progressConflict: String(localized: "Another device saved a different place.")
+        case .server(_, "demo_account"): String(localized: "This is a shared demo account, so nothing on it can be changed.")
         case .server(_, "source_failed"): String(localized: "The source didn't answer.")
         case .server(_, "source_unavailable"): String(localized: "This source isn't available on the server.")
         case .server(let status, _): String(localized: "The server had a problem (\(status)).")
