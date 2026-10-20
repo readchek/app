@@ -7,11 +7,24 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3EF973E236DF890103E9917D /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CCFAC4AA2270F434CFC8C662 /* Foundation.framework */; };
 		C4EC00000000000000000101 /* ChekReader in Frameworks */ = {isa = PBXBuildFile; productRef = C4EC00000000000000000401 /* ChekReader */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		BF9959479E22A6C841EC1145 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C4EC00000000000000000801 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C4EC00000000000000000601;
+			remoteInfo = Chek;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		5DEDF1452AEC6375966A9E29 /* ChekTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ChekTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		C4EC00000000000000000201 /* Chek.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Chek.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CCFAC4AA2270F434CFC8C662 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -33,6 +46,13 @@
 			path = Chek;
 			sourceTree = "<group>";
 		};
+		D15281C115F2D8B6D6BCCCAC /* ChekTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+			);
+			path = ChekTests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -44,14 +64,40 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		D7D2AED5FBB7184C79574692 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				3EF973E236DF890103E9917D /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		362CA30091B11433BF323D5F /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				CCFAC4AA2270F434CFC8C662 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		7E90C8D682EEA2C2A42269A3 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				362CA30091B11433BF323D5F /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		C4EC00000000000000000701 = {
 			isa = PBXGroup;
 			children = (
 				C4EC00000000000000000301 /* Chek */,
 				C4EC00000000000000000702 /* Products */,
+				7E90C8D682EEA2C2A42269A3 /* Frameworks */,
+				D15281C115F2D8B6D6BCCCAC /* ChekTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -59,6 +105,7 @@
 			isa = PBXGroup;
 			children = (
 				C4EC00000000000000000201 /* Chek.app */,
+				5DEDF1452AEC6375966A9E29 /* ChekTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,6 +113,27 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		520FFC4DF5FC5B8B1B2C6543 /* ChekTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 43A744DC4A87CA706981790D /* Build configuration list for PBXNativeTarget "ChekTests" */;
+			buildPhases = (
+				9A7653DF940B9DEF26B30627 /* Sources */,
+				D7D2AED5FBB7184C79574692 /* Frameworks */,
+				9192E1FE33BF93B15CE618A9 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				3C276A46C3A93BCE245994D5 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				D15281C115F2D8B6D6BCCCAC /* ChekTests */,
+			);
+			name = ChekTests;
+			productName = ChekTests;
+			productReference = 5DEDF1452AEC6375966A9E29 /* ChekTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		C4EC00000000000000000601 /* Chek */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C4EC00000000000000000902 /* Build configuration list for PBXNativeTarget "Chek" */;
@@ -99,6 +167,10 @@
 				LastSwiftUpdateCheck = 2700;
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
+					520FFC4DF5FC5B8B1B2C6543 = {
+						CreatedOnToolsVersion = 27.0;
+						TestTargetID = C4EC00000000000000000601;
+					};
 					C4EC00000000000000000601 = {
 						CreatedOnToolsVersion = 27.0;
 					};
@@ -122,11 +194,19 @@
 			projectRoot = "";
 			targets = (
 				C4EC00000000000000000601 /* Chek */,
+				520FFC4DF5FC5B8B1B2C6543 /* ChekTests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		9192E1FE33BF93B15CE618A9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C4EC00000000000000000503 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -137,6 +217,13 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		9A7653DF940B9DEF26B30627 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C4EC00000000000000000502 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -146,7 +233,59 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		3C276A46C3A93BCE245994D5 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = Chek;
+			target = C4EC00000000000000000601 /* Chek */;
+			targetProxy = BF9959479E22A6C841EC1145 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
 /* Begin XCBuildConfiguration section */
+		4F4F82ECE510731560F9D790 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = KZX5HZ32P9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = run.chibi.manga.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chek.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chek";
+			};
+			name = Debug;
+		};
+		ADAC0F81787032A9AB7981B5 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = KZX5HZ32P9;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				PRODUCT_BUNDLE_IDENTIFIER = run.chibi.manga.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Chek.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Chek";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
 		C4EC00000000000000000A01 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -188,8 +327,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = KZX5HZ32P9;
 				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = KZX5HZ32P9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Chek/Info.plist;
@@ -223,8 +362,8 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				DEVELOPMENT_TEAM = KZX5HZ32P9;
 				CURRENT_PROJECT_VERSION = 12;
+				DEVELOPMENT_TEAM = KZX5HZ32P9;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Chek/Info.plist;
@@ -255,6 +394,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		43A744DC4A87CA706981790D /* Build configuration list for PBXNativeTarget "ChekTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				ADAC0F81787032A9AB7981B5 /* Release */,
+				4F4F82ECE510731560F9D790 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C4EC00000000000000000901 /* Build configuration list for PBXProject "Chek" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

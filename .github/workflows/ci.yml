@@ -49,3 +49,23 @@ jobs:
           -disablePackageRepositoryCache
           -clonedSourcePackagesDirPath .build/SourcePackages
           CODE_SIGNING_ALLOWED=NO
+      # Unit tests need a simulator to host the app. An iPhone that isn't
+      # booted is preferred, so a simulator someone is using on the
+      # maintainers' Mac isn't taken over.
+      - name: Run unit tests
+        run: |
+          UDID=$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = [d for key, ds in json.load(sys.stdin)["devices"].items() if "iOS" in key for d in ds if d["name"].startswith("iPhone")]
+          devices.sort(key=lambda d: d["state"] != "Shutdown")
+          print(devices[0]["udid"] if devices else "")
+          ')
+          if [ -z "$UDID" ]; then
+            echo "::warning::No iPhone simulator is available, so the unit tests were skipped"
+            exit 0
+          fi
+          xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
+            -destination "id=$UDID" \
+            -disablePackageRepositoryCache \
+            -clonedSourcePackagesDirPath .build/SourcePackages \
+            CODE_SIGNING_ALLOWED=NO

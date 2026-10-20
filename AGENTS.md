@@ -23,7 +23,14 @@ xcodebuild build -project apple/Chek.xcodeproj -scheme Chek \
   -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
 ```
 
-CI runs this on every pull request. Before you push, build what you changed. If your environment can't build the app, say so in the PR rather than guessing.
+CI runs this on every pull request, then the unit tests in `apple/ChekTests` on an iPhone simulator:
+
+```sh
+xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
+  -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
+```
+
+Before you push, build what you changed and run the tests. Tests cover logic that doesn't need a screen: address parsing, titles, statuses, settings, decoding. Add one when you fix a bug in such code. If your environment can't build the app, say so in the PR rather than guessing.
 
 ## Code conventions
 
