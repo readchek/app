@@ -24,11 +24,11 @@ struct NowReading {
     }
 
     /// The newest of the latest book, server publication and source chapter.
-    static func latest(book: Book?, remote: RemoteReadingState?, chapter: SourceReadingState?, servers: ServerStore) -> NowReading? {
+    static func latest(book: Book?, remote: RemoteReadingState?, chapter: SourceReadingState?, servers: ServerStore, downloads: Downloads) -> NowReading? {
         // Server content you're signed out of would open to an alert, so
-        // the bar falls back to what can open.
-        let remote = remote.flatMap { servers.state(of: $0.serverID) == .signedIn ? $0 : nil }
-        let chapter = chapter.flatMap { servers.state(of: $0.serverID) == .signedIn ? $0 : nil }
+        // the bar falls back to what can open: a download opens anyway.
+        let remote = remote.flatMap { servers.state(of: $0.serverID) == .signedIn || downloads.isDownloaded($0.ref) ? $0 : nil }
+        let chapter = chapter.flatMap { servers.state(of: $0.serverID) == .signedIn || downloads.isDownloaded($0.ref) ? $0 : nil }
         let bookDate = book?.lastOpenedAt ?? .distantPast
         let remoteDate = remote?.lastOpenedAt ?? .distantPast
         let chapterDate = chapter?.lastOpenedAt ?? .distantPast
@@ -72,13 +72,15 @@ private struct NowReadingAccessoryModifier: ViewModifier {
     @Query(filter: #Predicate<SourceReadingState> { $0.lastOpenedAt != nil }, sort: \SourceReadingState.lastOpenedAt, order: .reverse)
     private var chapters: [SourceReadingState]
     @Environment(ServerStore.self) private var servers
+    @Environment(Downloads.self) private var downloads
 
     func body(content: Content) -> some View {
         let current = NowReading.latest(
             book: books.first,
             remote: remote.first { $0.readingStatus != .finished },
             chapter: chapters.first { $0.readingStatus != .finished },
-            servers: servers
+            servers: servers,
+            downloads: downloads
         )
         if #available(iOS 26.1, *) {
             content.tabViewBottomAccessory(isEnabled: current != nil) {
