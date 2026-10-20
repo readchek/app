@@ -113,6 +113,9 @@ to start, and where to save. `ReaderSession` owns the `ReaderController`,
 whether the controls are showing, and which panel is open. Only
 `ProgressRecorder`, the scrubber and the page label read the location.
 
+On a screen wider than it is tall, such as an iPad held sideways, comics
+show two pages at a time after the cover, which is Chek Reader's doing.
+
 Server publications open without downloading first. EPUBs stream with range
 requests, comics stream page by page, and other formats download to the
 cache before they open; a download that's stopped keeps what arrived and
