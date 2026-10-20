@@ -267,12 +267,23 @@ private struct SourceSeriesContent: View {
                     HStack(spacing: 16) {
                         Text("Chapters")
                         Spacer()
-                        Button(newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down") {
-                            withAnimation(.snappy) { newestFirst.toggle() }
+                        // A menu with the current order ticked, so the
+                        // label reads as what's shown rather than what a
+                        // tap would do.
+                        Menu {
+                            Picker("Order", selection: Binding(
+                                get: { newestFirst },
+                                set: { value in withAnimation(.snappy) { newestFirst = value } }
+                            )) {
+                                Text("Oldest First").tag(false)
+                                Text("Newest First").tag(true)
+                            }
+                            .pickerStyle(.inline)
+                        } label: {
+                            Label(newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down")
+                                .labelStyle(.titleAndIcon)
                         }
                         .font(.subheadline)
-                        .labelStyle(.titleAndIcon)
-                        .accessibilityHint(Text("Changes the order chapters are listed in."))
                         SeriesDownloadsMenu(chapters: content.chapters.map(chapterRef), unread: unreadChapters(statuses: statuses).map(chapterRef))
                     }
                     .textCase(nil)
