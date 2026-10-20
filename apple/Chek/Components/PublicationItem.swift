@@ -37,7 +37,9 @@ struct PublicationItem: Identifiable {
     init(_ publication: RemotePublication, status: ReadingStatus, cover: CoverSource, showsSeries: Bool = true) {
         source = .remote(publication)
         title = publication.displayTitle
-        subtitle = showsSeries ? publication.seriesTitle : nil
+        // A series named like its one book says nothing twice.
+        let series = publication.seriesTitle
+        subtitle = showsSeries && series?.localizedCaseInsensitiveCompare(title) != .orderedSame ? series : nil
         self.cover = cover
         self.status = status
     }

@@ -6,7 +6,8 @@ import Testing
 struct TitlesTests {
     @Test func fileNamesBecomeWords() {
         #expect(BookImporter.title(fromFileName: "peppercarrot_episode01") == "Peppercarrot Episode01")
-        #expect(BookImporter.title(fromFileName: "pride-and-prejudice") == "Pride And Prejudice")
+        #expect(BookImporter.title(fromFileName: "pride-and-prejudice") == "Pride and Prejudice")
+        #expect(BookImporter.title(fromFileName: "the-voyage-of-life") == "The Voyage of Life")
     }
 
     @Test func numbersKeepTheirPunctuation() {

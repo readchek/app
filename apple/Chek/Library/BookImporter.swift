@@ -164,12 +164,23 @@ nonisolated enum BookImporter {
         }
         let words = spaced.split(separator: " ", omittingEmptySubsequences: true)
         guard !words.isEmpty else { return name }
-        // Keep words that already have capitals, such as "MURAI" or "iPad".
-        return words.map { word in
-            word.contains(where: \.isUppercase) ? String(word) : word.prefix(1).uppercased() + word.dropFirst()
+        // Keep words that already have capitals, such as "MURAI" or "iPad",
+        // and leave the small words of a title small, as in "Pride and
+        // Prejudice", except at the start.
+        return words.enumerated().map { index, word in
+            if word.contains(where: \.isUppercase) {
+                return String(word)
+            }
+            if index > 0, Self.smallWords.contains(String(word)) {
+                return String(word)
+            }
+            return word.prefix(1).uppercased() + word.dropFirst()
         }
         .joined(separator: " ")
     }
+
+    /// Words a title keeps in lowercase unless they begin it.
+    private static let smallWords: Set<String> = ["a", "an", "and", "as", "at", "but", "by", "for", "in", "of", "on", "or", "the", "to", "vs"]
 
     /// Saves a thumbnail of the book's cover, falling back to the first
     /// page for comics and PDFs. Returns whether there was a cover.
