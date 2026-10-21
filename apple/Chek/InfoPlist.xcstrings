@@ -1,0 +1,18 @@
+{
+  "sourceLanguage": "en",
+  "strings": {
+    "NSLocalNetworkUsageDescription": {
+      "comment": "Shown when iOS asks the reader to let Chek use the local network",
+      "extractionState": "extracted_with_value",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "new",
+            "value": "Chek connects to the library servers you add on your home network."
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}
