@@ -51,9 +51,13 @@ xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
 ```
 
-Chek Reader comes from its `main` branch through Swift Package Manager, so
-**File → Packages → Update to Latest Package Versions** picks up its newest
-changes.
+Chek Reader comes through Swift Package Manager, pinned to a release
+(`0.1.0` up to the next minor), so a build is the same today and next month.
+To take a new reader release, raise the version in the project's package
+dependency and let **File → Packages → Update to Latest Package Versions**
+rewrite `Package.resolved`. To work against unreleased reader changes, add
+the package locally with **File → Add Package Dependencies → Add Local**,
+which overrides the pinned one until you remove it.
 
 ## Repository layout
 
