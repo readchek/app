@@ -1,0 +1,8 @@
+# Weekly updates for the actions CI uses. Chek Reader is pinned in the Xcode
+# project, which Dependabot can't update, so its version moves by hand.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
