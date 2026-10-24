@@ -200,11 +200,32 @@ nonisolated struct ChekClient: Sendable {
         return try await Self.send(request, session: session)
     }
 
+    /// Every chapter of a series in reading order. The server answers a
+    /// batch at a time, since a source can take seconds per batch, so a
+    /// batch that fails is asked for once more before the whole list fails.
     func chapters(ofSeries series: String, inSource source: String) async throws(ChekError) -> [ChekAPI.SourceChapter] {
-        var request = authorized("api/v1/me/extensions/\(source)/chapters", query: [URLQueryItem(name: "seriesId", value: series)])
-        request.timeoutInterval = 60
-        let page: ChekAPI.Items<ChekAPI.SourceChapter> = try await Self.send(request, session: session)
-        return page.items
+        var chapters: [ChekAPI.SourceChapter] = []
+        var cursor: String?
+        var cursors: Set<String> = []
+        repeat {
+            var query = [URLQueryItem(name: "seriesId", value: series)]
+            if let cursor {
+                query.append(URLQueryItem(name: "cursor", value: cursor))
+            }
+            var request = authorized("api/v1/me/extensions/\(source)/chapters", query: query)
+            request.timeoutInterval = 60
+            let page: ChekAPI.Page<ChekAPI.SourceChapter>
+            do {
+                page = try await Self.send(request, session: session)
+            } catch .offline, .server(status: 502, _) {
+                page = try await Self.send(request, session: session)
+            }
+            chapters += page.items
+            cursor = page.nextCursor
+            // A cursor seen before would loop forever.
+            if let cursor, !cursors.insert(cursor).inserted { throw .invalidResponse }
+        } while cursor != nil
+        return chapters
     }
 
     func pages(ofChapter chapter: String, inSource source: String) async throws(ChekError) -> [ChekAPI.SourcePage] {

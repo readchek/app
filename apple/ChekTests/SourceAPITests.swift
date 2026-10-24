@@ -7,9 +7,11 @@ import Testing
 struct SourceAPITests {
     @Test func chaptersDecodeWithNulls() throws {
         let json = Data("""
-        {"items":[{"id":"c1","title":"Chapter 1","number":null,"version":null,"published":null}]}
+        {"items":[{"id":"c1","title":"Chapter 1","number":null,"version":null,"published":null}],"nextCursor":null,"total":1}
         """.utf8)
-        let items = try JSONDecoder().decode(ChekAPI.Items<ChekAPI.SourceChapter>.self, from: json).items
+        let page = try JSONDecoder().decode(ChekAPI.Page<ChekAPI.SourceChapter>.self, from: json)
+        let items = page.items
+        #expect(page.nextCursor == nil)
         #expect(items.count == 1)
         #expect(items[0].number == nil)
         #expect(items[0].displayTitle == "Chapter 1")
