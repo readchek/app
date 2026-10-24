@@ -150,17 +150,31 @@ final class ServerSync {
     func chapter(after chapter: SourceChapterRef) async -> NextChapter {
         let seriesID = chapter.seriesID
         let source = chapter.source
-        var chapters = try? await servers.request(chapter.server) { client throws(ChekError) in
-            try await client.chapters(ofSeries: seriesID, inSource: source)
-        }
-        if chapters == nil {
-            chapters = await SeriesCache.read(server: chapter.server, source: source, series: seriesID)?.chapters
-        }
-        guard let chapters, let index = chapters.firstIndex(where: { $0.id == chapter.chapterID }) else {
+        let chapterID = chapter.chapterID
+        let next: ChekAPI.SourceChapter
+        do {
+            let page = try await servers.request(chapter.server) { client throws(ChekError) in
+                try await client.chapterPage(ofSeries: seriesID, inSource: source, order: .oldestFirst, after: chapterID, limit: 1)
+            }
+            guard let following = page.items.first else { return .end }
+            next = following
+        } catch .notFound {
+            // The source no longer lists this chapter.
             return .unknown
+        } catch {
+            // Offline: what was seen of the series before may know.
+            guard let snapshot = await SeriesCache.read(server: chapter.server, source: source, series: seriesID),
+                  let current = snapshot.chapters.first(where: { $0.chapter.id == chapterID }) else {
+                return .unknown
+            }
+            if let following = snapshot.chapter(after: chapterID) {
+                next = following.chapter
+            } else if let total = snapshot.total, current.position >= total {
+                return .end
+            } else {
+                return .unknown
+            }
         }
-        guard chapters.indices.contains(index + 1) else { return .end }
-        let next = chapters[index + 1]
         return .next(SourceChapterRef(
             server: chapter.server,
             source: chapter.source,

@@ -30,7 +30,9 @@ final class FollowStore {
         self.servers = servers
     }
 
-    func follow(_ series: ChekAPI.SourceSeries, chapters: [ChekAPI.SourceChapter], server: UUID, source: String) {
+    /// Follows a series that lists `count` chapters now, so only chapters
+    /// after those count as new.
+    func follow(_ series: ChekAPI.SourceSeries, count: Int, server: UUID, source: String) {
         guard followed(server: server, source: source, series: series.id) == nil else { return }
         let follow = FollowedSeries(
             serverID: server,
@@ -39,7 +41,7 @@ final class FollowStore {
             title: series.title,
             coverPath: series.coverUrl,
             isRightToLeft: series.readingDirection == "rtl",
-            chapterCount: chapters.count
+            chapterCount: count
         )
         follow.lastCheckedAt = .now
         let isFirst = ((try? context.fetchCount(FetchDescriptor<FollowedSeries>())) ?? 0) == 0
@@ -63,10 +65,10 @@ final class FollowStore {
     }
 
     /// Notes that you've seen the series' chapters, so none count as new.
-    func didOpen(server: UUID, source: String, series: ChekAPI.SourceSeries, chapters: [ChekAPI.SourceChapter]) {
+    func didOpen(server: UUID, source: String, series: ChekAPI.SourceSeries, count: Int) {
         guard let follow = followed(server: server, source: source, series: series.id) else { return }
         follow.unseenChapterIDs = []
-        follow.chapterCount = chapters.count
+        follow.chapterCount = count
         follow.title = series.title
         follow.coverPath = series.coverUrl
         follow.lastCheckedAt = .now
@@ -92,12 +94,22 @@ final class FollowStore {
             let server = follow.serverID
             let source = follow.sourceID
             let seriesID = follow.seriesID
-            guard let chapters = try? await servers.request(server, { client throws(ChekError) in
-                try await client.chapters(ofSeries: seriesID, inSource: source)
-            }) else { continue }
-            // The listing is kept, so the Updates list can name the new
+            // New chapters are the newest ones, so the first page newest
+            // first holds them, with the count to tell how many; a series
+            // with more new than a page asks for that many.
+            let known = follow.chapterCount
+            func newest(_ limit: Int) async -> ChekAPI.SourceChapterPage? {
+                try? await servers.request(server) { client throws(ChekError) in
+                    try await client.chapterPage(ofSeries: seriesID, inSource: source, order: .newestFirst, limit: limit)
+                }
+            }
+            guard var page = await newest(50) else { continue }
+            if page.total - known > page.items.count, page.items.count == 50 {
+                page = await newest(min(page.total - known, 500)) ?? page
+            }
+            // The page is kept, so the Updates list can name the new
             // chapters without asking again.
-            await SeriesCache.updateChapters(chapters, server: server, source: source, series: ChekAPI.SourceSeries(
+            await SeriesCache.mergeChapters(page.known(.newestFirst), total: page.total, server: server, source: source, series: ChekAPI.SourceSeries(
                 id: seriesID,
                 title: follow.title,
                 summary: nil,
@@ -108,11 +120,11 @@ final class FollowStore {
             // A first check after following knows the chapters you saw;
             // anything beyond that count and not read is new.
             let read = Set(readChapterIDs(follow))
-            if chapters.count > follow.chapterCount {
-                let known = Set(follow.unseenChapterIDs)
-                let fresh = chapters.suffix(chapters.count - follow.chapterCount).map(\.id).filter { !known.contains($0) && !read.contains($0) }
+            if page.total > known {
+                let unseen = Set(follow.unseenChapterIDs)
+                let fresh = page.items.prefix(page.total - known).map(\.id).filter { !unseen.contains($0) && !read.contains($0) }
                 follow.unseenChapterIDs.append(contentsOf: fresh)
-                follow.chapterCount = chapters.count
+                follow.chapterCount = page.total
                 if !fresh.isEmpty {
                     found.append(NewChapters(key: follow.key, server: server, source: source, seriesID: seriesID, title: follow.title, count: fresh.count))
                 }

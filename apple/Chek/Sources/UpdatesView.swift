@@ -94,8 +94,8 @@ struct UpdatesView: View {
             // and the background check.
             guard let snapshot = await SeriesCache.read(server: follow.serverID, source: follow.sourceID, series: follow.seriesID) else { continue }
             let unseen = Set(follow.unseenChapterIDs)
-            for chapter in snapshot.chapters where unseen.contains(chapter.id) {
-                entries.append(Entry(follow: follow, chapter: chapter, published: chapter.publishedDate))
+            for known in snapshot.chapters where unseen.contains(known.chapter.id) {
+                entries.append(Entry(follow: follow, chapter: known.chapter, published: known.chapter.publishedDate))
             }
         }
         // Newest first; chapters with no date sort by their place in the

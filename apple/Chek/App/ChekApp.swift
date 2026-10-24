@@ -10,6 +10,10 @@ struct ChekApp: App {
 
     init() {
         ReaderFormats.registerDefaults()
+        // The server says how long its answers stay good, and series,
+        // chapters and covers change rarely, so a cache far larger than the
+        // system's default keeps screens instant on a second visit.
+        URLCache.shared = URLCache(memoryCapacity: 64 << 20, diskCapacity: 1 << 30)
         do {
             app = AppDependencies(container: try .chek())
         } catch {

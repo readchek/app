@@ -7,14 +7,24 @@ import Testing
 struct SourceAPITests {
     @Test func chaptersDecodeWithNulls() throws {
         let json = Data("""
-        {"items":[{"id":"c1","title":"Chapter 1","number":null,"version":null,"published":null}],"nextCursor":null,"total":1}
+        {"items":[{"id":"c1","title":"Chapter 1","number":null,"version":null,"published":null}],"offset":0,"total":1}
         """.utf8)
-        let page = try JSONDecoder().decode(ChekAPI.Page<ChekAPI.SourceChapter>.self, from: json)
+        let page = try JSONDecoder().decode(ChekAPI.SourceChapterPage.self, from: json)
         let items = page.items
-        #expect(page.nextCursor == nil)
+        #expect(page.total == 1)
         #expect(items.count == 1)
         #expect(items[0].number == nil)
         #expect(items[0].displayTitle == "Chapter 1")
+    }
+
+    /// A page's chapters know where they stand in reading order from
+    /// either end, which is what keeps pages in order once kept.
+    @Test func chapterPagesPlaceChaptersInReadingOrder() {
+        let chapters = (1...3).map { ChekAPI.SourceChapter(id: "c\($0)", title: "") }
+        let oldest = ChekAPI.SourceChapterPage(items: chapters, offset: 10, total: 50)
+        #expect(oldest.known(.oldestFirst).map(\.position) == [11, 12, 13])
+        let newest = ChekAPI.SourceChapterPage(items: chapters, offset: 10, total: 50)
+        #expect(newest.known(.newestFirst).map(\.position) == [40, 39, 38])
     }
 
     @Test func installedExtensionsDecode() throws {

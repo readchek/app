@@ -164,6 +164,23 @@ nonisolated extension ChekAPI {
         }
     }
 
+    /// One page of a series' chapters, counted from the first chapter or
+    /// the newest, with how many there are in all.
+    struct SourceChapterPage: Decodable, Sendable {
+        var items: [SourceChapter]
+        /// Where the page starts, counted from the end it was asked for.
+        var offset: Int
+        var total: Int
+
+        /// The page's chapters with where each stands in reading order.
+        func known(_ order: ChekClient.ChapterOrder) -> [SeriesCache.KnownChapter] {
+            items.enumerated().map { index, chapter in
+                let position = order == .oldestFirst ? offset + index + 1 : total - offset - index
+                return SeriesCache.KnownChapter(position: position, chapter: chapter)
+            }
+        }
+    }
+
     struct SourcePage: Decodable, Sendable {
         var index: Int
         /// A path on the server that serves the image.

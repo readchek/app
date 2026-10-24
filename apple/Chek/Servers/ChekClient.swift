@@ -200,31 +200,55 @@ nonisolated struct ChekClient: Sendable {
         return try await Self.send(request, session: session)
     }
 
-    /// Every chapter of a series in reading order. The server answers a
-    /// batch at a time, since a source can take seconds per batch, so a
-    /// batch that fails is asked for once more before the whole list fails.
-    func chapters(ofSeries series: String, inSource source: String) async throws(ChekError) -> [ChekAPI.SourceChapter] {
+    /// Which end of a series a page of chapters counts from.
+    enum ChapterOrder: String, Sendable {
+        case oldestFirst = "asc"
+        case newestFirst = "desc"
+    }
+
+    /// One page of a series' chapters: `limit` of them from `offset`, or
+    /// from just past chapter `after`, counted from the end `order` names.
+    /// The server reads the whole list from the source once and keeps it,
+    /// so later pages, in either order, cost the source nothing; `refresh`
+    /// asks it to read the list again.
+    func chapterPage(ofSeries series: String, inSource source: String, order: ChapterOrder, offset: Int = 0, after: String? = nil, limit: Int, refresh: Bool = false) async throws(ChekError) -> ChekAPI.SourceChapterPage {
+        var query = [
+            URLQueryItem(name: "seriesId", value: series),
+            URLQueryItem(name: "order", value: order.rawValue),
+            URLQueryItem(name: "limit", value: String(limit)),
+        ]
+        if let after {
+            query.append(URLQueryItem(name: "after", value: after))
+        } else {
+            query.append(URLQueryItem(name: "offset", value: String(offset)))
+        }
+        if refresh {
+            query.append(URLQueryItem(name: "refresh", value: "true"))
+        }
+        var request = authorized("api/v1/me/extensions/\(source)/chapters", query: query)
+        // The first page reads the whole list from the source's site.
+        request.timeoutInterval = 120
+        // Asked for anew, a refresh mustn't be answered from the cache.
+        if refresh {
+            request.cachePolicy = .reloadIgnoringLocalCacheData
+        }
+        return try await Self.send(request, session: session)
+    }
+
+    /// Every chapter from position `start` up to `end` in reading order,
+    /// a server page at a time. Only for something you asked of the whole
+    /// series, such as downloading every unread chapter.
+    func chapters(ofSeries series: String, inSource source: String, from start: Int = 0, to end: Int? = nil) async throws(ChekError) -> [ChekAPI.SourceChapter] {
         var chapters: [ChekAPI.SourceChapter] = []
-        var cursor: String?
-        var cursors: Set<String> = []
-        repeat {
-            var query = [URLQueryItem(name: "seriesId", value: series)]
-            if let cursor {
-                query.append(URLQueryItem(name: "cursor", value: cursor))
-            }
-            var request = authorized("api/v1/me/extensions/\(source)/chapters", query: query)
-            request.timeoutInterval = 60
-            let page: ChekAPI.Page<ChekAPI.SourceChapter>
-            do {
-                page = try await Self.send(request, session: session)
-            } catch .offline, .server(status: 502, _) {
-                page = try await Self.send(request, session: session)
-            }
+        var offset = start
+        while true {
+            let wanted = end.map { min(500, $0 - offset) } ?? 500
+            guard wanted > 0 else { break }
+            let page = try await chapterPage(ofSeries: series, inSource: source, order: .oldestFirst, offset: offset, limit: wanted)
             chapters += page.items
-            cursor = page.nextCursor
-            // A cursor seen before would loop forever.
-            if let cursor, !cursors.insert(cursor).inserted { throw .invalidResponse }
-        } while cursor != nil
+            offset += page.items.count
+            if page.items.isEmpty || offset >= (end.map { min($0, page.total) } ?? page.total) { break }
+        }
         return chapters
     }
 

@@ -12,7 +12,7 @@ struct ChaptersPanel: View {
     @Environment(ServerStore.self) private var servers
     @Environment(ServerSync.self) private var sync
     @Query private var states: [SourceReadingState]
-    @State private var chapters: LoadState<[ChekAPI.SourceChapter]> = .idle
+    @State private var chapters: ChapterList?
 
     init(session: ReaderSession, chapter: SourceChapterRef, open: @escaping (ReadingItem) -> Void) {
         self.session = session
@@ -29,44 +29,16 @@ struct ChaptersPanel: View {
     var body: some View {
         NavigationStack {
             Group {
-                switch chapters {
+                switch chapters?.phase ?? .idle {
                 case .idle, .loading:
                     ProgressView()
                 case .failed(let error):
-                    FailureState(error: error)
-                case .loaded(let chapters):
-                    ScrollViewReader { proxy in
-                        List(chapters) { item in
-                            let isCurrent = item.id == chapter.chapterID
-                            Button {
-                                guard !isCurrent, let next = try? sync.readingItem(for: ref(item)) else {
-                                    dismiss()
-                                    return
-                                }
-                                dismiss()
-                                open(next)
-                            } label: {
-                                HStack {
-                                    Text(item.displayTitle)
-                                        .fontWeight(isCurrent ? .semibold : .regular)
-                                        .foregroundStyle(isCurrent ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
-                                    Spacer()
-                                    if isCurrent {
-                                        Image(systemName: "bookmark.fill")
-                                            .foregroundStyle(.tint)
-                                            .accessibilityLabel(Text("Current chapter"))
-                                    } else if let status = statuses[item.id], status != .new {
-                                        StatusText(status: status)
-                                    }
-                                }
-                                .contentShape(.rect)
-                            }
-                            .id(item.id)
-                        }
-                        .listStyle(.plain)
-                        .onAppear {
-                            proxy.scrollTo(chapter.chapterID, anchor: .center)
-                        }
+                    FailureState(error: error) {
+                        await chapters?.load(around: chapter.chapterID)
+                    }
+                case .loaded, .loadingMore:
+                    if let chapters {
+                        list(chapters)
                     }
                 }
             }
@@ -83,21 +55,68 @@ struct ChaptersPanel: View {
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
         .task {
-            guard case .idle = chapters else { return }
-            chapters = .loading
-            do {
-                let listed = try await servers.request(chapter.server) { client throws(ChekError) in
-                    try await client.chapters(ofSeries: chapter.seriesID, inSource: chapter.source)
+            guard chapters == nil else { return }
+            let list = ChapterList(server: chapter.server, source: chapter.source, seriesID: chapter.seriesID, order: .oldestFirst, servers: servers)
+            chapters = list
+            await list.load(around: chapter.chapterID)
+        }
+    }
+
+    /// The loaded run of chapters, scrolled to the one you're in, growing
+    /// a page at a time at either end.
+    private func list(_ chapters: ChapterList) -> some View {
+        ScrollViewReader { proxy in
+            List {
+                if chapters.hasMoreBefore {
+                    Button("Show Earlier Chapters", systemImage: "arrow.up") {
+                        Task { await chapters.loadEarlier() }
+                    }
                 }
-                chapters = .loaded(listed)
-            } catch {
-                // What the source said last time, when it can't be reached.
-                if let cached = await SeriesCache.read(server: chapter.server, source: chapter.source, series: chapter.seriesID) {
-                    chapters = .loaded(cached.chapters)
-                } else {
-                    chapters = .failed(DisplayError(error))
+                ForEach(chapters.entries) { entry in
+                    row(entry.chapter)
+                        .id(entry.chapter.id)
+                        .onAppear {
+                            if entry.id == chapters.entries.last?.id {
+                                Task { await chapters.loadMore() }
+                            }
+                        }
+                }
+                if chapters.phase == .loadingMore {
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
                 }
             }
+            .listStyle(.plain)
+            .onAppear {
+                proxy.scrollTo(chapter.chapterID, anchor: .center)
+            }
+        }
+    }
+
+    private func row(_ item: ChekAPI.SourceChapter) -> some View {
+        let isCurrent = item.id == chapter.chapterID
+        return Button {
+            guard !isCurrent, let next = try? sync.readingItem(for: ref(item)) else {
+                dismiss()
+                return
+            }
+            dismiss()
+            open(next)
+        } label: {
+            HStack {
+                Text(item.displayTitle)
+                    .fontWeight(isCurrent ? .semibold : .regular)
+                    .foregroundStyle(isCurrent ? AnyShapeStyle(.tint) : AnyShapeStyle(.primary))
+                Spacer()
+                if isCurrent {
+                    Image(systemName: "bookmark.fill")
+                        .foregroundStyle(.tint)
+                        .accessibilityLabel(Text("Current chapter"))
+                } else if let status = statuses[item.id], status != .new {
+                    StatusText(status: status)
+                }
+            }
+            .contentShape(.rect)
         }
     }
 

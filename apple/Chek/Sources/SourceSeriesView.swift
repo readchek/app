@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// A series from a source: its cover, summary and a button to read on from
-/// where you are, then its chapters in reading order, as the server lists them.
+/// where you are, then its chapters a page at a time, newest or oldest first.
 struct SourceSeriesView: View {
     let account: UUID
     let source: String
@@ -12,6 +12,9 @@ struct SourceSeriesView: View {
     @Environment(ServerStore.self) private var servers
     @Environment(ProgressStore.self) private var progress
     @State private var model: SourceSeriesModel?
+    @State private var chapters: ChapterList?
+    /// Long-running series are easier to read from their latest chapter.
+    @AppStorage("sourceSeries.newestFirst") private var newestFirst = true
 
     var body: some View {
         Group {
@@ -22,9 +25,13 @@ struct SourceSeriesView: View {
                 FailureState(error: error) {
                     await model?.load()
                 }
-            case .loaded(let content):
-                SourceSeriesContent(account: account, source: source, content: content, staleError: model?.staleError) {
-                    await model?.load()
+            case .loaded(let series):
+                if let chapters {
+                    SourceSeriesContent(account: account, source: source, series: series, chapters: chapters, staleError: model?.staleError) {
+                        async let reloaded: Void = model?.load() ?? ()
+                        await chapters.load(refresh: true)
+                        await reloaded
+                    }
                 }
             }
         }
@@ -35,33 +42,39 @@ struct SourceSeriesView: View {
         .onPreferenceChange(SeriesHeaderVisibleKey.self) { visible in
             withAnimation(.easeInOut(duration: 0.2)) { isHeaderVisible = visible }
         }
+        .onChange(of: chapters?.order) { _, order in
+            // The order you last chose is the one the next series opens in.
+            if let order {
+                newestFirst = order == .newestFirst
+            }
+        }
         .task(id: seriesID) {
             let model = model ?? SourceSeriesModel(account: account, source: source, seriesID: seriesID, servers: servers)
+            let chapters = chapters ?? ChapterList(server: account, source: source, seriesID: seriesID, order: newestFirst ? .newestFirst : .oldestFirst, servers: servers)
             let account = account
             let source = source
             model.onLoad = { [progress] series in
                 progress.updateSourceSeries(series, server: account, source: source)
             }
+            chapters.onPage = { [weak model] entries, total in
+                guard let series = model?.state.value else { return }
+                Task { await SeriesCache.merge(series, chapters: entries, total: total, server: account, source: source) }
+            }
             self.model = model
-            await model.load()
+            self.chapters = chapters
+            // The series and its first page of chapters load side by side.
+            async let series: Void = model.load()
+            await chapters.load()
+            await series
         }
     }
 }
 
-/// Loads a source series and its chapters together, so the screen shows
-/// once with both.
+/// Loads a source series' details. Its chapters are a ``ChapterList``.
 @MainActor
 @Observable
 final class SourceSeriesModel {
-    struct Content: Equatable {
-        var series: ChekAPI.SourceSeries
-        var chapters: [ChekAPI.SourceChapter]
-        /// Why the chapters couldn't be listed, while the series could:
-        /// the series still shows, with a way to try the chapters again.
-        var chaptersFailure: DisplayError?
-    }
-
-    private(set) var state: LoadState<Content> = .idle
+    private(set) var state: LoadState<ChekAPI.SourceSeries> = .idle
     /// Why the last refresh failed while the series from before still shows.
     private(set) var staleError: DisplayError?
     private let account: UUID
@@ -79,58 +92,27 @@ final class SourceSeriesModel {
         self.servers = servers
     }
 
-    nonisolated private static func chapters(of series: String, in source: String, client: ChekClient) async -> Result<[ChekAPI.SourceChapter], ChekError> {
-        do {
-            return .success(try await client.chapters(ofSeries: series, inSource: source))
-        } catch {
-            return .failure(error)
-        }
-    }
-
     func load() async {
-        if state.value == nil {
+        // What was seen last time shows at once while the source answers,
+        // since series change rarely and a source can take seconds.
+        if state.value == nil, let snapshot = await SeriesCache.read(server: account, source: source, series: seriesID) {
+            state = .loaded(snapshot.series)
+        } else if state.value == nil {
             state = .loading
         }
         let source = source
         let seriesID = seriesID
         do {
-            let content: Content = try await servers.request(account) { client throws(ChekError) in
-                // `async let` loses the error type, so it's restored for the
-                // store to see sign-outs.
-                do {
-                    async let series = client.series(seriesID, inSource: source)
-                    async let chapters = Self.chapters(of: seriesID, in: source, client: client)
-                    let listed = await chapters
-                    let loaded = try await series
-                    switch listed {
-                    case .success(let chapters):
-                        return Content(series: loaded, chapters: chapters, chaptersFailure: nil)
-                    case .failure(.unauthorized):
-                        // A session that ended is the store's to notice.
-                        throw ChekError.unauthorized
-                    case .failure(let error):
-                        return Content(series: loaded, chapters: [], chaptersFailure: DisplayError(error))
-                    }
-                } catch let error as ChekError {
-                    throw error
-                } catch {
-                    throw .invalidResponse
-                }
+            let series = try await servers.request(account) { client throws(ChekError) in
+                try await client.series(seriesID, inSource: source)
             }
-            state = .loaded(content)
+            state = .loaded(series)
             staleError = nil
-            onLoad?(content.series)
-            if content.chaptersFailure == nil {
-                await SeriesCache.write(content.series, chapters: content.chapters, server: account, source: source)
-            }
+            onLoad?(series)
+            await SeriesCache.merge(series, chapters: [], total: nil, server: account, source: source)
         } catch {
-            // A refresh that fails keeps what's already showing, and says
-            // so; with nothing showing yet, what the source said last time
-            // stands in, so downloaded chapters can be read offline.
-            if state.value == nil, let snapshot = await SeriesCache.read(server: account, source: source, series: seriesID) {
-                state = .loaded(Content(series: snapshot.series, chapters: snapshot.chapters, chaptersFailure: nil))
-                staleError = DisplayError(error)
-            } else if state.value == nil {
+            // A refresh that fails keeps what's already showing, and says so.
+            if state.value == nil {
                 state = .failed(DisplayError(error))
             } else {
                 staleError = DisplayError(error)
@@ -143,25 +125,28 @@ private struct SourceSeriesContent: View {
     @State private var headerVisible = true
     let account: UUID
     let source: String
-    let content: SourceSeriesModel.Content
+    let series: ChekAPI.SourceSeries
+    let chapters: ChapterList
     let staleError: DisplayError?
     let refresh: () async -> Void
     @Query private var states: [SourceReadingState]
     @Query private var follows: [FollowedSeries]
     @Environment(ServerStore.self) private var servers
+    @Environment(ServerSync.self) private var sync
     @Environment(FollowStore.self) private var followStore
     @Environment(ProgressStore.self) private var progress
     @Environment(Downloads.self) private var downloads
-    /// Long-running series are easier to read from their latest chapter.
-    @AppStorage("sourceSeries.newestFirst") private var newestFirst = false
+    /// The chapter the header's button opens, worked out from your places.
+    @State private var next: (chapter: SourceChapterRef, status: ReadingStatus)?
 
-    init(account: UUID, source: String, content: SourceSeriesModel.Content, staleError: DisplayError?, refresh: @escaping () async -> Void) {
+    init(account: UUID, source: String, series: ChekAPI.SourceSeries, chapters: ChapterList, staleError: DisplayError?, refresh: @escaping () async -> Void) {
         self.account = account
         self.source = source
-        self.content = content
+        self.series = series
+        self.chapters = chapters
         self.staleError = staleError
         self.refresh = refresh
-        let seriesID = content.series.id
+        let seriesID = series.id
         _states = Query(filter: #Predicate<SourceReadingState> {
             $0.serverID == account && $0.sourceID == source && $0.seriesID == seriesID
         })
@@ -179,16 +164,16 @@ private struct SourceSeriesContent: View {
             }
             Section {
                 SourceSeriesHeader(
-                    series: content.series,
-                    count: content.chapters.count,
-                    cover: servers.sourceImage(content.series.coverUrl, on: account),
-                    next: nextToRead(statuses: statuses).map { (chapterRef($0), statuses[$0.id]?.readingStatus ?? .new) },
+                    series: series,
+                    count: chapters.total ?? 0,
+                    cover: servers.sourceImage(series.coverUrl, on: account),
+                    next: next,
                     isFollowing: !follows.isEmpty
                 ) {
                     if let follow = follows.first {
                         followStore.unfollow(follow)
                     } else {
-                        followStore.follow(content.series, chapters: content.chapters, server: account, source: source)
+                        followStore.follow(series, count: chapters.total ?? 0, server: account, source: source)
                     }
                 }
                 .listRowSeparator(.hidden)
@@ -201,75 +186,30 @@ private struct SourceSeriesContent: View {
             // are the sections' own.
             .listSectionSeparator(.hidden)
             Section {
-                if let failure = content.chaptersFailure {
+                switch chapters.phase {
+                case .idle, .loading:
+                    ProgressView()
+                        .frame(maxWidth: .infinity)
+                        .listRowSeparator(.hidden)
+                case .failed(let failure):
                     // Under the header, not over it, so the series still reads.
                     FailureState(error: failure) {
-                        await refresh()
+                        await chapters.load()
                     }
                     .listRowSeparator(.hidden)
-                } else if content.chapters.isEmpty {
+                case .loaded where chapters.entries.isEmpty, .loadingMore where chapters.entries.isEmpty:
                     EmptyState(
                         "No Chapters",
                         systemImage: "books.vertical",
                         description: Text("This site doesn't have chapters for this series. Licensed series are often available only from their publisher.")
                     )
                     .listRowSeparator(.hidden)
-                } else {
-                    let ordered = newestFirst ? content.chapters.reversed() : content.chapters
-                    ForEach(ordered) { chapter in
-                        let ref = chapterRef(chapter)
-                        let status = statuses[chapter.id]?.readingStatus ?? .new
-                        let download = downloads.state(of: ref.ref)
-                        SourceChapterRow(chapter: ref, published: chapter.publishedDate, status: status, isNew: follows.first?.unseenChapterIDs.contains(chapter.id) == true, download: download)
-                            .contextMenu {
-                                DownloadAction(item: .chapter(ref), state: download)
-                                Divider()
-                                if status == .finished {
-                                    Button("Mark as Unread", systemImage: "circle") {
-                                        progress.markUnread(ref)
-                                    }
-                                } else {
-                                    Button("Mark as Finished", systemImage: "checkmark.circle") {
-                                        progress.markRead(ref)
-                                    }
-                                }
-                                if let index = content.chapters.firstIndex(of: chapter), index > 0 {
-                                    Button("Mark Previous as Finished", systemImage: "text.badge.checkmark") {
-                                        progress.markRead(content.chapters[..<index].map(chapterRef))
-                                    }
-                                }
-                            }
-                            .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                                DownloadAction(item: .chapter(ref), state: download)
-                                    .tint(download == .downloaded ? .secondary : .accentColor)
-                            }
-                    }
+                case .loaded, .loadingMore:
+                    chapterRows(statuses: statuses)
                 }
             } header: {
-                if content.chapters.count > 1 {
-                    HStack(spacing: 16) {
-                        Text("Chapters")
-                        Spacer()
-                        // A menu with the current order ticked, so the
-                        // label reads as what's shown rather than what a
-                        // tap would do.
-                        Menu {
-                            Picker("Order", selection: Binding(
-                                get: { newestFirst },
-                                set: { value in withAnimation(.snappy) { newestFirst = value } }
-                            )) {
-                                Text("Oldest First").tag(false)
-                                Text("Newest First").tag(true)
-                            }
-                            .pickerStyle(.inline)
-                        } label: {
-                            Label(newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down")
-                                .labelStyle(.titleAndIcon)
-                        }
-                        .font(.subheadline)
-                        SeriesDownloadsMenu(chapters: content.chapters.map(chapterRef), unread: unreadChapters(statuses: statuses).map(chapterRef))
-                    }
-                    .textCase(nil)
+                if (chapters.total ?? 0) > 1 {
+                    ChaptersHeader(chapters: chapters, series: series, account: account, source: source, statuses: statuses)
                 }
             }
             .listSectionSeparator(.hidden, edges: .top)
@@ -288,43 +228,174 @@ private struct SourceSeriesContent: View {
                 Text(message)
             }
         }
-        .task(id: content.chapters.count) {
+        .task(id: chapters.total) {
             // Opening the series is seeing its chapters: none are new now.
-            followStore.didOpen(server: account, source: source, series: content.series, chapters: content.chapters)
+            if let total = chapters.total {
+                followStore.didOpen(server: account, source: source, series: series, count: total)
+            }
+        }
+        .task(id: NextKey(states: states)) {
+            next = await nextToRead(statuses: statuses)
+        }
+    }
+
+    @ViewBuilder
+    private func chapterRows(statuses: [String: SourceReadingState]) -> some View {
+        if chapters.hasMoreBefore {
+            Button {
+                Task { await chapters.loadEarlier() }
+            } label: {
+                Label(chapters.order == .newestFirst ? "Show Newer Chapters" : "Show Earlier Chapters", systemImage: "arrow.up")
+            }
+        }
+        ForEach(chapters.entries) { entry in
+            let ref = chapterRef(entry.chapter)
+            let status = statuses[entry.chapter.id]?.readingStatus ?? .new
+            let download = downloads.state(of: ref.ref)
+            SourceChapterRow(chapter: ref, published: entry.chapter.publishedDate, status: status, isNew: follows.first?.unseenChapterIDs.contains(entry.chapter.id) == true, download: download)
+                .contextMenu {
+                    DownloadAction(item: .chapter(ref), state: download)
+                    Divider()
+                    if status == .finished {
+                        Button("Mark as Unread", systemImage: "circle") {
+                            progress.markUnread(ref)
+                        }
+                    } else {
+                        Button("Mark as Finished", systemImage: "checkmark.circle") {
+                            progress.markRead(ref)
+                        }
+                    }
+                    if entry.position > 1 {
+                        Button("Mark Previous as Finished", systemImage: "text.badge.checkmark") {
+                            Task { await markRead(before: entry.position) }
+                        }
+                    }
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: true) {
+                    DownloadAction(item: .chapter(ref), state: download)
+                        .tint(download == .downloaded ? .secondary : .accentColor)
+                }
+                .onAppear {
+                    // The next page starts loading a little before the end.
+                    if entry.id == chapters.entries.dropLast(10).last?.id || entry.id == chapters.entries.last?.id {
+                        Task { await chapters.loadMore() }
+                    }
+                }
+        }
+        if chapters.phase == .loadingMore {
+            ProgressView()
+                .frame(maxWidth: .infinity)
+                .listRowSeparator(.hidden)
+        } else if let failure = chapters.moreFailure {
+            StaleNotice(error: failure)
+                .listRowSeparator(.hidden)
+                .listRowInsets(EdgeInsets())
         }
     }
 
     private func chapterRef(_ chapter: ChekAPI.SourceChapter) -> SourceChapterRef {
-        SourceChapterRef(
-            server: account,
-            source: source,
-            seriesID: content.series.id,
-            seriesTitle: content.series.title,
-            chapterID: chapter.id,
-            chapterTitle: chapter.displayTitle,
-            isRightToLeft: content.series.readingDirection == "rtl",
-            seriesCoverPath: content.series.coverUrl
-        )
+        SourceChapterRef(series: series, chapter: chapter, server: account, source: source)
+    }
+
+    /// Marks every chapter before `position` in reading order as finished.
+    /// They may not be loaded, so they're asked for, a server page at a time.
+    private func markRead(before position: Int) async {
+        let seriesID = series.id
+        let source = source
+        guard let earlier = try? await servers.request(account, { client throws(ChekError) in
+            try await client.chapters(ofSeries: seriesID, inSource: source, from: 0, to: position - 1)
+        }) else { return }
+        progress.markRead(earlier.map(chapterRef))
     }
 
     /// The chapter you opened last, or the one after it once it's
     /// finished, or else the first.
-    /// Chapters not yet finished, in reading order.
-    private func unreadChapters(statuses: [String: SourceReadingState]) -> [ChekAPI.SourceChapter] {
-        content.chapters.filter { statuses[$0.id]?.readingStatus != .finished }
+    private func nextToRead(statuses: [String: SourceReadingState]) async -> (chapter: SourceChapterRef, status: ReadingStatus)? {
+        let latest = states.filter { $0.lastOpenedAt != nil }.max { ($0.lastOpenedAt ?? .distantPast) < ($1.lastOpenedAt ?? .distantPast) }
+        if let latest {
+            let ref = SourceChapterRef(latest)
+            guard latest.readingStatus == .finished else { return (ref, latest.readingStatus) }
+            if case .next(let following) = await sync.chapter(after: ref) {
+                return (following, statuses[following.chapterID]?.readingStatus ?? .new)
+            }
+            return (ref, latest.readingStatus)
+        }
+        guard let first = await chapters.firstChapter() else { return nil }
+        return (chapterRef(first), .new)
     }
 
-    private func nextToRead(statuses: [String: SourceReadingState]) -> ChekAPI.SourceChapter? {
-        let inOrder = content.chapters
-        let opened = inOrder.filter { statuses[$0.id]?.lastOpenedAt != nil }
-        if let latest = opened.max(by: { (statuses[$0.id]?.lastOpenedAt ?? .distantPast) < (statuses[$1.id]?.lastOpenedAt ?? .distantPast) }) {
-            guard statuses[latest.id]?.readingStatus == .finished else { return latest }
-            if let index = inOrder.firstIndex(of: latest), inOrder.indices.contains(index + 1) {
-                return inOrder[index + 1]
-            }
-            return latest
+    /// What the next chapter depends on: which chapter you opened last and
+    /// whether it's finished.
+    private struct NextKey: Hashable {
+        var latest: String?
+        var finished: Bool
+
+        init(states: [SourceReadingState]) {
+            let latest = states.filter { $0.lastOpenedAt != nil }.max { ($0.lastOpenedAt ?? .distantPast) < ($1.lastOpenedAt ?? .distantPast) }
+            self.latest = latest?.chapterID
+            finished = latest?.readingStatus == .finished
         }
-        return inOrder.first
+    }
+}
+
+/// "Chapters", then the order, a jump to any run of chapters in a long
+/// series, and downloads for the series.
+private struct ChaptersHeader: View {
+    let chapters: ChapterList
+    let series: ChekAPI.SourceSeries
+    let account: UUID
+    let source: String
+    let statuses: [String: SourceReadingState]
+
+    var body: some View {
+        HStack(spacing: 16) {
+            Text("Chapters")
+            Spacer()
+            // A menu with the current order ticked, so the label reads as
+            // what's shown rather than what a tap would do.
+            Menu {
+                Picker("Order", selection: Binding(
+                    get: { chapters.order },
+                    set: { order in Task { await chapters.setOrder(order) } }
+                )) {
+                    Text("Newest First").tag(ChapterList.Order.newestFirst)
+                    Text("Oldest First").tag(ChapterList.Order.oldestFirst)
+                }
+                .pickerStyle(.inline)
+                if !chapters.ranges.isEmpty {
+                    // Long series in runs of a page, so any chapter is two
+                    // taps away instead of a long scroll.
+                    Menu("Go to Chapters", systemImage: "arrow.right.circle") {
+                        ForEach(chapters.order == .newestFirst ? chapters.ranges.reversed() : chapters.ranges, id: \.self) { range in
+                            Button("\(range.lowerBound)–\(range.upperBound)") {
+                                Task { await chapters.jump(to: range) }
+                            }
+                        }
+                    }
+                }
+            } label: {
+                Label(chapters.order == .newestFirst ? "Newest First" : "Oldest First", systemImage: "arrow.up.arrow.down")
+                    .labelStyle(.titleAndIcon)
+            }
+            .font(.subheadline)
+            SeriesDownloadsMenu(series: series, account: account, source: source, statuses: statuses)
+        }
+        .textCase(nil)
+    }
+}
+
+extension SourceChapterRef {
+    init(series: ChekAPI.SourceSeries, chapter: ChekAPI.SourceChapter, server: UUID, source: String) {
+        self.init(
+            server: server,
+            source: source,
+            seriesID: series.id,
+            seriesTitle: series.title,
+            chapterID: chapter.id,
+            chapterTitle: chapter.displayTitle,
+            isRightToLeft: series.readingDirection == "rtl",
+            seriesCoverPath: series.coverUrl
+        )
     }
 }
 
@@ -348,7 +419,7 @@ struct SourceSeriesHeader: View {
     let series: ChekAPI.SourceSeries
     let count: Int
     let cover: CoverSource
-    let next: (SourceChapterRef, ReadingStatus)?
+    let next: (chapter: SourceChapterRef, status: ReadingStatus)?
     let isFollowing: Bool
     let toggleFollow: () -> Void
     @State private var isShowingFullSummary = false
@@ -565,34 +636,30 @@ private struct SourceChapterRow: View {
     }
 }
 
-/// Downloads for the whole series at once, from the chapters header.
+/// Downloads for the whole series at once, from the chapters header. The
+/// chapters it needs may not be loaded, so it asks for them when chosen.
 private struct SeriesDownloadsMenu: View {
-    let chapters: [SourceChapterRef]
-    let unread: [SourceChapterRef]
+    let series: ChekAPI.SourceSeries
+    let account: UUID
+    let source: String
+    let statuses: [String: SourceReadingState]
     @Environment(Downloads.self) private var downloads
-    @State private var isConfirmingAll = false
+    @Environment(ServerStore.self) private var servers
+    @State private var pendingAll: [SourceChapterRef] = []
+    @State private var isFinding = false
 
     var body: some View {
-        let kept = chapters.filter { downloads.isDownloaded($0.ref) }
-        let pending = unread.filter { downloads.state(of: $0.ref) == .none }
+        let kept = downloads.chapters(on: account, source: source, series: series.id)
         Menu("Downloads", systemImage: "arrow.down.circle") {
             Section("Download") {
-                Button("Next \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
-                    downloads.download(pending.prefix(5).map(Downloads.Item.chapter))
+                Button("Next 5 Unread", systemImage: "arrow.down.circle") {
+                    Task { await download(limit: 5) }
                 }
-                .disabled(pending.isEmpty)
                 Button("All Unread", systemImage: "arrow.down.circle.fill") {
-                    // A long series is a lot of space and a lot of requests
-                    // to the source's site, so the count is put to you first.
-                    if pending.count > 10 {
-                        isConfirmingAll = true
-                    } else {
-                        downloads.download(pending.map(Downloads.Item.chapter))
-                    }
+                    Task { await download(limit: nil) }
                 }
-                // Pointless when the next few are all there are.
-                .disabled(pending.count <= 5)
             }
+            .disabled(isFinding)
             if !kept.isEmpty {
                 Divider()
                 Button("Remove ^[\(kept.count) Download](inflect: true)", systemImage: "trash", role: .destructive) {
@@ -602,12 +669,51 @@ private struct SeriesDownloadsMenu: View {
         }
         .font(.subheadline)
         .labelStyle(.iconOnly)
-        .confirmationDialog("Download ^[\(pending.count) Chapter](inflect: true)?", isPresented: $isConfirmingAll, titleVisibility: .visible) {
+        .confirmationDialog(
+            "Download ^[\(pendingAll.count) Chapter](inflect: true)?",
+            isPresented: Binding { !pendingAll.isEmpty } set: { if !$0 { pendingAll = [] } },
+            titleVisibility: .visible
+        ) {
             Button("Download All") {
-                downloads.download(pending.map(Downloads.Item.chapter))
+                downloads.download(pendingAll.map(Downloads.Item.chapter))
+                pendingAll = []
             }
         } message: {
             Text("They download one at a time while Chek is open and stay on this device until you remove them.")
+        }
+    }
+
+    /// Unread chapters not yet downloaded, in reading order, after the last
+    /// one you opened; the first `limit` of them, or all of them once you
+    /// confirm a long series' count.
+    private func download(limit: Int?) async {
+        isFinding = true
+        defer { isFinding = false }
+        let seriesID = series.id
+        let source = source
+        let lastOpened = statuses.values.filter { $0.lastOpenedAt != nil }.max { ($0.lastOpenedAt ?? .distantPast) < ($1.lastOpenedAt ?? .distantPast) }?.chapterID
+        // The next few need only a page after where you are; all of them
+        // need the rest of the series.
+        guard let candidates = try? await servers.request(account, { client throws(ChekError) in
+            if limit != nil {
+                return try await client.chapterPage(ofSeries: seriesID, inSource: source, order: .oldestFirst, after: lastOpened, limit: 50).items
+            }
+            let all = try await client.chapters(ofSeries: seriesID, inSource: source)
+            guard let lastOpened, let index = all.firstIndex(where: { $0.id == lastOpened }) else { return all }
+            return Array(all[all.index(after: index)...])
+        }) else { return }
+        let pending = candidates
+            .filter { statuses[$0.id]?.readingStatus != .finished }
+            .map { SourceChapterRef(series: series, chapter: $0, server: account, source: source) }
+            .filter { downloads.state(of: $0.ref) == .none }
+        if let limit {
+            downloads.download(pending.prefix(limit).map(Downloads.Item.chapter))
+        } else if pending.count > 10 {
+            // A long series is a lot of space and a lot of requests to the
+            // source's site, so the count is put to you first.
+            pendingAll = pending
+        } else {
+            downloads.download(pending.map(Downloads.Item.chapter))
         }
     }
 }

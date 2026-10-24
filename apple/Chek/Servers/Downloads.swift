@@ -123,6 +123,14 @@ final class Downloads {
         return bySeries.values.sorted { ($0.chapterCount, $1.title) > ($1.chapterCount, $0.title) }
     }
 
+    /// The chapters of one series downloaded from `source` on `server`.
+    func chapters(on server: UUID, source: String, series: String) -> [SourceChapterRef] {
+        downloaded.values.compactMap { item in
+            guard case .chapter(let chapter) = item, chapter.server == server, chapter.source == source, chapter.seriesID == series else { return nil }
+            return chapter
+        }
+    }
+
     /// The server comics downloaded from `server`, by series then title,
     /// for finding them without the server.
     func comics(on server: UUID) -> [RemotePublication] {
