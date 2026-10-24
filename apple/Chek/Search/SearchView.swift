@@ -85,13 +85,19 @@ final class ServerSearchModel {
         let current = generation
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let accounts = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
+        // The same search again, as when coming back to the tab, keeps
+        // what each place found and asks only the ones that hadn't
+        // answered, so nothing found flashes back to loading.
+        let isRepeat = query == self.query
         self.query = query
         guard !query.isEmpty else {
             results = []
             sourceResults = []
             return
         }
-        results = accounts.map { Results(account: $0.id, name: $0.name, state: .loading) }
+        let kept = isRepeat ? Dictionary(results.filter { $0.state.value != nil }.map { ($0.account, $0) }, uniquingKeysWith: { first, _ in first }) : [:]
+        let keptSources = isRepeat ? Dictionary(sourceResults.filter { $0.state.value != nil }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }) : [:]
+        results = accounts.map { kept[$0.id] ?? Results(account: $0.id, name: $0.name, state: .loading) }
         for account in accounts where sources[account.id].map({ Date.now.timeIntervalSince($0.at) > 120 }) ?? true {
             let id = account.id
             let items = (try? await servers.request(id) { client throws(ChekError) in
@@ -107,12 +113,13 @@ final class ServerSearchModel {
         guard current == generation else { return }
         sourceResults = accounts.flatMap { account in
             (sources[account.id]?.items ?? []).filter(\.usable).map {
-                SourceResults(account: account.id, source: $0, serverName: account.name, state: .loading)
+                let fresh = SourceResults(account: account.id, source: $0, serverName: account.name, state: .loading)
+                return keptSources[fresh.id] ?? fresh
             }
         }
         // Sources look on their sites while you wait, so each answers on
         // its own like the servers do.
-        let sourceTasks = sourceResults.map { results in
+        let sourceTasks = sourceResults.filter { $0.state.value == nil }.map { results in
             let id = results.id
             let account = results.account
             let source = results.source.id
@@ -123,7 +130,7 @@ final class ServerSearchModel {
             }
         }
         // Each server answers on its own, so a slow one doesn't hold up the rest.
-        let tasks = accounts.map { account in
+        let tasks = accounts.filter { kept[$0.id] == nil }.map { account in
             let id = account.id
             return Task {
                 guard let state = await Self.searchServer(id, query: query, servers: servers) else { return }
@@ -242,11 +249,13 @@ private struct SearchResults: View {
                 if !anyBook.isEmpty {
                     Section("Library") {
                         if books.isEmpty {
-                            NoMatchesRow()
-                        } else {
-                            ForEach(books) { book in
-                                SearchBookRow(book: book)
+                            EmptyShelf {
+                                Text("No Matches")
+                                    .foregroundStyle(.secondary)
                             }
+                            .searchShelfRow()
+                        } else {
+                            ResultsShelf(items: books.map(PublicationItem.init))
                         }
                     }
                 }
@@ -264,14 +273,6 @@ private struct SearchResults: View {
             .listStyle(.plain)
             .scrollDismissesKeyboard(.immediately)
         }
-    }
-}
-
-/// A section that looked and found nothing.
-private struct NoMatchesRow: View {
-    var body: some View {
-        Text("No Matches")
-            .foregroundStyle(.secondary)
     }
 }
 
@@ -293,19 +294,6 @@ private struct SectionFailureRow: View {
     }
 }
 
-private struct SearchBookRow: View {
-    let book: Book
-    @State private var bookToRemove: Book?
-
-    var body: some View {
-        PublicationRow(item: PublicationItem(book))
-            .contextMenu {
-                BookActions(book: book, bookToRemove: $bookToRemove)
-            }
-            .removeBookConfirmation(book: $bookToRemove)
-    }
-}
-
 private struct ServerResultsSection: View {
     let results: ServerSearchModel.Results
     let retry: () async -> Void
@@ -322,20 +310,64 @@ private struct ServerResultsSection: View {
         Section(results.name) {
             switch results.state {
             case .idle, .loading:
-                ForEach(0..<3, id: \.self) { _ in
-                    PlaceholderRow()
-                }
+                PlaceholderShelf()
+                    .searchShelfRow()
             case .failed(let error):
-                SectionFailureRow(error: error, retry: retry)
+                EmptyShelf {
+                    SectionFailureRow(error: error, retry: retry)
+                        .padding(.horizontal, Metrics.margin)
+                }
+                .searchShelfRow()
             case .loaded(let publications) where publications.isEmpty:
-                NoMatchesRow()
+                EmptyShelf {
+                    Text("No Matches")
+                        .foregroundStyle(.secondary)
+                }
+                .searchShelfRow()
             case .loaded(let publications):
                 let statuses = ReadingStatuses(states)
-                ForEach(publications) { publication in
-                    PublicationRow(item: servers.item(publication, status: statuses[publication.id]))
-                }
+                ResultsShelf(items: publications.map { servers.item($0, status: statuses[$0.id]) })
             }
         }
+    }
+}
+
+/// Found books and comics as a row of covers, as every section of the
+/// results shows what it found.
+private struct ResultsShelf: View {
+    let items: [PublicationItem]
+    @State private var bookToRemove: Book?
+
+    var body: some View {
+        ScrollView(.horizontal) {
+            LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
+                ForEach(items) { item in
+                    PublicationCell(item: item)
+                        .shelfCell()
+                        // A book here has the menu it has in Library.
+                        .contextMenu {
+                            if case .local(let book) = item.source {
+                                BookActions(book: book, bookToRemove: $bookToRemove)
+                            }
+                        }
+                }
+            }
+            .scrollTargetLayout()
+        }
+        .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
+        .scrollIndicators(.hidden)
+        .scrollTargetBehavior(.viewAligned)
+        .searchShelfRow()
+        .removeBookConfirmation(book: $bookToRemove)
+    }
+}
+
+extension View {
+    /// A shelf as a row of the results list: edge to edge, with the same
+    /// room above and below in every section and state.
+    fileprivate func searchShelfRow() -> some View {
+        padding(.vertical, 4)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
     }
 }
 
@@ -347,40 +379,40 @@ private struct SourceResultsSection: View {
 
     var body: some View {
         Section(header) {
-            Group {
-                switch results.state {
-                case .idle, .loading:
-                    PlaceholderShelf()
-                case .failed(let error):
-                    // The shelf's room is kept, with why it's empty.
-                    EmptyShelf {
-                        SectionFailureRow(error: error, retry: retry)
-                            .padding(.horizontal, Metrics.margin)
-                    }
-                case .loaded(let series) where series.isEmpty:
-                    EmptyShelf {
-                        Text("No Series Found")
-                            .foregroundStyle(.secondary)
-                    }
-                case .loaded(let series):
-                    ScrollView(.horizontal) {
-                        LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
-                            ForEach(series) { item in
-                                SourceSeriesCell(account: results.account, source: results.source.id, series: item)
-                                    .shelfCell()
-                            }
-                        }
-                        .scrollTargetLayout()
-                    }
-                    // The row spans the screen and the shelf keeps its own
-                    // margins, so its cells are the size of a grid's.
-                    .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
-                    .scrollIndicators(.hidden)
-                    .scrollTargetBehavior(.viewAligned)
+            switch results.state {
+            case .idle, .loading:
+                PlaceholderShelf()
+                    .searchShelfRow()
+            case .failed(let error):
+                // The shelf's room is kept, with why it's empty.
+                EmptyShelf {
+                    SectionFailureRow(error: error, retry: retry)
+                        .padding(.horizontal, Metrics.margin)
                 }
+                .searchShelfRow()
+            case .loaded(let series) where series.isEmpty:
+                EmptyShelf {
+                    Text("No Matches")
+                        .foregroundStyle(.secondary)
+                }
+                .searchShelfRow()
+            case .loaded(let series):
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
+                        ForEach(series) { item in
+                            SourceSeriesCell(account: results.account, source: results.source.id, series: item)
+                                .shelfCell()
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                // The row spans the screen and the shelf keeps its own
+                // margins, so its cells are the size of a grid's.
+                .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
+                .scrollIndicators(.hidden)
+                .scrollTargetBehavior(.viewAligned)
+                .searchShelfRow()
             }
-            .padding(.vertical, 4)
-            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         }
     }
 
