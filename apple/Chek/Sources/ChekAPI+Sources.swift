@@ -147,20 +147,83 @@ nonisolated extension ChekAPI {
         }
     }
 
+    /// One group's release of a chapter. Sites often list a chapter once
+    /// per group that released it; the server gathers them into one
+    /// ``SourceChapter``.
+    struct SourceRelease: Codable, Identifiable, Hashable, Sendable {
+        /// What it's opened by.
+        var id: String
+        var title: String
+        var number: String?
+        var published: String?
+        /// The BCP 47 tag it's written in, when the source says.
+        var language: String?
+        /// Who released it, such as a scanlation group or the publisher.
+        var releaseGroup: String?
+        /// Whether the series' publisher released it. Absent from servers
+        /// before release groups.
+        var official: Bool?
+
+        var publishedDate: Date? {
+            ChekAPI.date(published)
+        }
+    }
+
+    /// A source's date, however it wrote it: with fractions of a second,
+    /// without, or as a bare day.
+    static func date(_ text: String?) -> Date? {
+        guard let text else { return nil }
+        return ISO8601DateFormatter.withFractionalSeconds.date(from: text)
+            ?? ISO8601DateFormatter.plain.date(from: text)
+            ?? ISO8601DateFormatter.dateOnly.date(from: text)
+    }
+
+    /// A chapter: the fields of the release picked for it (your preferred
+    /// group's, else an official one, else the newest), and every release
+    /// of it with that one first.
     struct SourceChapter: Codable, Identifiable, Hashable, Sendable {
         var id: String
         var title: String
         /// As the source writes it, such as "12" or "Vol. 2".
         var number: String?
         var published: String?
+        var releaseGroup: String?
+        var official: Bool?
+        /// Absent from servers before release groups, which listed each
+        /// release as a chapter of its own.
+        var releases: [SourceRelease]?
 
-        /// `published` as a date, however the source wrote it: with
-        /// fractions of a second, without, or as a bare day.
+        init(id: String, title: String, number: String? = nil, published: String? = nil, releaseGroup: String? = nil, official: Bool? = nil, releases: [SourceRelease]? = nil) {
+            self.id = id
+            self.title = title
+            self.number = number
+            self.published = published
+            self.releaseGroup = releaseGroup
+            self.official = official
+            self.releases = releases
+        }
+
+        /// Every release of the chapter, the picked one first.
+        var allReleases: [SourceRelease] {
+            releases ?? [SourceRelease(id: id, title: title, number: number, published: published, releaseGroup: releaseGroup, official: official)]
+        }
+
+        /// The chapter as told by one of its releases, with that release
+        /// first, as when you choose another group's.
+        func picking(_ release: SourceRelease) -> SourceChapter {
+            var others = allReleases.filter { $0.id != release.id }
+            others.insert(release, at: 0)
+            return SourceChapter(id: release.id, title: release.title, number: release.number, published: release.published, releaseGroup: release.releaseGroup, official: release.official, releases: others)
+        }
+
+        /// The chapter with `group`'s release first, when it has one.
+        func preferring(group: String?) -> SourceChapter {
+            guard let group, let release = allReleases.first(where: { $0.releaseGroup?.localizedCaseInsensitiveCompare(group) == .orderedSame }) else { return self }
+            return picking(release)
+        }
+
         var publishedDate: Date? {
-            guard let published else { return nil }
-            return ISO8601DateFormatter.withFractionalSeconds.date(from: published)
-                ?? ISO8601DateFormatter.plain.date(from: published)
-                ?? ISO8601DateFormatter.dateOnly.date(from: published)
+            ChekAPI.date(published)
         }
     }
 
@@ -169,13 +232,56 @@ nonisolated extension ChekAPI {
     struct SourceChapterPage: Decodable, Sendable {
         var items: [SourceChapter]
         /// Where the page starts, counted from the end it was asked for.
+        /// Positions count releases, not chapters.
         var offset: Int
+        /// Where the next page starts, or nil after the last. Absent from
+        /// servers before release groups, where it's `offset` plus the
+        /// page's length.
+        var nextOffset: Int?
+        /// How many releases the series has.
         var total: Int
+        /// How many chapters, when the server has read them all.
+        var chapterCount: Int?
+        /// The release group you prefer for this series.
+        var preferredGroup: String?
 
-        /// The page's chapters with where each stands in reading order.
+        private enum CodingKeys: String, CodingKey {
+            case items, offset, nextOffset, total, chapterCount, preferredGroup
+        }
+
+        init(items: [SourceChapter], offset: Int, total: Int, nextOffset: Int?, chapterCount: Int? = nil, preferredGroup: String? = nil) {
+            self.items = items
+            self.offset = offset
+            self.total = total
+            self.nextOffset = nextOffset
+            self.chapterCount = chapterCount
+            self.preferredGroup = preferredGroup
+        }
+
+        init(from decoder: any Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            items = try container.decode([SourceChapter].self, forKey: .items)
+            offset = try container.decode(Int.self, forKey: .offset)
+            total = try container.decode(Int.self, forKey: .total)
+            if container.contains(.nextOffset) {
+                // Null means the end.
+                nextOffset = try container.decodeIfPresent(Int.self, forKey: .nextOffset)
+            } else {
+                // An older server pages by count.
+                nextOffset = offset + items.count < total ? offset + items.count : nil
+            }
+            chapterCount = try container.decodeIfPresent(Int.self, forKey: .chapterCount)
+            preferredGroup = try container.decodeIfPresent(String.self, forKey: .preferredGroup)
+        }
+
+        /// The page's chapters with where each stands in reading order: the
+        /// position of its first release, since positions count releases.
         func known(_ order: ChekClient.ChapterOrder) -> [SeriesCache.KnownChapter] {
-            items.enumerated().map { index, chapter in
-                let position = order == .oldestFirst ? offset + index + 1 : total - offset - index
+            var counted = 0
+            return items.map { chapter in
+                let releases = max(chapter.releases?.count ?? 1, 1)
+                defer { counted += releases }
+                let position = order == .oldestFirst ? offset + counted + 1 : total - offset - counted - releases + 1
                 return SeriesCache.KnownChapter(position: position, chapter: chapter)
             }
         }

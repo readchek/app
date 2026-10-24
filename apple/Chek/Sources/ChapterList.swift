@@ -29,10 +29,20 @@ final class ChapterList {
     private(set) var phase = Phase.idle
     /// The loaded chapters, in the order shown.
     private(set) var entries: [Entry] = []
-    /// How many chapters the series has, once a page has said.
+    /// How many releases the series has, once a page has said. Sites
+    /// often list a chapter once per group that released it, so this can
+    /// be far more than its chapters.
     private(set) var total: Int?
-    /// Where `entries` starts, counted from the end `order` names.
+    /// How many chapters, when the server has read the whole list.
+    private(set) var chapterCount: Int?
+    /// The release group you prefer for this series, whose release of each
+    /// chapter is the one shown.
+    private(set) var preferredGroup: String?
+    /// Where `entries` starts, counted in releases from the end `order`
+    /// names.
     private(set) var start = 0
+    /// Where the page after the loaded ones starts, or nil at the end.
+    private(set) var nextOffset: Int?
     /// Why the last page before or after couldn't be read, while the
     /// others still show.
     private(set) var moreFailure: DisplayError?
@@ -61,8 +71,7 @@ final class ChapterList {
     }
 
     var hasMoreAfter: Bool {
-        guard let total, !isOffline else { return false }
-        return start + entries.count < total
+        !isOffline && nextOffset != nil
     }
 
     var hasMoreBefore: Bool {
@@ -70,9 +79,11 @@ final class ChapterList {
     }
 
     /// The series in runs of a page, by position in reading order, for
-    /// jumping straight to one: 1–100, 101–200 and so on.
+    /// jumping straight to one: 1–100, 101–200 and so on. Only when each
+    /// chapter has one release, since positions count releases and the
+    /// runs would otherwise be labelled with numbers no chapter has.
     var ranges: [ClosedRange<Int>] {
-        guard let total, total > Self.pageSize else { return [] }
+        guard let total, total > Self.pageSize, chapterCount == total else { return [] }
         return stride(from: 1, through: total, by: Self.pageSize).map { $0...min($0 + Self.pageSize - 1, total) }
     }
 
@@ -114,10 +125,11 @@ final class ChapterList {
         let generation = generation
         phase = .loadingMore
         do {
-            let page = try await fetch(offset: start + entries.count, limit: Self.pageSize)
+            let page = try await fetch(offset: nextOffset ?? 0, limit: Self.pageSize)
             guard generation == self.generation else { return }
-            entries += page.known(order)
-            total = page.total
+            let seen = Set(entries.map(\.id))
+            entries += page.known(order).filter { !seen.contains($0.id) }
+            take(page)
             moreFailure = nil
             onPage?(page.known(order), page.total)
         } catch {
@@ -136,9 +148,14 @@ final class ChapterList {
         do {
             let page = try await fetch(offset: offset, limit: start - offset)
             guard generation == self.generation else { return }
-            entries = page.known(order) + entries
+            // A page from an earlier offset can run into the loaded ones,
+            // since it counts chapters and offsets count releases.
+            let seen = Set(entries.map(\.id))
+            let next = nextOffset
+            entries = page.known(order).filter { !seen.contains($0.id) } + entries
             start = offset
-            total = page.total
+            take(page)
+            nextOffset = next
             moreFailure = nil
             onPage?(page.known(order), page.total)
         } catch {
@@ -172,7 +189,7 @@ final class ChapterList {
             guard generation == self.generation else { return }
             entries = page.known(order)
             start = page.offset
-            total = page.total
+            take(page)
             isOffline = false
             moreFailure = nil
             phase = .loaded
@@ -194,6 +211,29 @@ final class ChapterList {
                 phase = .failed(DisplayError(error))
             }
         }
+    }
+
+    /// Chooses whose release of each chapter is shown for this series, on
+    /// every device, or goes back to the default pick for nil. Pages loaded
+    /// already are reordered here, since cached ones keep the old pick.
+    func prefer(group: String?) async {
+        preferredGroup = group
+        entries = entries.map { Entry(position: $0.position, chapter: $0.chapter.preferring(group: group)) }
+        let seriesID = seriesID
+        let source = source
+        try? await servers.request(server) { client throws(ChekError) in
+            try await client.setReleaseGroup(group, forSeries: seriesID, inSource: source)
+        }
+    }
+
+    /// What a page says about the whole series, and where the next starts.
+    private func take(_ page: ChekAPI.SourceChapterPage) {
+        total = page.total
+        nextOffset = page.nextOffset
+        if let count = page.chapterCount {
+            chapterCount = count
+        }
+        preferredGroup = page.preferredGroup
     }
 
     private func fetch(offset: Int = 0, after: String? = nil, limit: Int, order: Order? = nil, refresh: Bool = false) async throws(ChekError) -> ChekAPI.SourceChapterPage {

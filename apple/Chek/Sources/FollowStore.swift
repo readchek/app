@@ -117,12 +117,31 @@ final class FollowStore {
                 contributors: [],
                 readingDirection: follow.isRightToLeft ? "rtl" : nil
             ))
-            // A first check after following knows the chapters you saw;
-            // anything beyond that count and not read is new.
+            // A first check after following knows the releases you saw;
+            // a chapter is new when it's beyond that count and not read.
+            // Positions count releases, so a chapter is new only when all of
+            // its releases are: by date when the site gives them (another
+            // group's take on an old chapter isn't a new chapter), else by
+            // counting releases from the newest.
             let read = Set(readChapterIDs(follow))
             if page.total > known {
                 let unseen = Set(follow.unseenChapterIDs)
-                let fresh = page.items.prefix(page.total - known).map(\.id).filter { !unseen.contains($0) && !read.contains($0) }
+                let since = follow.lastCheckedAt ?? follow.followedAt
+                var budget = page.total - known
+                let candidates = page.items.prefix { chapter in
+                    let releases = max(chapter.releases?.count ?? 1, 1)
+                    defer { budget -= releases }
+                    return budget >= releases
+                }
+                let dated = page.items.filter { chapter in
+                    let dates = chapter.allReleases.compactMap(\.publishedDate)
+                    return !dates.isEmpty && dates.allSatisfy { $0 > since }
+                }
+                let hasDates = page.items.contains { $0.publishedDate != nil }
+                let fresh = (hasDates ? dated : Array(candidates))
+                    .filter { chapter in !chapter.allReleases.contains { read.contains($0.id) } }
+                    .map(\.id)
+                    .filter { !unseen.contains($0) }
                 follow.unseenChapterIDs.append(contentsOf: fresh)
                 follow.chapterCount = page.total
                 if !fresh.isEmpty {

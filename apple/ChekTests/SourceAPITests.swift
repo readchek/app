@@ -21,10 +21,45 @@ struct SourceAPITests {
     /// either end, which is what keeps pages in order once kept.
     @Test func chapterPagesPlaceChaptersInReadingOrder() {
         let chapters = (1...3).map { ChekAPI.SourceChapter(id: "c\($0)", title: "") }
-        let oldest = ChekAPI.SourceChapterPage(items: chapters, offset: 10, total: 50)
+        let oldest = ChekAPI.SourceChapterPage(items: chapters, offset: 10, total: 50, nextOffset: 13)
         #expect(oldest.known(.oldestFirst).map(\.position) == [11, 12, 13])
-        let newest = ChekAPI.SourceChapterPage(items: chapters, offset: 10, total: 50)
+        let newest = ChekAPI.SourceChapterPage(items: chapters, offset: 10, total: 50, nextOffset: 13)
         #expect(newest.known(.newestFirst).map(\.position) == [40, 39, 38])
+    }
+
+    /// Positions count releases, so a chapter with three releases takes
+    /// three, and the next one starts past them.
+    @Test func groupedChaptersCountTheirReleases() {
+        let releases = (1...3).map { ChekAPI.SourceRelease(id: "r\($0)", title: "", releaseGroup: "G\($0)") }
+        let grouped = ChekAPI.SourceChapter(id: "r1", title: "", releases: releases)
+        let single = ChekAPI.SourceChapter(id: "s", title: "")
+        let page = ChekAPI.SourceChapterPage(items: [grouped, single], offset: 0, total: 10, nextOffset: 4)
+        #expect(page.known(.oldestFirst).map(\.position) == [1, 4])
+        #expect(page.known(.newestFirst).map(\.position) == [8, 7])
+    }
+
+    @Test func pagesDecodeReleasesAndAnEndOfNull() throws {
+        let json = Data("""
+        {"items":[{"id":"a","title":"","number":"1","version":null,"published":null,"language":"en","releaseGroup":"TCB","official":false,
+        "releases":[{"id":"a","title":"","number":"1","version":null,"published":null,"language":"en","releaseGroup":"TCB","official":false},
+        {"id":"b","title":"","number":"1","version":null,"published":null,"language":null,"releaseGroup":"VIZ","official":true}]}],
+        "offset":0,"nextOffset":null,"total":2,"chapterCount":1,"preferredGroup":null}
+        """.utf8)
+        let page = try JSONDecoder().decode(ChekAPI.SourceChapterPage.self, from: json)
+        #expect(page.nextOffset == nil)
+        #expect(page.chapterCount == 1)
+        #expect(page.items[0].allReleases.count == 2)
+        let viz = page.items[0].preferring(group: "viz")
+        #expect(viz.id == "b")
+        #expect(viz.allReleases.map(\.id) == ["b", "a"])
+    }
+
+    @Test func pagesFromOlderServersPageByCount() throws {
+        let json = Data("""
+        {"items":[{"id":"a","title":""},{"id":"b","title":""}],"offset":4,"total":10}
+        """.utf8)
+        let page = try JSONDecoder().decode(ChekAPI.SourceChapterPage.self, from: json)
+        #expect(page.nextOffset == 6)
     }
 
     @Test func installedExtensionsDecode() throws {

@@ -149,6 +149,7 @@ private struct SourceSeriesContent: View {
     @Query private var follows: [FollowedSeries]
     @Environment(ServerStore.self) private var servers
     @Environment(ServerSync.self) private var sync
+    @Environment(AppRouter.self) private var router
     @Environment(FollowStore.self) private var followStore
     @Environment(ProgressStore.self) private var progress
     @Environment(Downloads.self) private var downloads
@@ -181,7 +182,7 @@ private struct SourceSeriesContent: View {
             Section {
                 SourceSeriesHeader(
                     series: series,
-                    count: chapters.total ?? 0,
+                    count: chapterCount,
                     cover: servers.sourceImage(series.coverUrl, on: account),
                     next: next,
                     isFollowing: !follows.isEmpty
@@ -262,9 +263,19 @@ private struct SourceSeriesContent: View {
         }
         ForEach(chapters.entries) { entry in
             let ref = chapterRef(entry.chapter)
-            let status = statuses[entry.chapter.id]?.readingStatus ?? .new
+            // Read in any release, the chapter is read.
+            let status = entry.chapter.allReleases.lazy.compactMap { statuses[$0.id]?.readingStatus }.first ?? .new
             let download = downloads.state(of: ref.ref)
-            SourceChapterRow(chapter: ref, published: entry.chapter.publishedDate, status: status, isNew: follows.first?.unseenChapterIDs.contains(entry.chapter.id) == true, download: download)
+            SourceChapterRow(
+                chapter: ref,
+                release: entry.chapter,
+                status: status,
+                isNew: follows.first?.unseenChapterIDs.contains(entry.chapter.id) == true,
+                download: download,
+                preferredGroup: chapters.preferredGroup,
+                open: { release in router.open(chapterRef(entry.chapter.picking(release)), using: sync) },
+                prefer: { group in Task { await chapters.prefer(group: group) } }
+            )
                 .contextMenu {
                     DownloadAction(item: .chapter(ref), state: download)
                     Divider()
@@ -307,6 +318,17 @@ private struct SourceSeriesContent: View {
 
     private func chapterRef(_ chapter: ChekAPI.SourceChapter) -> SourceChapterRef {
         SourceChapterRef(series: series, chapter: chapter, server: account, source: source)
+    }
+
+    /// How many chapters the series has, as distinct from its releases;
+    /// 0 when that isn't known yet, as for a site that pages its list.
+    private var chapterCount: Int {
+        if let count = chapters.chapterCount {
+            return count
+        }
+        // A server from before release groups lists one release a chapter.
+        let grouped = chapters.entries.contains { $0.chapter.releases != nil }
+        return grouped ? 0 : chapters.total ?? 0
     }
 
     /// Marks every chapter before `position` in reading order as finished.
@@ -605,48 +627,128 @@ struct SourceSeriesHeader: View {
 /// A chapter with how far you've read it, which opens it in the reader.
 private struct SourceChapterRow: View {
     let chapter: SourceChapterRef
-    var published: Date?
+    /// The chapter as listed, with every release of it.
+    let release: ChekAPI.SourceChapter
     let status: ReadingStatus
     var isNew = false
     var download = Downloads.State.none
-    @Environment(ServerSync.self) private var sync
+    var preferredGroup: String?
+    let open: (ChekAPI.SourceRelease) -> Void
+    let prefer: (String?) -> Void
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        Button {
-            router.open(chapter, using: sync)
-        } label: {
-            HStack(spacing: 12) {
-                if isNew {
-                    Circle()
-                        .fill(.tint)
-                        .frame(width: 8, height: 8)
-                        .accessibilityLabel(Text("New"))
+        HStack(spacing: 12) {
+            Button {
+                open(release.allReleases[0])
+            } label: {
+                HStack(spacing: 12) {
+                    if isNew {
+                        Circle()
+                            .fill(.tint)
+                            .frame(width: 8, height: 8)
+                            .accessibilityLabel(Text("New"))
+                    }
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(chapter.chapterTitle)
+                            .font(.body)
+                            .foregroundStyle(status == .finished ? .secondary : .primary)
+                            .lineLimit(2)
+                        if let detail {
+                            Text(detail)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 8)
+                    if router.opening == chapter.ref {
+                        ProgressView()
+                    } else {
+                        // Most chapters are unread, so only the others say so.
+                        StatusText(status: status)
+                    }
+                    DownloadIndicator(state: download)
                 }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(chapter.chapterTitle)
-                        .font(.body)
-                        .foregroundStyle(status == .finished ? .secondary : .primary)
-                        .lineLimit(2)
-                    // When it came out, as Podcasts dates episodes.
-                    if let published {
-                        Text(published, format: .dateTime.day().month(.abbreviated).year())
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                .contentShape(.rect)
+            }
+            .buttonStyle(.plain)
+            if release.allReleases.count > 1 {
+                ReleasesMenu(chapter: release, preferredGroup: preferredGroup, open: open, prefer: prefer)
+            }
+        }
+    }
+
+    /// When it came out, as Podcasts dates episodes, and who released it.
+    private var detail: String? {
+        let date = release.publishedDate?.formatted(.dateTime.day().month(.abbreviated).year())
+        let parts = [date, release.releaseGroup].compactMap(\.self)
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+}
+
+/// A chapter's other releases, one per group that put it out: read another
+/// one, or always show one group's for this series.
+private struct ReleasesMenu: View {
+    let chapter: ChekAPI.SourceChapter
+    let preferredGroup: String?
+    let open: (ChekAPI.SourceRelease) -> Void
+    let prefer: (String?) -> Void
+
+    var body: some View {
+        Menu {
+            Section("Read") {
+                ForEach(chapter.allReleases) { release in
+                    Button {
+                        open(release)
+                    } label: {
+                        Text(release.releaseGroup ?? String(localized: "Unknown Group"))
+                        if let subtitle = subtitle(of: release) {
+                            Text(subtitle)
+                        }
                     }
                 }
-                Spacer(minLength: 8)
-                if router.opening == chapter.ref {
-                    ProgressView()
-                } else {
-                    // Most chapters are unread, so only the others say so.
-                    StatusText(status: status)
-                }
-                DownloadIndicator(state: download)
             }
-            .contentShape(.rect)
+            // Whose release every chapter of the series shows, ticked, with
+            // the default pick (official, else newest) as the first choice.
+            Picker("Always Show", selection: Binding(
+                get: { preferredGroup.map { group in groups.first { $0.localizedCaseInsensitiveCompare(group) == .orderedSame } ?? group } },
+                set: { prefer($0) }
+            )) {
+                Text("Default Release").tag(String?.none)
+                ForEach(groups, id: \.self) { group in
+                    Text(group).tag(String?.some(group))
+                }
+            }
+            .pickerStyle(.menu)
+        } label: {
+            Text("^[\(chapter.allReleases.count) release](inflect: true)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding(.vertical, 6)
+                .padding(.horizontal, 8)
+                .background(.fill.quaternary, in: .capsule)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.borderless)
+        .accessibilityLabel(Text("Releases"))
+    }
+
+    /// The groups that released the chapter, each once.
+    private var groups: [String] {
+        var seen = Set<String>()
+        return chapter.allReleases.compactMap(\.releaseGroup).filter { seen.insert($0.lowercased()).inserted }
+    }
+
+    /// "Official · 12 Oct 2026", from what's known.
+    private func subtitle(of release: ChekAPI.SourceRelease) -> String? {
+        var parts: [String] = []
+        if release.official == true {
+            parts.append(String(localized: "Official"))
+        }
+        if let date = release.publishedDate {
+            parts.append(date.formatted(.dateTime.day().month(.abbreviated).year()))
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
 

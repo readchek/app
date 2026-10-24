@@ -235,6 +235,29 @@ nonisolated struct ChekClient: Sendable {
         return try await Self.send(request, session: session)
     }
 
+    /// Makes `group`'s release of each chapter in a series the one picked,
+    /// for you on every device, or goes back to the default for nil.
+    func setReleaseGroup(_ group: String?, forSeries series: String, inSource source: String) async throws(ChekError) {
+        var request = authorized("api/v1/me/extensions/\(source)/release-group")
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        struct Body: Encodable {
+            var seriesId: String
+            var releaseGroup: String?
+
+            func encode(to encoder: any Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(seriesId, forKey: .seriesId)
+                // Sent as null to clear, rather than left out.
+                try container.encode(releaseGroup, forKey: .releaseGroup)
+            }
+
+            enum CodingKeys: String, CodingKey { case seriesId, releaseGroup }
+        }
+        request.httpBody = try? JSONEncoder().encode(Body(seriesId: series, releaseGroup: group))
+        try await Self.sendWithoutBody(request, session: session)
+    }
+
     /// Every chapter from position `start` up to `end` in reading order,
     /// a server page at a time. Only for something you asked of the whole
     /// series, such as downloading every unread chapter.
@@ -246,8 +269,10 @@ nonisolated struct ChekClient: Sendable {
             guard wanted > 0 else { break }
             let page = try await chapterPage(ofSeries: series, inSource: source, order: .oldestFirst, offset: offset, limit: wanted)
             chapters += page.items
-            offset += page.items.count
-            if page.items.isEmpty || offset >= (end.map { min($0, page.total) } ?? page.total) { break }
+            // Offsets count releases, which a chapter can have several of.
+            guard let next = page.nextOffset, next > offset, !page.items.isEmpty else { break }
+            offset = next
+            if let end, offset >= end { break }
         }
         return chapters
     }

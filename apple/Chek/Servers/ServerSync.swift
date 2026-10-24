@@ -164,12 +164,12 @@ final class ServerSync {
         } catch {
             // Offline: what was seen of the series before may know.
             guard let snapshot = await SeriesCache.read(server: chapter.server, source: source, series: seriesID),
-                  let current = snapshot.chapters.first(where: { $0.chapter.id == chapterID }) else {
+                  let current = snapshot.chapter(containing: chapterID) else {
                 return .unknown
             }
             if let following = snapshot.chapter(after: chapterID) {
                 next = following.chapter
-            } else if let total = snapshot.total, current.position >= total {
+            } else if let total = snapshot.total, current.position + max(current.chapter.releases?.count ?? 1, 1) > total {
                 return .end
             } else {
                 return .unknown
