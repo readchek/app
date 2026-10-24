@@ -19,10 +19,11 @@ struct ServerLibraryView: View {
             } else if let series {
                 SeriesGrid(account: account, series: series)
             } else {
-                ProgressView()
+                LoadingState()
             }
         }
         .navigationTitle(library.name)
+        .navigationBarTitleDisplayMode(.inline)
         // Only this library, so a big one can be searched without the
         // other servers answering too.
         // Always shown: hidden under the title until pulled, nobody would
@@ -166,19 +167,12 @@ private struct SeriesCell: View {
 
     var body: some View {
         NavigationLink(value: Route.series(account, seriesID: series.id, title: series.displayTitle)) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Metrics.captionSpacing) {
                 CoverView(
                     source: series.coverPublicationId.map { servers.cover(of: $0, on: account) } ?? .none,
                     title: series.displayTitle
                 )
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(series.displayTitle)
-                        .font(.footnote.weight(.medium))
-                        .lineLimit(2, reservesSpace: true)
-                    Text("^[\(series.publicationCount) book](inflect: true)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
+                CoverCaption(title: series.displayTitle, detail: Text("^[\(series.publicationCount) book](inflect: true)"))
             }
             .contentShape(.rect)
         }
@@ -197,8 +191,7 @@ struct PagedListOverlay: View {
     var body: some View {
         switch phase {
         case .loading:
-            ProgressView()
-                .controlSize(.large)
+            LoadingState()
         case .failed(let error) where isEmpty:
             FailureState(error: error) {
                 retry()

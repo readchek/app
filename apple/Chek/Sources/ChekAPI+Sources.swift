@@ -153,6 +153,15 @@ nonisolated extension ChekAPI {
         /// As the source writes it, such as "12" or "Vol. 2".
         var number: String?
         var published: String?
+
+        /// `published` as a date, however the source wrote it: with
+        /// fractions of a second, without, or as a bare day.
+        var publishedDate: Date? {
+            guard let published else { return nil }
+            return ISO8601DateFormatter.withFractionalSeconds.date(from: published)
+                ?? ISO8601DateFormatter.plain.date(from: published)
+                ?? ISO8601DateFormatter.dateOnly.date(from: published)
+        }
     }
 
     struct SourcePage: Decodable, Sendable {
@@ -160,4 +169,24 @@ nonisolated extension ChekAPI {
         /// A path on the server that serves the image.
         var url: String
     }
+}
+
+extension ISO8601DateFormatter {
+    nonisolated(unsafe) static let withFractionalSeconds: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return formatter
+    }()
+
+    nonisolated(unsafe) static let plain: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return formatter
+    }()
+
+    nonisolated(unsafe) static let dateOnly: ISO8601DateFormatter = {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withFullDate]
+        return formatter
+    }()
 }

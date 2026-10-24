@@ -11,8 +11,7 @@ struct ExtensionsView: View {
         Group {
             switch model?.state ?? .idle {
             case .idle, .loading:
-                ProgressView()
-                    .controlSize(.large)
+                LoadingState()
             case .failed(let error):
                 FailureState(error: error) {
                     await model?.load()

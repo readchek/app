@@ -16,7 +16,7 @@ struct SeriesView: View {
             if let publications {
                 SeriesContent(account: account, seriesID: seriesID, title: title, publications: publications)
             } else {
-                ProgressView()
+                LoadingState()
             }
         }
         // The header shows the title large, so the bar only takes it once
@@ -82,12 +82,14 @@ private struct SeriesContent: View {
                         unreadComics: publications.items.filter { $0.kind == .comic && $0.isAvailable && statuses[$0.id] != .finished }
                     )
                     .listRowSeparator(.hidden)
-                    .listSectionSeparator(.hidden)
                     .onScrollVisibilityChange(threshold: 0.2) { visible in
                         headerVisible = visible
                     }
                     .preference(key: SeriesHeaderVisibleKey.self, value: headerVisible)
                 }
+                // On the sections, not the row: the lines around the
+                // header are the sections' own.
+                .listSectionSeparator(.hidden)
             }
             Section {
                 ForEach(publications.items) { publication in
@@ -102,6 +104,7 @@ private struct SeriesContent: View {
                         .listRowSeparator(.hidden)
                 }
             }
+            .listSectionSeparator(.hidden, edges: .top)
         }
         .listStyle(.plain)
         .overlay {
@@ -155,10 +158,13 @@ private struct SeriesHeader: View {
     @State private var isConfirmingAll = false
 
     var body: some View {
+        let isRegular = sizeClass == .regular
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .bottom, spacing: 16) {
+            // Title beside the top of the cover, as Books and Music lay
+            // out a title page.
+            HStack(alignment: .top, spacing: 16) {
                 CoverView(source: cover, title: title)
-                    .frame(width: 96)
+                    .frame(width: Metrics.headerCoverWidth(regular: isRegular))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
                         .font(.title2.weight(.bold))
@@ -169,7 +175,9 @@ private struct SeriesHeader: View {
                 }
                 Spacer(minLength: 0)
             }
-            HStack(spacing: 10) {
+            // Two buttons of one size, as Books pairs "Want to Read" and
+            // "Read"; style, not width, says which one matters.
+            HStack(spacing: 12) {
                 if let (publication, status) = next {
                     Button {
                         router.open(publication, using: sync)
@@ -184,9 +192,9 @@ private struct SeriesHeader: View {
                     downloadsMenu
                 }
             }
-            .controlSize(.large)
+            .buttonBorderShape(.capsule)
             .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: sizeClass == .regular ? 440 : .infinity, alignment: .leading)
+            .frame(maxWidth: 360, alignment: .leading)
         }
         .padding(.vertical, 8)
     }
@@ -218,8 +226,9 @@ private struct SeriesHeader: View {
                 }
             }
         } label: {
-            Label("Downloads", systemImage: "arrow.down.circle")
-                .labelStyle(.iconOnly)
+            Label("Download", systemImage: "arrow.down.circle")
+                .lineLimit(1)
+                .frame(maxWidth: .infinity)
         }
         .buttonStyle(.bordered)
         .confirmationDialog("Download ^[\(pending.count) Comic](inflect: true)?", isPresented: $isConfirmingAll, titleVisibility: .visible) {

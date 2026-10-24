@@ -163,7 +163,9 @@ private struct SearchResults: View {
 
     var body: some View {
         if text.trimmingCharacters(in: .whitespaces).isEmpty {
-            EmptyState("Search", systemImage: "magnifyingglass", description: Text("Find books, comics, and authors in your library, shared libraries, and sites."))
+            // Nothing under the field until there's something to find, as
+            // in Books: the field's prompt already says what it searches.
+            Color.clear
         } else if books.isEmpty && serverResults.isEmpty {
             ContentUnavailableView.search(text: text)
         } else {
@@ -184,6 +186,7 @@ private struct SearchResults: View {
                     SourceResultsSection(results: results)
                 }
             }
+            .listStyle(.plain)
         }
     }
 }
@@ -276,13 +279,18 @@ private struct SourceResultsSection: View {
                         LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
                             ForEach(series) { item in
                                 SourceSeriesCell(account: results.account, source: results.source.id, series: item)
-                                    .frame(width: Metrics.shelfCoverWidth(regular: false))
+                                    .shelfCell()
                             }
                         }
+                        .scrollTargetLayout()
                         .padding(.vertical, 4)
                     }
+                    // The row spans the screen and the shelf keeps its own
+                    // margins, so its cells are the size of a grid's.
+                    .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
                     .scrollIndicators(.hidden)
-                    .listRowInsets(EdgeInsets(top: 8, leading: Metrics.margin, bottom: 8, trailing: 0))
+                    .scrollTargetBehavior(.viewAligned)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                 }
             }
         }

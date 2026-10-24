@@ -23,10 +23,11 @@ struct SourceView: View {
             } else if let series {
                 SourceSeriesGrid(account: account, source: source.id, series: series, isSearching: !submittedQuery.isEmpty)
             } else {
-                ProgressView()
+                LoadingState()
             }
         }
         .navigationTitle(source.name)
+        .navigationBarTitleDisplayMode(.inline)
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("Search \(source.name)"))
         .onSubmit(of: .search) {
             submittedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -125,25 +126,16 @@ private struct DownloadedShelf: View {
     let account: UUID
     let source: String
     let series: [Downloads.DownloadedSeries]
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SectionHeader(title: "Downloaded")
-            ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
-                    ForEach(series) { item in
-                        SourceSeriesCell(account: account, source: source, series: ChekAPI.SourceSeriesItem(id: item.id, title: item.title, coverUrl: item.coverPath))
-                            .frame(width: Metrics.shelfCoverWidth(regular: sizeClass == .regular))
-                    }
-                }
-                .padding(.horizontal, Metrics.margin)
-                .padding(.vertical, 4)
+        CoverShelf(title: "Downloaded") {
+            ForEach(series) { item in
+                SourceSeriesCell(account: account, source: source, series: ChekAPI.SourceSeriesItem(id: item.id, title: item.title, coverUrl: item.coverPath))
+                    .shelfCell()
             }
-            .scrollIndicators(.hidden)
         }
-        .padding(.top, 8)
-        .padding(.bottom, 12)
+        .padding(.top, 12)
+        .padding(.bottom, Metrics.sectionSpacing - 12)
     }
 }
 
@@ -156,11 +148,9 @@ struct SourceSeriesCell: View {
 
     var body: some View {
         NavigationLink(value: Route.sourceSeries(account, source: source, seriesID: series.id, title: series.title)) {
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: Metrics.captionSpacing) {
                 CoverView(source: servers.sourceImage(series.coverUrl, on: account), title: series.title)
-                Text(series.title)
-                    .font(.footnote.weight(.medium))
-                    .lineLimit(2, reservesSpace: true)
+                CoverCaption(title: series.title)
             }
             .contentShape(.rect)
         }

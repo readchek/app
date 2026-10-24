@@ -37,9 +37,14 @@ struct PublicationItem: Identifiable {
     init(_ publication: RemotePublication, status: ReadingStatus, cover: CoverSource, showsSeries: Bool = true) {
         source = .remote(publication)
         title = publication.displayTitle
-        // A series named like its one book says nothing twice.
+        // A series named like its one book says nothing twice. Inside the
+        // series, where the name is the page's, the length stands in.
         let series = publication.seriesTitle
-        subtitle = showsSeries && series?.localizedCaseInsensitiveCompare(title) != .orderedSame ? series : nil
+        if showsSeries {
+            subtitle = series?.localizedCaseInsensitiveCompare(title) != .orderedSame ? series : nil
+        } else {
+            subtitle = publication.pageCount.map { String(AttributedString(localized: "^[\($0) page](inflect: true)").characters) }
+        }
         self.cover = cover
         self.status = status
     }

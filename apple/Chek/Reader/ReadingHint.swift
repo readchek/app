@@ -10,16 +10,10 @@ struct ReadingHint: View {
     var body: some View {
         ZStack {
             if isVisible {
-                Color.black.opacity(0.55)
+                // A light dim and one sentence, as Panels does: dashed
+                // tap zones drawn over the page were more than it needs.
+                Color.black.opacity(0.35)
                     .ignoresSafeArea()
-                    .overlay {
-                        HStack(spacing: 0) {
-                            zone("Previous", systemImage: "chevron.backward")
-                            zone("Controls", systemImage: "hand.tap")
-                            zone("Next", systemImage: "chevron.forward")
-                        }
-                        .padding(.horizontal, 12)
-                    }
                     .overlay(alignment: .bottom) {
                         // On its own panel: the dimmed page's text still
                         // shows through, and white on it isn't readable.
@@ -44,7 +38,7 @@ struct ReadingHint: View {
             guard !hasShown else { return }
             // After the page is there, so the hint explains what's on screen.
             try? await Task.sleep(for: .seconds(1))
-            // The controls would sit over the hint's labels.
+            // The controls would sit over the hint.
             session.hideControls()
             isVisible = true
         }
@@ -53,21 +47,5 @@ struct ReadingHint: View {
     private func dismiss() {
         hasShown = true
         isVisible = false
-    }
-
-    private func zone(_ title: LocalizedStringKey, systemImage: String) -> some View {
-        VStack(spacing: 8) {
-            Image(systemName: systemImage)
-                .font(.title2)
-            Text(title)
-                .font(.footnote.weight(.medium))
-        }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(.white.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [6, 6]))
-                .padding(4)
-        }
     }
 }

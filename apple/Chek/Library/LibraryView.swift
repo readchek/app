@@ -84,23 +84,27 @@ private struct LibraryOptionsMenu: View {
         Menu("More", systemImage: "ellipsis") {
             Button("Select", systemImage: "checkmark.circle", action: select)
                 .disabled(!canSelect)
-            Picker("Filter", selection: $filter) {
+            // Each picker is a named row showing its value, with the
+            // choices a level in, as Files' menu does: a menu of three
+            // nameless lists read as one long list of actions.
+            Divider()
+            Picker("Show", selection: $filter) {
                 ForEach(LibraryFilter.allCases) { filter in
                     Text(filter.title).tag(filter)
                 }
             }
-            .pickerStyle(.inline)
+            .pickerStyle(.menu)
             Picker("Sort By", selection: $sort) {
                 ForEach(LibrarySort.allCases) { sort in
                     Text(sort.title).tag(sort)
                 }
             }
-            .pickerStyle(.inline)
-            Picker("Layout", selection: $layout) {
+            .pickerStyle(.menu)
+            Picker("View", selection: $layout) {
                 Label("Grid", systemImage: "square.grid.3x2").tag(LibraryLayout.grid)
                 Label("List", systemImage: "list.bullet").tag(LibraryLayout.list)
             }
-            .pickerStyle(.inline)
+            .pickerStyle(.menu)
         }
     }
 }
@@ -139,7 +143,11 @@ private struct LibraryContent: View {
                 if filter == .finished {
                     EmptyState("No Finished Books", systemImage: "checkmark.circle", description: Text("Books you finish appear here."))
                 } else if filter != .all {
-                    EmptyState(filter == .comics ? "No Comics" : "No Books", systemImage: "books.vertical")
+                    EmptyState(
+                        filter == .comics ? "No Comics" : "No Books",
+                        systemImage: "books.vertical",
+                        description: Text(filter == .comics ? "Comics you add appear here." : "Books you add appear here.")
+                    )
                 } else {
                     EmptyLibraryView()
                 }
@@ -173,6 +181,9 @@ private struct LibraryContent: View {
                 case .list:
                     List(books, selection: Binding { selection ?? [] } set: { selection = selection == nil ? nil : $0 }) { book in
                         PublicationRow(item: PublicationItem(book))
+                            // While selecting, a tap is the list's to
+                            // select the row, not the row's to open the book.
+                            .allowsHitTesting(selection == nil)
                             .contextMenu {
                                 BookActions(book: book, bookToRemove: $bookToRemove)
                             }

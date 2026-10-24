@@ -126,9 +126,11 @@ extension ChekError: LocalizedError {
         switch self {
         case .unauthorized: String(localized: "Sign in to keep reading.")
         case .offline: String(localized: "Check your internet connection and try again.")
-        case .invalidResponse, .server(_, nil): String(localized: "Try again later. If this keeps happening, contact the library's administrator.")
         case .server(_, "source_failed"): String(localized: "Try again later.")
         case .server(_, "source_unavailable"): String(localized: "It may have been removed from this library.")
+        // Any other server error, named or not: a title alone leaves the
+        // reader with nothing to do.
+        case .invalidResponse, .server: String(localized: "Try again later. If this keeps happening, contact the library's administrator.")
         default: nil
         }
     }

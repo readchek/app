@@ -55,9 +55,9 @@ struct TryDemoButton: View {
 
 extension View {
     /// A banner under the navigation bar while the demo is connected,
-    /// saying so and offering the way out. Goes on every screen's content,
-    /// since the demo should never be mistaken for the real thing a few
-    /// taps in. The demo ends on its own at the next launch.
+    /// saying so. Goes on every screen's content, since the demo should
+    /// never be mistaken for the real thing a few taps in. The demo ends
+    /// on its own at the next launch.
     func demoBanner() -> some View {
         modifier(DemoBanner())
     }
@@ -65,39 +65,23 @@ extension View {
 
 private struct DemoBanner: ViewModifier {
     @Environment(ServerStore.self) private var servers
-    @Environment(AppRouter.self) private var router
 
     func body(content: Content) -> some View {
         content.safeAreaInset(edge: .top, spacing: 0) {
             if servers.isDemo {
-                // Small and out of the way, with the way out a tap away.
-                HStack(spacing: 6) {
-                    Image(systemName: "sparkles")
-                        .font(.caption2)
-                    Text("Sample Library")
-                        .font(.caption.weight(.semibold))
-                    Button("Close", systemImage: "xmark") {
-                        Task {
-                            await servers.endDemo()
-                            router.serverRemoved(DemoMode.accountID)
-                            router.homePath = []
-                            router.searchPath = []
-                        }
-                    }
-                    .labelStyle(.iconOnly)
-                    .font(.caption2.weight(.bold))
+                // Small, quiet and out of the way: a label, not a control.
+                // Closing the sample is in the library's More menu and in
+                // Settings, where every other library action is.
+                Label("Sample Library", systemImage: "sparkles")
+                    .font(.caption.weight(.medium))
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(Text("Close Sample Library"))
-                }
-                .padding(.leading, 10)
-                .padding(.trailing, 6)
-                .padding(.vertical, 4)
-                .foregroundStyle(.primary)
-                .background(.yellow.opacity(0.35), in: .capsule)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-                .padding(.trailing, Metrics.margin)
-                .padding(.bottom, 2)
-                .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.fill.tertiary, in: .capsule)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.trailing, Metrics.margin)
+                    .padding(.bottom, 2)
+                    .transition(.move(edge: .top).combined(with: .opacity))
             }
         }
         .animation(.snappy, value: servers.isDemo)

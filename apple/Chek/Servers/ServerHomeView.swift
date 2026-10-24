@@ -181,85 +181,91 @@ private struct ServerHomeContent: View {
     var body: some View {
         if servers.state(of: account.id) == .signedOut {
             let kept = downloads.comics(on: account.id)
-            ScrollView {
-                VStack(spacing: Metrics.sectionSpacing) {
-                    EmptyState(
-                        "Signed Out",
-                        systemImage: "person.crop.circle.badge.exclamationmark",
-                        description: Text("Sign in to \(account.name) to keep reading.")
-                    ) {
-                        Button("Sign In") {
-                            router.sheet = .signIn(account.id)
-                        }
-                    }
-                    .frame(minHeight: kept.isEmpty ? 480 : 320)
-                    if !kept.isEmpty {
+            let signedOut = EmptyState(
+                "Signed Out",
+                systemImage: "person.crop.circle.badge.exclamationmark",
+                description: Text("Sign in to \(account.name) to keep reading.")
+            ) {
+                Button("Sign In") {
+                    router.sheet = .signIn(account.id)
+                }
+            }
+            if kept.isEmpty {
+                signedOut
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        // Most of the screen, so it reads as the screen's
+                        // state and not as a row above the shelf.
+                        signedOut
+                            .containerRelativeFrame(.vertical) { height, _ in height * 0.65 }
                         // What's on the device needs no session.
                         Shelf(title: "Downloaded", items: kept.map { servers.item($0, status: ReadingStatuses(states)[$0.id]) })
+                            .padding(.bottom, Metrics.sectionSpacing)
                     }
                 }
             }
         } else {
             switch model?.state ?? .idle {
             case .idle, .loading:
-                ProgressView()
-                    .controlSize(.large)
+                LoadingState()
             case .failed(let error):
                 FailureState(error: error) {
                     await model?.load()
                 }
             case .loaded(let content):
                 let statuses = ReadingStatuses(states)
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
-                        if let error = model?.staleError {
-                            StaleNotice(error: error)
-                        }
-                        if !content.continueReading.isEmpty {
-                            Shelf(
-                                title: "Continue Reading",
-                                items: content.continueReading.map { servers.item($0, status: statuses[$0.id, or: content.serverStatuses[$0.id]]) },
-                                isFeatured: true
-                            )
-                        }
-                        if !content.recentlyAdded.isEmpty {
-                            Shelf(title: "Recently Added", items: content.recentlyAdded.map { servers.item($0, status: statuses[$0.id]) })
-                        }
-                        let kept = downloads.comics(on: account.id)
-                        if !kept.isEmpty {
-                            // Comics kept on the device, there to open
-                            // whether or not the server answers.
-                            Shelf(title: "Downloaded", items: kept.map { servers.item($0, status: statuses[$0.id, or: content.serverStatuses[$0.id]]) })
-                        }
-                        VStack(alignment: .leading, spacing: 4) {
-                            SectionHeader(title: "Collections")
-                            if content.libraries.isEmpty {
-                                // A reader starts with no libraries until
-                                // the admin shares some, which the server
-                                // can't say more about.
-                                Text("No collections are shared with you yet. Ask the library's administrator for access.")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .padding(.horizontal, Metrics.margin)
-                                    .padding(.top, 4)
-                            }
-                            ForEach(content.libraries) { library in
-                                NavigationRow(
-                                    title: library.name,
-                                    systemImage: "books.vertical",
-                                    value: Route.serverLibrary(account.id, library),
-                                    showsDivider: library.id != content.libraries.last?.id
-                                )
-                            }
-                        }
-                        // The sample library can't add sites, so an empty
-                        // section there would lead nowhere.
-                        if let sources = content.sources, !(sources.isEmpty && account.id == DemoMode.accountID) {
-                            SourcesSection(account: account.id, sources: sources)
+                // A plain list: shelves are rows without separators, and
+                // collections and sites are ordinary rows, so the system
+                // draws them and they match every other list.
+                List {
+                    if let error = model?.staleError {
+                        StaleNotice(error: error)
+                            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 0, trailing: 0))
+                            .listRowSeparator(.hidden)
+                    }
+                    if !content.continueReading.isEmpty {
+                        Shelf(
+                            title: "Continue Reading",
+                            items: content.continueReading.map { servers.item($0, status: statuses[$0.id, or: content.serverStatuses[$0.id]]) },
+                            isFeatured: true
+                        )
+                        .shelfRow()
+                    }
+                    if !content.recentlyAdded.isEmpty {
+                        Shelf(title: "Recently Added", items: content.recentlyAdded.map { servers.item($0, status: statuses[$0.id]) })
+                            .shelfRow()
+                    }
+                    let kept = downloads.comics(on: account.id)
+                    if !kept.isEmpty {
+                        // Comics kept on the device, there to open
+                        // whether or not the server answers.
+                        Shelf(title: "Downloaded", items: kept.map { servers.item($0, status: statuses[$0.id, or: content.serverStatuses[$0.id]]) })
+                            .shelfRow()
+                    }
+                    SectionHeader(title: "Collections")
+                        .headerRow()
+                    if content.libraries.isEmpty {
+                        // A reader starts with no libraries until the
+                        // admin shares some, which the server can't say
+                        // more about.
+                        Text("No collections are shared with you yet. Ask the library's administrator for access.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .listRowSeparator(.hidden)
+                    }
+                    ForEach(content.libraries) { library in
+                        NavigationLink(value: Route.serverLibrary(account.id, library)) {
+                            Label(library.name, systemImage: "books.vertical")
                         }
                     }
-                    .padding(.vertical, 8)
+                    // The sample library can't add sites, so an empty
+                    // section there would lead nowhere.
+                    if let sources = content.sources, !(sources.isEmpty && account.id == DemoMode.accountID) {
+                        SourcesSection(account: account.id, sources: sources)
+                    }
                 }
+                .listStyle(.plain)
                 .animation(.default, value: model?.staleError)
                 .refreshable {
                     await model?.load()

@@ -17,8 +17,7 @@ struct SourceSeriesView: View {
         Group {
             switch model?.state ?? .idle {
             case .idle, .loading:
-                ProgressView()
-                    .controlSize(.large)
+                LoadingState()
             case .failed(let error):
                 FailureState(error: error) {
                     await model?.load()
@@ -193,12 +192,14 @@ private struct SourceSeriesContent: View {
                     }
                 }
                 .listRowSeparator(.hidden)
-                .listSectionSeparator(.hidden)
                 .onScrollVisibilityChange(threshold: 0.2) { visible in
                     headerVisible = visible
                 }
                 .preference(key: SeriesHeaderVisibleKey.self, value: headerVisible)
             }
+            // On the sections, not the row: the lines around the header
+            // are the sections' own.
+            .listSectionSeparator(.hidden)
             Section {
                 if let failure = content.chaptersFailure {
                     // Under the header, not over it, so the series still reads.
@@ -219,7 +220,7 @@ private struct SourceSeriesContent: View {
                         let ref = chapterRef(chapter)
                         let status = statuses[chapter.id]?.readingStatus ?? .new
                         let download = downloads.state(of: ref.ref)
-                        SourceChapterRow(chapter: ref, status: status, isNew: follows.first?.unseenChapterIDs.contains(chapter.id) == true, download: download)
+                        SourceChapterRow(chapter: ref, published: chapter.publishedDate, status: status, isNew: follows.first?.unseenChapterIDs.contains(chapter.id) == true, download: download)
                             .contextMenu {
                                 DownloadAction(item: .chapter(ref), state: download)
                                 Divider()
@@ -271,6 +272,7 @@ private struct SourceSeriesContent: View {
                     .textCase(nil)
                 }
             }
+            .listSectionSeparator(.hidden, edges: .top)
         }
         .listStyle(.plain)
         .refreshable {
@@ -358,9 +360,11 @@ struct SourceSeriesHeader: View {
     var body: some View {
         let isRegular = sizeClass == .regular
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .bottom, spacing: 16) {
+            // Title beside the top of the cover, as Books and Music lay
+            // out a title page.
+            HStack(alignment: .top, spacing: 16) {
                 CoverView(source: cover, title: series.title)
-                    .frame(width: isRegular ? 128 : 96)
+                    .frame(width: Metrics.headerCoverWidth(regular: isRegular))
                 VStack(alignment: .leading, spacing: 4) {
                     Text(series.title)
                         .font(.title2.weight(.bold))
@@ -405,7 +409,7 @@ struct SourceSeriesHeader: View {
                     // measuring, so the control shows for any summary long
                     // enough that they might.
                     if Self.mayBeCutOff(summary) {
-                        Text(isShowingFullSummary ? "less" : "more")
+                        Text(isShowingFullSummary ? "Less" : "More")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.tint)
                     }
@@ -417,10 +421,12 @@ struct SourceSeriesHeader: View {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint(Text(isShowingFullSummary ? "Shows less of the summary" : "Shows the whole summary"))
             }
-            // Side by side, or one under the other at text sizes where
-            // two buttons would squeeze the reading one to nothing.
+            // Two buttons of one size, as Books pairs "Want to Read" and
+            // "Read"; style, not width, says which one matters. One under
+            // the other at text sizes where two across would squeeze the
+            // reading one to nothing.
             let stacked = dynamicTypeSize.isAccessibilitySize
-            let layout = stacked ? AnyLayout(VStackLayout(spacing: 10)) : AnyLayout(HStackLayout(spacing: 10))
+            let layout = stacked ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
             layout {
                 if let (chapter, status) = next {
                     Button {
@@ -440,17 +446,16 @@ struct SourceSeriesHeader: View {
                     Label(isFollowing ? "Following" : "Follow", systemImage: isFollowing ? "checkmark" : "plus")
                         .labelStyle(.titleAndIcon)
                         .lineLimit(1)
-                        .fixedSize(horizontal: !stacked, vertical: false)
-                        .frame(maxWidth: stacked ? .infinity : nil)
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
                 .tint(isFollowing ? .secondary : .accentColor)
             }
-            .controlSize(.large)
+            .buttonBorderShape(.capsule)
             .fixedSize(horizontal: false, vertical: true)
             // On a wide screen a button the width of the page is a bar,
             // not a button.
-            .frame(maxWidth: isRegular ? 440 : .infinity, alignment: .leading)
+            .frame(maxWidth: 360, alignment: .leading)
         }
         .padding(.vertical, 8)
     }
@@ -515,6 +520,7 @@ struct SourceSeriesHeader: View {
 /// A chapter with how far you've read it, which opens it in the reader.
 private struct SourceChapterRow: View {
     let chapter: SourceChapterRef
+    var published: Date?
     let status: ReadingStatus
     var isNew = false
     var download = Downloads.State.none
@@ -532,16 +538,24 @@ private struct SourceChapterRow: View {
                         .frame(width: 8, height: 8)
                         .accessibilityLabel(Text("New"))
                 }
-                Text(chapter.chapterTitle)
-                    .font(.body)
-                    .foregroundStyle(status == .finished ? .secondary : .primary)
-                    .lineLimit(2)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(chapter.chapterTitle)
+                        .font(.body)
+                        .foregroundStyle(status == .finished ? .secondary : .primary)
+                        .lineLimit(2)
+                    // When it came out, as Podcasts dates episodes.
+                    if let published {
+                        Text(published, format: .dateTime.day().month(.abbreviated).year())
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer(minLength: 8)
                 if router.opening == chapter.ref {
                     ProgressView()
-                } else if status != .new {
+                } else {
                     // Most chapters are unread, so only the others say so.
-                    StatusText(status: status, showsNew: false)
+                    StatusText(status: status)
                 }
                 DownloadIndicator(state: download)
             }

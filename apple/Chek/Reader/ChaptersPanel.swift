@@ -56,7 +56,7 @@ struct ChaptersPanel: View {
                                             .foregroundStyle(.tint)
                                             .accessibilityLabel(Text("Current chapter"))
                                     } else if let status = statuses[item.id], status != .new {
-                                        StatusText(status: status, showsNew: false)
+                                        StatusText(status: status)
                                     }
                                 }
                                 .contentShape(.rect)

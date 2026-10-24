@@ -55,22 +55,19 @@ struct EmptyState<Action: View, Secondary: View>: View {
             }
         } actions: {
             // Styled here rather than by each screen, so every main action
-            // looks the same.
-            action
-                .buttonStyle(.borderedProminent)
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            // Other ways in sit apart from the main one, at the foot of the
-            // screen, quiet enough that they never compete with it.
-            if Secondary.self != EmptyView.self {
-                HStack(spacing: 24) {
-                    secondary
+            // looks the same. Other ways in sit right under it, quiet
+            // enough that they never compete with it.
+            VStack(spacing: 16) {
+                action
+                    .buttonStyle(.borderedProminent)
+                if Secondary.self != EmptyView.self {
+                    HStack(spacing: 24) {
+                        secondary
+                    }
+                    .buttonStyle(.borderless)
+                    .labelStyle(.titleOnly)
+                    .font(.subheadline)
                 }
-                .buttonStyle(.borderless)
-                .labelStyle(.titleOnly)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.bottom, 20)
             }
         }
     }

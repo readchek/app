@@ -11,9 +11,9 @@ struct HomeStartView: View {
 
     var body: some View {
         ContentUnavailableView {
-            Label("No Books", systemImage: "books.vertical")
+            Label("Start Reading", systemImage: "book")
         } description: {
-            Text("Add books and comics from Files or iCloud Drive. They're stored on this device.")
+            Text("Add books and comics from Files, or open a library someone shares with you.")
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 14) {

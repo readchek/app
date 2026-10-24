@@ -38,8 +38,7 @@ struct UpdatesView: View {
         Group {
             switch entries {
             case .idle, .loading:
-                ProgressView()
-                    .controlSize(.large)
+                LoadingState()
             case .failed(let error):
                 FailureState(error: error) {
                     await load()
@@ -78,7 +77,7 @@ struct UpdatesView: View {
             }
         }
         .navigationTitle("Updates")
-        .navigationBarTitleDisplayMode(.large)
+        .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await followStore.checkForNewChapters(force: true)
         }
@@ -96,7 +95,7 @@ struct UpdatesView: View {
             guard let snapshot = await SeriesCache.read(server: follow.serverID, source: follow.sourceID, series: follow.seriesID) else { continue }
             let unseen = Set(follow.unseenChapterIDs)
             for chapter in snapshot.chapters where unseen.contains(chapter.id) {
-                entries.append(Entry(follow: follow, chapter: chapter, published: Self.date(chapter.published)))
+                entries.append(Entry(follow: follow, chapter: chapter, published: chapter.publishedDate))
             }
         }
         // Newest first; chapters with no date sort by their place in the
@@ -112,12 +111,6 @@ struct UpdatesView: View {
         self.entries = .loaded(entries)
     }
 
-    nonisolated private static func date(_ text: String?) -> Date? {
-        guard let text else { return nil }
-        return ISO8601DateFormatter.withFractionalSeconds.date(from: text)
-            ?? ISO8601DateFormatter.plain.date(from: text)
-            ?? ISO8601DateFormatter.dateOnly.date(from: text)
-    }
 }
 
 private struct UpdateRow: View {
@@ -155,24 +148,4 @@ private struct UpdateRow: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
     }
-}
-
-private extension ISO8601DateFormatter {
-    nonisolated(unsafe) static let withFractionalSeconds: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }()
-
-    nonisolated(unsafe) static let plain: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime]
-        return formatter
-    }()
-
-    nonisolated(unsafe) static let dateOnly: ISO8601DateFormatter = {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withFullDate]
-        return formatter
-    }()
 }

@@ -17,10 +17,11 @@ struct StorageSection: View {
 
     var body: some View {
         Section {
-            LabeledContent("Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file)) } ?? "…")
-            LabeledContent("Downloads", value: sizes.map { $0.chapters.formatted(.byteCount(style: .file)) } ?? "…")
-            LabeledContent("Recently Read", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file)) } ?? "…")
-            LabeledContent("Cover Images", value: sizes.map { $0.covers.formatted(.byteCount(style: .file)) } ?? "…")
+            // "0 KB", not the formatter's "Zero KB".
+            LabeledContent("Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
+            LabeledContent("Downloads", value: sizes.map { $0.chapters.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
+            LabeledContent("Recently Read", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
+            LabeledContent("Cover Images", value: sizes.map { $0.covers.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
             Button("Free Up Space") {
                 isClearing = true
                 Task {

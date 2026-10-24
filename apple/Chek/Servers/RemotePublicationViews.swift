@@ -34,54 +34,6 @@ extension ServerStore {
     }
 }
 
-/// A row that leads to another screen, lined up with the page margin and
-/// separated by inset dividers, without a card around it.
-struct NavigationRow<Value: Hashable>: View {
-    let title: String
-    let systemImage: String
-    let value: Value
-    var showsDivider = true
-    /// A short note after the title, such as an update or why it's off.
-    var detail: String?
-    /// Whether the row is muted, for something you can't use right now.
-    var isDimmed = false
-
-    var body: some View {
-        VStack(spacing: 0) {
-            NavigationLink(value: value) {
-                HStack(spacing: 12) {
-                    Image(systemName: systemImage)
-                        .font(.body)
-                        .foregroundStyle(.tint)
-                        .frame(width: 28)
-                    Text(title)
-                        .foregroundStyle(isDimmed ? .secondary : .primary)
-                        .lineLimit(2)
-                    Spacer(minLength: 8)
-                    if let detail {
-                        Text(detail)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(1)
-                            .fixedSize()
-                    }
-                    Image(systemName: "chevron.forward")
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(.tertiary)
-                }
-                .padding(.vertical, 12)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-            if showsDivider {
-                Divider()
-                    .padding(.leading, 40)
-            }
-        }
-        .padding(.horizontal, Metrics.margin)
-    }
-}
-
 /// A quiet line at the top of a screen whose refresh failed while it still
 /// shows what loaded earlier, so stale content never passes for fresh.
 struct StaleNotice: View {

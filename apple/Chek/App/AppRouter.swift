@@ -19,6 +19,8 @@ enum Route: Hashable {
     case sourceSeries(UUID, source: String, seriesID: String, title: String)
     /// The extensions a server offers, to install and update.
     case extensions(UUID)
+    /// New chapters across every followed series.
+    case updates
 }
 
 /// Something shown in a sheet over the whole app.
@@ -70,6 +72,19 @@ final class AppRouter {
             tab = .browse
         }
         browsePath.removeAll { if case .server(account) = $0 { true } else { false } }
+    }
+
+    /// Pushes `route` onto the selected tab's stack, as a tapped shelf
+    /// header does. Library has no stack and no shelves, so nothing
+    /// pushes from it.
+    func push(_ route: Route) {
+        switch tab {
+        case .home: homePath.append(route)
+        case .browse: browsePath.append(route)
+        case .search: searchPath.append(route)
+        case .library: break
+        case .server(let account): serverPaths[account, default: []].append(route)
+        }
     }
 
     /// Goes to `route` on Reading Now, over whatever is open, as a tapped

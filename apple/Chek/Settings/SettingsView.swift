@@ -13,6 +13,7 @@ struct SettingsView: View {
                     NavigationLink {
                         ReaderAppearanceForm()
                             .navigationTitle("Reading")
+                            .navigationBarTitleDisplayMode(.inline)
                     } label: {
                         Label("Reading", systemImage: "textformat.size")
                     }
@@ -40,6 +41,8 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            // Sheets keep their titles inline, as Books' do.
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done", role: .confirm) {
@@ -221,6 +224,7 @@ private struct ServerAccountForm: View {
             }
         }
         .navigationTitle(account.name)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear { name = account.name }
         .onDisappear {
             if !isDemo {

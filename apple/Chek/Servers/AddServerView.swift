@@ -44,7 +44,12 @@ struct AddServerView: View {
                         .submitLabel(.next)
                         .onSubmit { focus = .name }
                 } footer: {
-                    Text("Enter the address you were given. A name helps tell libraries apart and is only shown on this device.")
+                    // An error sits under the field it's about.
+                    if case .failed(let error) = phase, !Self.isCredentialError(error) {
+                        FormError(error: error)
+                    } else {
+                        Text("Enter the address you were given. A name helps tell libraries apart and is only shown on this device.")
+                    }
                 }
                 Section {
                     TextField("User Name", text: $name)
@@ -60,7 +65,7 @@ struct AddServerView: View {
                         .submitLabel(.go)
                         .onSubmit(connect)
                 } footer: {
-                    if case .failed(let error) = phase {
+                    if case .failed(let error) = phase, Self.isCredentialError(error) {
                         FormError(error: error)
                     } else {
                         Text("Your password is sent only to this library.")
@@ -107,9 +112,15 @@ struct AddServerView: View {
                 let failure = DisplayError(error)
                 phase = .failed(failure)
                 // Back to the field at fault, so fixing it is one tap fewer.
-                focus = failure.title == String(localized: "Incorrect User Name or Password") ? .password : .address
+                focus = Self.isCredentialError(failure) ? .password : .address
             }
         }
+    }
+
+    /// Whether a failure is about the user name or password rather than
+    /// the address.
+    private static func isCredentialError(_ error: DisplayError) -> Bool {
+        error.title == String(localized: "Incorrect User Name or Password")
     }
 }
 

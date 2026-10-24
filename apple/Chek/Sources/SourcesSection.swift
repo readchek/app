@@ -1,31 +1,46 @@
 import SwiftUI
 
 /// The sites added to a library, each leading to what it offers, and a
-/// row for adding more.
+/// row for adding more. Rows of a shelf page's list, under their header.
 struct SourcesSection: View {
     let account: UUID
     let sources: [ChekAPI.InstalledExtension]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            SectionHeader(title: "Sites")
-            ForEach(sources) { source in
-                NavigationRow(
-                    title: source.name,
-                    systemImage: "globe",
-                    value: Route.source(account, source),
-                    detail: source.usable ? nil : String(localized: "Off"),
-                    isDimmed: !source.usable
-                )
+        SectionHeader(title: "Sites")
+            .headerRow()
+        ForEach(sources) { source in
+            NavigationLink(value: Route.source(account, source)) {
+                LabeledContent {
+                    if !source.usable {
+                        Text("Off")
+                    }
+                } label: {
+                    // Only the name dims when the site is off; the symbol
+                    // keeps the tint every row's symbol has.
+                    Label {
+                        Text(source.name)
+                            .foregroundStyle(source.usable ? .primary : .secondary)
+                    } icon: {
+                        Image(systemName: "globe")
+                    }
+                }
             }
-            let updates = sources.filter { $0.update != nil }.count
-            NavigationRow(
-                title: sources.isEmpty ? String(localized: "Add Sites") : String(localized: "Manage Sites"),
-                systemImage: "plus",
-                value: Route.extensions(account),
-                showsDivider: false,
-                detail: updates > 0 ? String(AttributedString(localized: "^[\(updates) update](inflect: true)").characters) : nil
-            )
+        }
+        let updates = sources.filter { $0.update != nil }.count
+        NavigationLink(value: Route.extensions(account)) {
+            LabeledContent {
+                if updates > 0 {
+                    Text("^[\(updates) update](inflect: true)")
+                }
+            } label: {
+                // Adding is a plus; managing what's there is an edit.
+                if sources.isEmpty {
+                    Label("Add Sites", systemImage: "plus")
+                } else {
+                    Label("Manage Sites", systemImage: "pencil")
+                }
+            }
         }
     }
 }

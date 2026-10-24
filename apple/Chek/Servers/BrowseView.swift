@@ -57,6 +57,9 @@ struct BrowseView: View {
                         }
                         .onMove(perform: move)
                     }
+                    // Plain, as Books' and Podcasts' library lists are, and
+                    // as a library's own screen lists its collections.
+                    .listStyle(.plain)
                 }
             }
             .demoBanner()
@@ -100,7 +103,7 @@ struct ServerRow: View {
                 // rather than naming a user nobody signed in as.
                 Text(isDemo ? "Temporary" : servers.state(of: account.id) == .signedOut ? "Signed Out" : account.userName)
                     .font(.subheadline)
-                    .foregroundStyle(servers.state(of: account.id) == .signedOut ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
+                    .foregroundStyle(.secondary)
             }
         } icon: {
             Image(systemName: isDemo ? "sparkles" : "building.columns")
@@ -126,6 +129,8 @@ extension View {
                     SourceSeriesView(account: account, source: source, seriesID: series, title: title)
                 case .extensions(let account):
                     ExtensionsView(account: account)
+                case .updates:
+                    UpdatesView()
                 }
             }
             // On every pushed screen too, so the demo is never mistaken

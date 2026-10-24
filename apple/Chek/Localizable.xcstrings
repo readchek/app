@@ -25,6 +25,7 @@
     "Add a library someone shares with you to read its books and comics here.": {},
     "Add a shared library of your own to add repositories.": {},
     "Add books and comics from Files or iCloud Drive. They're stored on this device.": {},
+    "Add books and comics from Files, or open a library someone shares with you.": {},
     "Added": {},
     "Adding ^[%lld book](inflect: true)": {},
     "Address": {},
@@ -43,6 +44,7 @@
     },
     "Automatic scrolls webtoons and other tall comics and turns pages for the rest.": {},
     "Books": {},
+    "Books you add appear here.": {},
     "Books you finish appear here.": {},
     "Books, Comics, and Authors": {},
     "Browse free books and comics to see what Chek can do. The sample library is removed when you close Chek.": {},
@@ -74,6 +76,7 @@
     "Collections": {},
     "Comic Layout": {},
     "Comics": {},
+    "Comics you add appear here.": {},
     "Compact": {},
     "Completed": {},
     "Contents": {},
@@ -87,7 +90,6 @@
     "Continue From Another Device?": {},
     "Continue Reading": {},
     "Continue reading %@": {},
-    "Controls": {},
     "Couldn't Add Site": {},
     "Couldn't Add Some Files": {},
     "Couldn't Add This File": {},
@@ -123,8 +125,6 @@
     "Downloads": {},
     "Enter the address you were given, such as books.example.com.": {},
     "Enter the address you were given. A name helps tell libraries apart and is only shown on this device.": {},
-    "Filter": {},
-    "Find books, comics, and authors in your library, shared libraries, and sites.": {},
     "Finished": {},
     "Follow": {},
     "Following": {
@@ -147,8 +147,8 @@
     "Its file and reading position are deleted from this device.": {},
     "Its saved details aren't shown. Enter new ones to replace them, or choose None to remove them.": {},
     "Larger Text": {},
-    "Layout": {},
     "Left to Right": {},
+    "Less": {},
     "Lets everyone with access to this library add repositories that only they can see.": {},
     "Library": {
       "comment": "Tab for the books on this device"
@@ -177,9 +177,7 @@
     "New Chapter Notifications": {},
     "New York": {},
     "New chapters of series you follow appear here.": {},
-    "New in %@": {},
     "Newest First": {},
-    "Next": {},
     "Next %lld Unread": {
       "comment": "Button that downloads the next unread chapters"
     },
@@ -226,7 +224,6 @@
     "Password": {},
     "Position": {},
     "Position Saved on Another Device": {},
-    "Previous": {},
     "Privacy Policy": {},
     "Private": {},
     "Private Repository": {},
@@ -284,6 +281,7 @@
     "Share": {},
     "Shared": {},
     "Shared Libraries": {},
+    "Show": {},
     "Shows less of the summary": {},
     "Shows the whole summary": {},
     "Sign In": {},
@@ -356,6 +354,7 @@
     "Value": {},
     "Version": {},
     "Vertical Scroll": {},
+    "View": {},
     "Wait a minute, then try again.": {},
     "Waiting to Download": {},
     "Wide": {},
@@ -365,12 +364,11 @@
     "^[%lld book](inflect: true)": {},
     "^[%lld chapter](inflect: true)": {},
     "^[%lld new chapter](inflect: true)": {},
+    "^[%lld page](inflect: true)": {},
     "^[%lld site](inflect: true) · Added by the administrator": {},
     "^[%lld site](inflect: true) · Added by you": {},
     "^[%lld update](inflect: true)": {},
-    "chek.page": {},
-    "less": {},
-    "more": {}
+    "chek.page": {}
   },
   "version": "1.0"
 }

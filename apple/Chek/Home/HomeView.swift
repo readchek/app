@@ -52,28 +52,34 @@ private struct HomeContent: View {
                 // the way back in is the one thing worth showing.
                 SignedOutHomeView(accounts: signedOut)
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
-                        if !continueReading.isEmpty {
-                            Shelf(title: "Continue Reading", items: continueReading, isFeatured: true)
-                        }
-                        FollowingShelf()
-                        if !newBooks.isEmpty {
-                            Shelf(title: "Recently Added", items: newBooks.prefix(20).map(PublicationItem.init))
-                        }
-                        ForEach(model.newOnServers) { shelf in
-                            Shelf(title: "New in \(shelf.serverName)", items: shelf.publications.map { publication in
-                                PublicationItem(publication, status: statuses[publication.ref] ?? .new, cover: servers.cover(of: publication.id, on: publication.server))
-                            })
-                        }
-                        // What each site you've added shows first, so adding
-                        // one puts something to read here straight away.
-                        ForEach(model.sites) { shelf in
-                            SiteShelf(shelf: shelf)
-                        }
+                // A plain list of shelves, the same page as a shared
+                // library's own screen.
+                List {
+                    if !continueReading.isEmpty {
+                        Shelf(title: "Continue Reading", items: continueReading, isFeatured: true)
+                            .shelfRow()
                     }
-                    .padding(.vertical, 8)
+                    FollowingShelf()
+                    if !newBooks.isEmpty {
+                        Shelf(title: "Recently Added", items: newBooks.prefix(20).map(PublicationItem.init))
+                            .shelfRow()
+                    }
+                    // A shelf per shared library, headed by its name and
+                    // leading to its screen, as each site's shelf does.
+                    ForEach(model.newOnServers) { shelf in
+                        Shelf(title: "\(shelf.serverName)", items: shelf.publications.map { publication in
+                            PublicationItem(publication, status: statuses[publication.ref] ?? .new, cover: servers.cover(of: publication.id, on: publication.server))
+                        }, route: .server(shelf.id))
+                        .shelfRow()
+                    }
+                    // What each site you've added shows first, so adding
+                    // one puts something to read here straight away.
+                    ForEach(model.sites) { shelf in
+                        SiteShelf(shelf: shelf)
+                            .shelfRow()
+                    }
                 }
+                .listStyle(.plain)
                 .refreshable {
                     async let sites: Void = model.loadSites(from: servers)
                     await model.load(from: servers)
@@ -277,26 +283,13 @@ nonisolated private enum SiteShelfSnapshot {
 /// it shows first.
 private struct SiteShelf: View {
     let shelf: HomeServersModel.SiteShelf
-    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            SectionHeader(title: "\(shelf.source.name)") {
-                SourceView(account: shelf.account, source: shelf.source)
+        CoverShelf(title: "\(shelf.source.name)", route: .source(shelf.account, shelf.source)) {
+            ForEach(shelf.series) { series in
+                SourceSeriesCell(account: shelf.account, source: shelf.source.id, series: series)
+                    .shelfCell()
             }
-            ScrollView(.horizontal) {
-                LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
-                    ForEach(shelf.series) { series in
-                        SourceSeriesCell(account: shelf.account, source: shelf.source.id, series: series)
-                            .frame(width: Metrics.shelfCoverWidth(regular: sizeClass == .regular))
-                    }
-                }
-                .scrollTargetLayout()
-            }
-            .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
-            .scrollIndicators(.hidden)
-            .scrollTargetBehavior(.viewAligned)
-            .scrollClipDisabled()
         }
     }
 }

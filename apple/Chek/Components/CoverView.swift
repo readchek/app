@@ -97,29 +97,21 @@ struct CoverView: View {
     }
 }
 
-/// A plain cover with the title set small at the top, toned from the title
-/// so the same book always looks the same, and quiet enough to sit among
-/// real covers.
+/// A plain cover with the title set small on a neutral fill: quiet enough
+/// to sit among real covers, and never mistaken for one.
 private struct CoverPlaceholder: View {
     let title: String
-    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
-        let hue = Double(abs(title.hashValueStable) % 360) / 360
-        ZStack(alignment: .topLeading) {
-            Color(hue: hue, saturation: 0.12, brightness: colorScheme == .dark ? 0.26 : 0.9)
+        ZStack {
+            Rectangle()
+                .fill(.quaternary)
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.primary.opacity(0.75))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
                 .lineLimit(4)
                 .padding(10)
         }
-    }
-}
-
-private extension String {
-    /// A hash that's the same on every launch, unlike `hashValue`.
-    var hashValueStable: Int {
-        unicodeScalars.reduce(5381) { ($0 &* 33) &+ Int($1.value) }
     }
 }
