@@ -55,6 +55,7 @@ final class AppDependencies {
     let sync: ServerSync
     let follows: FollowStore
     let downloads: Downloads
+    let siteUpdates: SiteUpdates
 
     init(container: ModelContainer, defaults: UserDefaults = .standard) {
         self.container = container
@@ -66,6 +67,7 @@ final class AppDependencies {
         sync = ServerSync(servers: servers, progress: progress, context: container.mainContext)
         follows = FollowStore(context: container.mainContext, servers: servers)
         downloads = Downloads(servers: servers)
+        siteUpdates = SiteUpdates(servers: servers, defaults: defaults)
         servers.onRemove = { [downloads] account in
             downloads.removeAll(for: account)
             SeriesCache.removeAll(for: account)
@@ -85,5 +87,6 @@ extension View {
             .environment(app.sync)
             .environment(app.follows)
             .environment(app.downloads)
+            .environment(app.siteUpdates)
     }
 }

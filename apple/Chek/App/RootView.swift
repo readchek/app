@@ -11,6 +11,7 @@ struct RootView: View {
     @Query private var follows: [FollowedSeries]
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(SiteUpdates.self) private var siteUpdates
 
     var body: some View {
         @Bindable var router = router
@@ -26,6 +27,9 @@ struct RootView: View {
             Tab("Shared", systemImage: "person.2", value: AppTab.browse) {
                 BrowseView()
             }
+            // Site updates waiting, for libraries that don't install them
+            // by themselves.
+            .badge(siteUpdates.total)
             Tab(value: AppTab.search, role: .search) {
                 SearchView()
             }

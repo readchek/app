@@ -5,6 +5,7 @@ import SwiftUI
 struct ExtensionsView: View {
     let account: UUID
     @Environment(ServerStore.self) private var servers
+    @Environment(SiteUpdates.self) private var siteUpdates
     @State private var model: ExtensionsModel?
 
     var body: some View {
@@ -18,7 +19,7 @@ struct ExtensionsView: View {
                 }
             case .loaded(let content):
                 if let model {
-                    ExtensionsList(content: content, model: model)
+                    ExtensionsList(content: content, model: model, isChecking: siteUpdates.checking.contains(account))
                 }
             }
         }
@@ -28,6 +29,14 @@ struct ExtensionsView: View {
             let model = model ?? ExtensionsModel(account: account, servers: servers)
             self.model = model
             await model.load()
+            // What the list showed may be old: the repositories are read
+            // again, new versions installed when the library updates by
+            // itself, and the list shown again.
+            await siteUpdates.check(account, force: true)
+            await model.load()
+            if let installed = model.state.value?.installed {
+                siteUpdates.noteInstalled(installed, on: account)
+            }
         }
         .alert(
             model?.failure?.title ?? "",
@@ -281,6 +290,7 @@ final class ExtensionsModel {
 private struct ExtensionsList: View {
     let content: ExtensionsModel.Content
     let model: ExtensionsModel
+    var isChecking = false
 
     var body: some View {
         let installed = Dictionary(content.installed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -289,6 +299,14 @@ private struct ExtensionsList: View {
         let offered = Set(content.available.map(\.id))
         let orphans = content.installed.filter { !offered.contains($0.id) }
         List {
+            if isChecking {
+                Label {
+                    Text("Checking for new sites and updates…")
+                        .foregroundStyle(.secondary)
+                } icon: {
+                    ProgressView()
+                }
+            }
             if content.available.isEmpty, orphans.isEmpty {
                 Section {
                     EmptyState("The library's administrator hasn't added any sites yet.", systemImage: "globe")

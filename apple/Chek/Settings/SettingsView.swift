@@ -192,6 +192,9 @@ private struct ServerAccountForm: View {
                 LabeledContent("User Name", value: account.userName)
             }
             ContentRatingsSection(account: account)
+            if !isDemo {
+                SiteUpdatesSection(account: account)
+            }
             if isDemo {
                 // The demo has one way out, not a sign-out and a removal
                 // that would need its public password to undo.

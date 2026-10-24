@@ -4,6 +4,7 @@ import SwiftUI
 /// and your password.
 struct AddServerView: View {
     @Environment(ServerStore.self) private var servers
+    @Environment(SiteUpdates.self) private var siteUpdates
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
     @State private var address = ""
@@ -105,6 +106,7 @@ struct AddServerView: View {
         Task {
             do {
                 let account = try await servers.connect(address: address, displayName: displayName, name: name, password: password)
+                Task { await siteUpdates.check(account.id, force: true) }
                 router.sheet = nil
                 router.tab = .browse
                 router.browsePath = [.server(account.id)]
