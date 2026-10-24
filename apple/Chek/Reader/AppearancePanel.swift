@@ -86,8 +86,9 @@ struct ReaderAppearanceForm: View {
             }
             Section("Page Turn") {
                 Picker("Page Turn", selection: $settings.pageTransition) {
-                    Text("Curl").tag(ReaderPreferences.PageTransition.curl)
+                    // The default first.
                     Text("Slide").tag(ReaderPreferences.PageTransition.slide)
+                    Text("Curl").tag(ReaderPreferences.PageTransition.curl)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
