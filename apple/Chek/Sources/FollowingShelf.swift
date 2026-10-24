@@ -58,7 +58,7 @@ private struct FollowedSeriesCell: View {
                     Text(follow.title)
                         .font(.footnote.weight(.semibold))
                         .lineLimit(1)
-                    Text(follow.unseenChapterIDs.isEmpty ? "^[\(follow.chapterCount) chapter](inflect: true)" : "^[\(follow.unseenChapterIDs.count) new](inflect: true)")
+                    Text(follow.unseenChapterIDs.isEmpty ? "^[\(follow.chapterCount) chapter](inflect: true)" : "^[\(follow.unseenChapterIDs.count) new chapter](inflect: true)")
                         .font(.caption2)
                         .foregroundStyle(follow.unseenChapterIDs.isEmpty ? AnyShapeStyle(.secondary) : AnyShapeStyle(.tint))
                 }
@@ -67,7 +67,8 @@ private struct FollowedSeriesCell: View {
         }
         .buttonStyle(.plain)
         .contextMenu {
-            Button("Unfollow", systemImage: "minus.circle", role: .destructive) {
+            // Not destructive: nothing is lost, and the series is a search away.
+            Button("Unfollow", systemImage: "minus.circle") {
                 follows.unfollow(follow)
             }
         }

@@ -19,30 +19,40 @@ private struct OtherDevicePrompt: ViewModifier {
             title(for: prompt),
             isPresented: Binding { prompt != nil } set: { if !$0 { sync.keepThisDevicePosition(for: session.item.ref) } }
         ) {
-            Button("Go There") {
+            Button("Continue") {
                 if let locator = sync.useOtherDevicePosition(for: session.item.ref) {
                     Task { await session.controller.go(to: locator) }
                 }
             }
             .keyboardShortcut(.defaultAction)
-            Button("Stay Here", role: .cancel) {
+            Button("Not Now", role: .cancel) {
                 sync.keepThisDevicePosition(for: session.item.ref)
             }
         } message: {
-            if let updatedAt = prompt?.updatedAt {
-                Text("Saved \(updatedAt, format: .relative(presentation: .named)).")
+            if let prompt {
+                Text(message(for: prompt))
             }
         }
     }
 
     private func title(for prompt: OtherDevicePosition?) -> String {
         guard let prompt else { return "" }
+        if let device = prompt.device {
+            return String(localized: "Continue From \(device)?")
+        }
+        return String(localized: "Continue From Another Device?")
+    }
+
+    /// Where the other device is and when it got there, as far as known.
+    private func message(for prompt: OtherDevicePosition) -> String {
+        let device = prompt.device ?? String(localized: "Another device")
         let place = prompt.locator.locations.totalProgression.map { $0.formatted(.percent.precision(.fractionLength(0))) }
-        switch (prompt.device, place) {
-        case let (device?, place?): return String(localized: "You're at \(place) on \(device)")
-        case let (nil, place?): return String(localized: "You're at \(place) on another device")
-        case let (device?, nil): return String(localized: "You're somewhere else on \(device)")
-        case (nil, nil): return String(localized: "You're somewhere else on another device")
+        let saved = prompt.updatedAt.map { $0.formatted(.relative(presentation: .named)) }
+        switch (place, saved) {
+        case let (place?, saved?): return String(localized: "\(device) was at \(place), saved \(saved).")
+        case let (place?, nil): return String(localized: "\(device) was at \(place).")
+        case let (nil, saved?): return String(localized: "\(device) is further along, saved \(saved).")
+        case (nil, nil): return String(localized: "\(device) is further along.")
         }
     }
 }

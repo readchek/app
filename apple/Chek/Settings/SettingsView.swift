@@ -36,13 +36,13 @@ struct SettingsView: View {
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("Chek is the successor to Chibi Manga.")
+                    Text("Chek replaces Chibi Manga.")
                 }
             }
             .navigationTitle("Settings")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", systemImage: "checkmark") {
+                    Button("Done", role: .confirm) {
                         dismiss()
                     }
                 }
@@ -68,7 +68,7 @@ private struct DemoSection: View {
     var body: some View {
         Section {
             if servers.isDemo {
-                Button("Close the Sample Library", role: .destructive) {
+                Button("Close Sample Library") {
                     Task {
                         await servers.endDemo()
                         router.serverRemoved(DemoMode.accountID)
@@ -81,8 +81,8 @@ private struct DemoSection: View {
             Text("Sample Library")
         } footer: {
             Text(servers.isDemo
-                ? "You're looking around a sample library. It goes away when you close Chek."
-                : "Look around a library of free books and comics to see what Chek can do. It goes away when you close Chek.")
+                ? "The sample library is removed when you close Chek."
+                : "Browse free books and comics to see what Chek can do. The sample library is removed when you close Chek.")
         }
     }
 }
@@ -102,7 +102,9 @@ private struct NewChapterAlertsSection: View {
                 case .denied:
                     Text("Off")
                 case .notDetermined, nil:
-                    Text("Not Yet Asked")
+                    // Not asked yet reads as off; the button under it is
+                    // the way on.
+                    Text("Off")
                 @unknown default:
                     Text("Off")
                 }
@@ -117,12 +119,12 @@ private struct NewChapterAlertsSection: View {
                     }
                 }
             } else if status != nil, let url = URL(string: UIApplication.openNotificationSettingsURLString) {
-                Link("Change in Settings", destination: url)
+                Link("Open Settings", destination: url)
             }
         } header: {
             Text("Following")
         } footer: {
-            Text("Chek looks for new chapters in the series you follow a few times a day and lets you know.")
+            Text("Chek checks for new chapters in series you follow a few times a day and notifies you.")
         }
         .task { await refresh() }
         .onChange(of: scenePhase) { _, phase in
@@ -190,14 +192,14 @@ private struct ServerAccountForm: View {
                 // The demo has one way out, not a sign-out and a removal
                 // that would need its public password to undo.
                 Section {
-                    Button("Close the Sample Library", role: .destructive) {
+                    Button("Close Sample Library") {
                         Task {
                             await servers.endDemo()
                             dismiss()
                         }
                     }
                 } footer: {
-                    Text("It goes away on its own when you close Chek.")
+                    Text("The sample library is removed when you close Chek.")
                 }
             } else {
                 Section {
@@ -214,7 +216,7 @@ private struct ServerAccountForm: View {
                         isConfirmingRemoval = true
                     }
                 } footer: {
-                    Text("Removing it deletes its downloads from this device. Your places are kept, so adding it again picks up where you left off.")
+                    Text("Removing it deletes its downloads from this device. Your reading positions are kept on the library.")
                 }
             }
         }
@@ -225,7 +227,8 @@ private struct ServerAccountForm: View {
                 servers.rename(account, to: name)
             }
         }
-        .confirmationDialog("Remove \(account.name)?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
+        // The same question as the Shared tab asks, word for word.
+        .confirmationDialog("Remove “\(account.name)”?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
             Button("Remove Library", role: .destructive) {
                 router.serverRemoved(account.id)
                 Task {
@@ -233,6 +236,8 @@ private struct ServerAccountForm: View {
                     dismiss()
                 }
             }
+        } message: {
+            Text("Its downloads are deleted from this device. Your reading positions are kept on the library.")
         }
     }
 }

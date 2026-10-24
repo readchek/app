@@ -15,7 +15,7 @@ struct TryDemoButton: View {
             if isStarting {
                 ProgressView()
             } else {
-                Label("Try Sample Books", systemImage: "sparkles")
+                Label("Open Sample Library", systemImage: "sparkles")
             }
         }
         .disabled(isStarting)
@@ -45,7 +45,7 @@ struct TryDemoButton: View {
             } catch {
                 let reason = DisplayError(error)
                 failure = DisplayError(
-                    title: String(localized: "Couldn't open the sample library."),
+                    title: String(localized: "Couldn't Open Sample Library"),
                     message: reason.message ?? reason.title
                 )
             }
@@ -70,11 +70,11 @@ private struct DemoBanner: ViewModifier {
     func body(content: Content) -> some View {
         content.safeAreaInset(edge: .top, spacing: 0) {
             if servers.isDemo {
-                // One word, out of the way, with the way out a tap away.
+                // Small and out of the way, with the way out a tap away.
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
                         .font(.caption2)
-                    Text("Sample")
+                    Text("Sample Library")
                         .font(.caption.weight(.semibold))
                     Button("Close", systemImage: "xmark") {
                         Task {
@@ -87,7 +87,7 @@ private struct DemoBanner: ViewModifier {
                     .labelStyle(.iconOnly)
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(Text("Close the sample library"))
+                    .accessibilityLabel(Text("Close Sample Library"))
                 }
                 .padding(.leading, 10)
                 .padding(.trailing, 6)

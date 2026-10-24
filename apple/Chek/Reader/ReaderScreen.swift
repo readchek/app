@@ -235,7 +235,7 @@ private struct ReaderDownloadView: View {
             }
             Text("Downloading")
                 .font(.headline)
-            Text("This format opens once the whole file is here.")
+            Text("This book opens once it has finished downloading.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
@@ -268,20 +268,20 @@ private struct ReaderFailureView: View {
     }
 
     private var title: String {
-        if let server = signedOutServer {
-            String(localized: "You're signed out of \(server.name).")
+        if signedOutServer != nil {
+            String(localized: "Signed Out")
         } else if isDamagedLocalFile {
-            String(localized: "This File Can't Be Opened")
+            session.item.kind == .comic ? String(localized: "Can't Open This Comic") : String(localized: "Can't Open This Book")
         } else {
             error.title
         }
     }
 
     private var description: Text? {
-        if signedOutServer != nil {
-            Text("Sign in again to keep reading from it.")
+        if let server = signedOutServer {
+            Text("Sign in to \(server.name) to keep reading.")
         } else if isDamagedLocalFile {
-            Text("The file may be damaged, or be a kind Chek doesn't open. Removing it here leaves the original where you got it.")
+            Text("The file may be damaged or of a kind Chek doesn't support. Deleting it from Chek doesn't affect the original.")
         } else {
             error.message.map { Text($0) }
         }
@@ -290,7 +290,7 @@ private struct ReaderFailureView: View {
     var body: some View {
         EmptyState(verbatim: title, systemImage: signedOutServer == nil ? "book.closed" : "person.crop.circle.badge.xmark", description: description) {
             if isDamagedLocalFile {
-                Button("Remove from Library", role: .destructive) {
+                Button("Delete Book", role: .destructive) {
                     isConfirmingRemoval = true
                 }
             } else if signedOutServer != nil {
@@ -307,15 +307,15 @@ private struct ReaderFailureView: View {
                 router.closeReader()
             }
         }
-        .confirmationDialog("Remove This Book?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
-            Button("Remove", role: .destructive) {
+        .confirmationDialog("Delete “\(session.item.title)”?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
+            Button("Delete Book", role: .destructive) {
                 if case .local(let id) = session.item.ref, let book = library.book(id) {
                     library.remove(book)
                 }
                 router.closeReader()
             }
         } message: {
-            Text("Its file and your place in it are deleted from this device.")
+            Text("Its file and reading position are deleted from this device.")
         }
     }
 }

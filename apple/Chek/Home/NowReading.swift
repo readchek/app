@@ -129,7 +129,7 @@ private struct NowReadingBar: View {
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(Text("Continue \(current.title)"))
+        .accessibilityLabel(Text("Continue reading \(current.title)"))
     }
 
     private func resume() {

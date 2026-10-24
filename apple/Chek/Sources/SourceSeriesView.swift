@@ -208,9 +208,9 @@ private struct SourceSeriesContent: View {
                     .listRowSeparator(.hidden)
                 } else if content.chapters.isEmpty {
                     EmptyState(
-                        "No Chapters to Read",
+                        "No Chapters",
                         systemImage: "books.vertical",
-                        description: Text("This site has no chapters of this series to show. Licensed series are often only on the publisher's own site.")
+                        description: Text("This site doesn't have chapters for this series. Licensed series are often available only from their publisher.")
                     )
                     .listRowSeparator(.hidden)
                 } else {
@@ -228,12 +228,12 @@ private struct SourceSeriesContent: View {
                                         progress.markUnread(ref)
                                     }
                                 } else {
-                                    Button("Mark as Read", systemImage: "checkmark.circle") {
+                                    Button("Mark as Finished", systemImage: "checkmark.circle") {
                                         progress.markRead(ref)
                                     }
                                 }
                                 if let index = content.chapters.firstIndex(of: chapter), index > 0 {
-                                    Button("Mark Previous as Read", systemImage: "checkmark.circle.badge.questionmark") {
+                                    Button("Mark Previous as Finished", systemImage: "text.badge.checkmark") {
                                         progress.markRead(content.chapters[..<index].map(chapterRef))
                                     }
                                 }
@@ -405,7 +405,7 @@ struct SourceSeriesHeader: View {
                     // measuring, so the control shows for any summary long
                     // enough that they might.
                     if Self.mayBeCutOff(summary) {
-                        Text(isShowingFullSummary ? "Less" : "More")
+                        Text(isShowingFullSummary ? "less" : "more")
                             .font(.subheadline.weight(.medium))
                             .foregroundStyle(.tint)
                     }
@@ -415,6 +415,7 @@ struct SourceSeriesHeader: View {
                     withAnimation(.snappy) { isShowingFullSummary.toggle() }
                 }
                 .accessibilityAddTraits(.isButton)
+                .accessibilityHint(Text(isShowingFullSummary ? "Shows less of the summary" : "Shows the whole summary"))
             }
             // Side by side, or one under the other at text sizes where
             // two buttons would squeeze the reading one to nothing.
@@ -467,7 +468,7 @@ struct SourceSeriesHeader: View {
         case "ongoing": parts.append(String(localized: "Ongoing"))
         case "completed": parts.append(String(localized: "Completed"))
         case "hiatus": parts.append(String(localized: "On Hiatus"))
-        case "cancelled": parts.append(String(localized: "Cancelled"))
+        case "cancelled": parts.append(String(localized: "Canceled"))
         default: break
         }
         if let year {
@@ -592,7 +593,7 @@ private struct SeriesDownloadsMenu: View {
                 downloads.download(pending.map(Downloads.Item.chapter))
             }
         } message: {
-            Text("They download one after another while Chek is open, and stay on this device until you remove them.")
+            Text("They download one at a time while Chek is open and stay on this device until you remove them.")
         }
     }
 }

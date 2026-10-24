@@ -16,9 +16,9 @@ struct SourceView: View {
         Group {
             if !source.usable {
                 EmptyState(
-                    "Turned Off",
+                    "Site Turned Off",
                     systemImage: "lock",
-                    description: Text("Whoever runs this library has turned this site off.")
+                    description: Text("The library's administrator turned this site off.")
                 )
             } else if let series {
                 SourceSeriesGrid(account: account, source: source.id, series: series, isSearching: !submittedQuery.isEmpty)
@@ -86,7 +86,7 @@ private struct SourceSeriesGrid: View {
                     // The listing's failure, which the shelf would otherwise hide.
                     StaleNotice(error: error)
                 } else if !series.items.isEmpty {
-                    SectionHeader(title: "Browse")
+                    SectionHeader(title: "All Series")
                 }
             }
             LazyVGrid(columns: Metrics.gridColumns(regular: sizeClass == .regular), spacing: Metrics.gridRowSpacing) {

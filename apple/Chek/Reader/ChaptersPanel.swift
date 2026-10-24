@@ -73,8 +73,8 @@ struct ChaptersPanel: View {
             .navigationTitle(chapter.seriesTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", systemImage: "checkmark") {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark") {
                         dismiss()
                     }
                 }

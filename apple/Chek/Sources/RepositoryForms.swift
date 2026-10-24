@@ -33,7 +33,7 @@ struct AddRepositoryView: View {
                 } header: {
                     Text("Repository")
                 } footer: {
-                    Text(isShared ? "The folder holding its index.json, or a GitHub repository as github:owner/repo. Everyone on this server can install from it." : "The folder holding its index.json, or a GitHub repository as github:owner/repo. Only you see it.")
+                    Text(isShared ? "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Everyone with access to this library can add sites from it." : "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Only you can see it.")
                 }
                 RepositorySignInSection(signIn: $signIn, phase: phase)
             }
@@ -59,7 +59,7 @@ struct AddRepositoryView: View {
                     if phase == .connecting {
                         ProgressView()
                     } else {
-                        Button("Add", systemImage: "checkmark", action: add)
+                        Button("Add", role: .confirm, action: add)
                             .disabled(!canAdd)
                     }
                 }
@@ -138,7 +138,7 @@ struct RepositorySignInView: View {
                     if phase == .connecting {
                         ProgressView()
                     } else {
-                        Button("Save", systemImage: "checkmark", action: save)
+                        Button("Save", role: .confirm, action: save)
                             .disabled(!canSave)
                     }
                 }
@@ -215,7 +215,7 @@ private struct RepositorySignInSection: View {
             if case .failed(let error) = phase {
                 FormError(error: error)
             } else {
-                Text("For a private GitHub repository, use a fine-grained token that can only read its contents. For Cloudflare Access, add two headers: CF-Access-Client-Id and CF-Access-Client-Secret. The server keeps these and sends them only to the repository's own site.")
+                Text("For a private GitHub repository, use a fine-grained token that can only read its contents. For Cloudflare Access, add two headers: CF-Access-Client-Id and CF-Access-Client-Secret. The library keeps these and sends them only to the repository.")
             }
         }
     }

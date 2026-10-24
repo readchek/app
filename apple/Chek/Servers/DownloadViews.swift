@@ -11,7 +11,7 @@ struct DownloadIndicator: View {
         case .waiting:
             Image(systemName: "arrow.down.circle.dotted")
                 .foregroundStyle(.secondary)
-                .accessibilityLabel(Text("Waiting to download"))
+                .accessibilityLabel(Text("Waiting to Download"))
         case .downloading(let fraction):
             // iOS draws a determinate circular progress as a spinner, so
             // the ring is drawn here.

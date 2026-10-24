@@ -13,7 +13,7 @@ struct BookEndButton: View {
                 Button {
                     router.closeReader()
                 } label: {
-                    Label("Finished", systemImage: "checkmark")
+                    Label("Done", systemImage: "checkmark")
                         .font(.subheadline.weight(.semibold))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 4)

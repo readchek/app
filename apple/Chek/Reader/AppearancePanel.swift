@@ -7,12 +7,21 @@ struct AppearancePanel: View {
     var showsComicSettings = false
     /// What a reading direction chosen here applies to, nil to offer none.
     var directionKey: String?
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
             ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsComicSettings: showsComicSettings, directionKey: directionKey)
                 .navigationTitle("Appearance")
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    // The same Close as the other reader panels.
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close", systemImage: "xmark") {
+                            dismiss()
+                        }
+                    }
+                }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -44,7 +53,7 @@ struct ReaderAppearanceForm: View {
             }
             if showsComicSettings {
                 Section {
-                    Picker("Layout", selection: $settings.comicFlow) {
+                    Picker("Comic Layout", selection: $settings.comicFlow) {
                         Text("Automatic").tag(ReaderPreferences.ComicFlow.automatic)
                         Text("Pages").tag(ReaderPreferences.ComicFlow.paged)
                         Text("Vertical Scroll").tag(ReaderPreferences.ComicFlow.scrolled)
@@ -54,7 +63,7 @@ struct ReaderAppearanceForm: View {
                 } header: {
                     Text("Comic Layout")
                 } footer: {
-                    Text("Automatic scrolls webtoons and other tall-strip comics, and turns pages for the rest.")
+                    Text("Automatic scrolls webtoons and other tall comics and turns pages for the rest.")
                 }
             }
             if let directionKey {
@@ -72,7 +81,7 @@ struct ReaderAppearanceForm: View {
                 } header: {
                     Text("Reading Direction")
                 } footer: {
-                    Text("For this series. Manga reads right to left; Automatic follows what the file or site says.")
+                    Text("Applies to this series. Manga reads right to left. Automatic follows the file or site.")
                 }
             }
             Section("Page Turn") {
@@ -104,7 +113,8 @@ struct ReaderAppearanceForm: View {
                 }
             }
             Section {
-                Button("Reset to Original", role: .destructive) {
+                // Not destructive: nothing is lost but a few choices.
+                Button("Reset Appearance") {
                     settings.reset()
                 }
             }

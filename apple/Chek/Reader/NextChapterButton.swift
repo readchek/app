@@ -39,7 +39,7 @@ struct NextChapterButton: View {
                 .controlSize(.large)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             } else if isOnLastPage, case .loaded(.end) = lookup {
-                Text("You're up to date")
+                Text("No More Chapters")
                     .font(.subheadline.weight(.medium))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
@@ -51,7 +51,7 @@ struct NextChapterButton: View {
                     lookup = .idle
                     look()
                 } label: {
-                    Label("Couldn't check for the next chapter", systemImage: "arrow.clockwise")
+                    Label("Check for Next Chapter", systemImage: "arrow.clockwise")
                         .font(.subheadline.weight(.medium))
                         .padding(.horizontal, 6)
                         .padding(.vertical, 4)

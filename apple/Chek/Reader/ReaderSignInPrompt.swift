@@ -50,7 +50,7 @@ private struct SignedOutBanner: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("Signed out of \(name)")
+                Text("Signed Out of \(name)")
                     .font(.subheadline.weight(.semibold))
                 Text("Sign in to keep reading.")
                     .font(.caption)

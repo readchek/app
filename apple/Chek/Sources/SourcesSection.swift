@@ -14,14 +14,14 @@ struct SourcesSection: View {
                     title: source.name,
                     systemImage: "globe",
                     value: Route.source(account, source),
-                    detail: source.usable ? nil : String(localized: "Turned Off"),
+                    detail: source.usable ? nil : String(localized: "Off"),
                     isDimmed: !source.usable
                 )
             }
             let updates = sources.filter { $0.update != nil }.count
             NavigationRow(
-                title: sources.isEmpty ? String(localized: "Add Sites") : String(localized: "Add or Remove Sites"),
-                systemImage: "plus.circle",
+                title: sources.isEmpty ? String(localized: "Add Sites") : String(localized: "Manage Sites"),
+                systemImage: "plus",
                 value: Route.extensions(account),
                 showsDivider: false,
                 detail: updates > 0 ? String(AttributedString(localized: "^[\(updates) update](inflect: true)").characters) : nil

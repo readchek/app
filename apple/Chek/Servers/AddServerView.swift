@@ -39,12 +39,12 @@ struct AddServerView: View {
                         .focused($focus, equals: .address)
                         .submitLabel(.next)
                         .onSubmit { focus = .displayName }
-                    TextField("Name", text: $displayName, prompt: Text(Self.suggestedName(for: address) ?? String(localized: "Name (optional)")))
+                    TextField("Name", text: $displayName, prompt: Text(Self.suggestedName(for: address) ?? String(localized: "Name (Optional)")))
                         .focused($focus, equals: .displayName)
                         .submitLabel(.next)
                         .onSubmit { focus = .name }
                 } footer: {
-                    Text("Use the address you were given. You can name it something like “Home” to tell it apart.")
+                    Text("Enter the address you were given. A name helps tell libraries apart and is only shown on this device.")
                 }
                 Section {
                     TextField("User Name", text: $name)
@@ -63,7 +63,7 @@ struct AddServerView: View {
                     if case .failed(let error) = phase {
                         FormError(error: error)
                     } else {
-                        Text("Your password is only sent to this library.")
+                        Text("Your password is sent only to this library.")
                     }
                 }
             }
@@ -84,7 +84,7 @@ struct AddServerView: View {
                     if phase == .connecting {
                         ProgressView()
                     } else {
-                        Button("Add", systemImage: "checkmark", action: connect)
+                        Button("Add", role: .confirm, action: connect)
                             .disabled(!canConnect)
                     }
                 }
@@ -107,7 +107,7 @@ struct AddServerView: View {
                 let failure = DisplayError(error)
                 phase = .failed(failure)
                 // Back to the field at fault, so fixing it is one tap fewer.
-                focus = failure.title == String(localized: "The name or password is wrong.") ? .password : .address
+                focus = failure.title == String(localized: "Incorrect User Name or Password") ? .password : .address
             }
         }
     }
@@ -167,7 +167,7 @@ struct SignInView: View {
                         if phase == .connecting {
                             ProgressView()
                         } else {
-                            Button("Sign In", systemImage: "checkmark") {
+                            Button("Sign In", role: .confirm) {
                                 signIn(server)
                             }
                             .disabled(password.isEmpty)
@@ -195,12 +195,14 @@ struct SignInView: View {
     }
 }
 
+/// An error under the fields it's about, in words alone: the color says
+/// it's an error, so a warning symbol would only shout.
 struct FormError: View {
     let error: DisplayError
 
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Label(error.title, systemImage: "exclamationmark.triangle.fill")
+            Text(error.title)
                 .foregroundStyle(.red)
             if let message = error.message {
                 Text(message)

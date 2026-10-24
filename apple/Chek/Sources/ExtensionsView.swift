@@ -113,8 +113,8 @@ final class ExtensionsModel {
             state = .loaded(content)
         } catch .notFound {
             state = .failed(DisplayError(
-                title: String(localized: "Sites aren't available here yet."),
-                message: String(localized: "Whoever runs this library needs to update Chek first.")
+                title: String(localized: "Sites Not Available"),
+                message: String(localized: "This library needs a newer version of Chek before sites can be added. Ask its administrator.")
             ))
         } catch {
             if state.value == nil {
@@ -208,7 +208,7 @@ final class ExtensionsModel {
     }
 
     static func repositoryFailure(_ error: ChekError) -> RepositoryFailure {
-        let isPrivate = String(localized: "This repository is private.")
+        let isPrivate = String(localized: "Private Repository")
         return switch error {
         case .server(status: 422, "repository_needs_token"):
             RepositoryFailure(error: DisplayError(title: isPrivate, message: String(localized: "Sign in with a token. For a private GitHub repository, use a fine-grained token that can read its contents.")), asks: .token)
@@ -217,7 +217,7 @@ final class ExtensionsModel {
         case .server(status: 422, "repository_needs_credentials"):
             RepositoryFailure(error: DisplayError(title: isPrivate, message: String(localized: "Sign in with the headers its host asks for, such as a Cloudflare Access service token's ID and secret.")), asks: .header)
         case .server(status: 422, "repository_credentials_refused"):
-            RepositoryFailure(error: DisplayError(title: String(localized: "The repository refused these sign-in details."), message: String(localized: "Check them, and that they can still read it.")))
+            RepositoryFailure(error: DisplayError(title: String(localized: "Sign-In Details Refused"), message: String(localized: "Check the details and that they still have access to the repository.")))
         default:
             RepositoryFailure(error: repositoryError(error))
         }
@@ -226,17 +226,17 @@ final class ExtensionsModel {
     private static func repositoryError(_ error: ChekError) -> DisplayError {
         switch error {
         case .server(status: 403, "demo_account"):
-            DisplayError(title: String(localized: "The demo account can't change its sources."), message: String(localized: "Connect a server of your own to add repositories."))
+            DisplayError(title: String(localized: "Sample Library Can't Be Changed"), message: String(localized: "Add a shared library of your own to add repositories."))
         case .server(status: 403, "repository_not_allowed"):
-            DisplayError(title: String(localized: "Only the server's admin can add repositories."), message: String(localized: "Ask them to turn on Anyone Can Add Repositories."))
+            DisplayError(title: String(localized: "Only the Administrator Can Add Repositories"), message: String(localized: "Ask them to turn on “Anyone Can Add Repositories”."))
         case .server(status: 403, _):
-            DisplayError(title: String(localized: "Only the server's admin can change this repository."))
+            DisplayError(title: String(localized: "Only the Administrator Can Change This Repository"))
         case .server(status: 400, _):
-            DisplayError(title: String(localized: "Check the address and sign-in details."), message: String(localized: "Repositories are served over HTTPS, a password goes in the sign-in details rather than the address, and a token, user name or header name can't be empty."))
+            DisplayError(title: String(localized: "Check the Address and Sign-In Details"), message: String(localized: "Repositories use HTTPS. A password goes in the sign-in details, not the address, and a token, user name, or header name can't be empty."))
         case .server(status: 409, _):
-            DisplayError(title: String(localized: "This repository is already added."))
+            DisplayError(title: String(localized: "Repository Already Added"))
         case .server(status: 502, _):
-            DisplayError(title: String(localized: "The server couldn't read this repository."), message: String(localized: "Check the address, and that it holds an index.json."))
+            DisplayError(title: String(localized: "Couldn't Read Repository"), message: String(localized: "Check the address and that it contains an index.json file."))
         default:
             DisplayError(error)
         }
@@ -262,15 +262,15 @@ final class ExtensionsModel {
         do {
             try await servers.request(account, operation)
         } catch .server(status: 403, "demo_account") {
-            failure = DisplayError(title: String(localized: "Sites can't be added to the sample library."))
+            failure = DisplayError(title: String(localized: "Sites Can't Be Added to the Sample Library"))
         } catch .server(status: 403, _) {
-            failure = DisplayError(title: String(localized: "This site is turned off for this library."))
+            failure = DisplayError(title: String(localized: "Site Turned Off"))
         } catch .server(status: 422, let code?) where code.hasPrefix("repository_") {
-            failure = DisplayError(title: String(localized: "The repository refused the download."), message: String(localized: "Check its sign-in details under Repositories."))
-        } catch .server(status: 422, _) {
-            failure = DisplayError(title: String(localized: "This site couldn't be added."), message: String(localized: "Try again later."))
-        } catch .server(status: 502, _) {
-            failure = DisplayError(title: String(localized: "Couldn't add this site right now."), message: String(localized: "Try again in a moment."))
+            failure = DisplayError(title: String(localized: "Repository Refused the Download"), message: String(localized: "Check its sign-in details under Advanced."))
+        } catch .server(status: 422, _), .server(status: 502, _) {
+            // A bad download and a bad answer from the repository look the
+            // same from here: not now, maybe later.
+            failure = DisplayError(title: String(localized: "Couldn't Add Site"), message: String(localized: "Try again later."))
         } catch {
             failure = DisplayError(error)
         }
@@ -293,9 +293,9 @@ private struct ExtensionsList: View {
             if content.available.isEmpty, orphans.isEmpty {
                 Section {
                     EmptyState(
-                        "No Sites Yet",
+                        "No Sites",
                         systemImage: "globe",
-                        description: Text("Whoever runs this library hasn't made any sites available yet.")
+                        description: Text("The library's administrator hasn't added any sites yet.")
                     )
                 }
             } else if !content.available.isEmpty {
@@ -304,7 +304,7 @@ private struct ExtensionsList: View {
                         ExtensionRow(item: item, installed: installed[item.id], isChanging: model.changing.contains(item.id), model: model)
                     }
                 } footer: {
-                    Text("Sites you add show up on Reading Now and in Search, on all your devices.")
+                    Text("Sites you add appear in Reading Now and Search on all your devices.")
                 }
             }
             if !orphans.isEmpty {
@@ -315,7 +315,7 @@ private struct ExtensionsList: View {
                 } header: {
                     Text("No Longer Offered")
                 } footer: {
-                    Text("These still work for now, but won't get fixes. You can remove them.")
+                    Text("These sites still work but no longer receive updates.")
                 }
             }
             // Where sites come from is for whoever runs the library, so
@@ -328,7 +328,7 @@ private struct ExtensionsList: View {
                         Text("Advanced")
                     }
                 } footer: {
-                    Text("Where these sites come from, for whoever runs this library.")
+                    Text("Repositories and settings for the library's administrator.")
                 }
             }
         }
@@ -369,7 +369,7 @@ private struct SiteSourcesView: View {
                     })
                     .disabled(model.isSavingSettings)
                 } footer: {
-                    Text("Lets everyone on this server add repositories that only they see. Turned off, theirs stay, but nothing from them can be installed or run.")
+                    Text("Lets everyone with access to this library add repositories that only they can see.")
                 }
             }
         }
@@ -387,16 +387,16 @@ private struct SiteSourcesView: View {
             }
         }
         .confirmationDialog(
-            Text("Remove \(removing?.displayName ?? "")?"),
+            Text("Remove “\(removing?.displayName ?? "")”?"),
             isPresented: Binding { removing != nil } set: { if !$0 { removing = nil } },
             titleVisibility: .visible,
             presenting: removing
         ) { repository in
-            Button("Remove", role: .destructive) {
+            Button("Remove Repository", role: .destructive) {
                 Task { await model.remove(repository) }
             }
         } message: { repository in
-            Text(repository.allowListed ? "Its extensions are removed for everyone on this server." : "Extensions installed from it are removed too.")
+            Text(repository.allowListed ? "Sites from it are removed for everyone." : "Sites from it are removed too.")
         }
     }
 
@@ -423,7 +423,7 @@ private struct SiteSourcesView: View {
                                 Button("Sign-In Details", systemImage: "key") {
                                     sheet = .signIn(repository)
                                 }
-                                Button("Remove", systemImage: "trash", role: .destructive) {
+                                Button("Remove…", systemImage: "trash", role: .destructive) {
                                     removing = repository
                                 }
                             }
@@ -438,7 +438,7 @@ private struct SiteSourcesView: View {
                 Text("Repositories")
             } footer: {
                 if canAdd {
-                    Text(content.isAdmin ? "Repositories you add are open to everyone on this server." : "Repositories you add are only yours.")
+                    Text(content.isAdmin ? "Repositories you add are available to everyone with access to this library." : "Repositories you add are visible only to you.")
                 }
             }
         }
@@ -520,7 +520,7 @@ private struct ExtensionRow: View {
     private var details: String {
         let site = item.sites.first(where: { !$0.hasPrefix("*") }) ?? item.sites.first
         if let installed, installed.version != item.version {
-            return [site, String(localized: "Update available")].compactMap(\.self).joined(separator: " · ")
+            return [site, String(localized: "Update Available")].compactMap(\.self).joined(separator: " · ")
         }
         return site ?? ""
     }
@@ -536,7 +536,7 @@ private struct OrphanExtensionRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
-                Text(item.usable ? String(localized: "Still works for now") : String(localized: "Turned off for this library"))
+                Text(item.usable ? String(localized: "No Longer Updated") : String(localized: "Turned Off"))
                     .font(.caption)
                     .foregroundStyle(item.usable ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
             }
@@ -586,11 +586,11 @@ private struct RepositoryRow: View {
                     .foregroundStyle(.orange)
                     .lineLimit(3)
             } else if repository.fetchedAt == nil {
-                Text("Not read yet. Pull down to check it.")
+                Text("Not checked yet. Pull down to refresh.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text(repository.allowListed ? "^[\(repository.extensionCount) extension](inflect: true) · Allowed by the admin" : "^[\(repository.extensionCount) extension](inflect: true) · Yours")
+                Text(repository.allowListed ? "^[\(repository.extensionCount) site](inflect: true) · Added by the administrator" : "^[\(repository.extensionCount) site](inflect: true) · Added by you")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

@@ -105,7 +105,7 @@ private struct SeriesContent: View {
         }
         .listStyle(.plain)
         .overlay {
-            PagedListOverlay(phase: publications.phase, isEmpty: publications.items.isEmpty, emptyTitle: "Nothing in This Series") {
+            PagedListOverlay(phase: publications.phase, isEmpty: publications.items.isEmpty, emptyTitle: "No Books") {
                 Task { await publications.reload() }
             }
         }
@@ -227,7 +227,7 @@ private struct SeriesHeader: View {
                 downloads.download(pending.map(Downloads.Item.comic))
             }
         } message: {
-            Text("They download one after another while Chek is open, and stay on this device until you remove them.")
+            Text("They download one at a time while Chek is open and stay on this device until you remove them.")
         }
     }
 }

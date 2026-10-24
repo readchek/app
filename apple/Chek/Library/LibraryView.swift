@@ -28,8 +28,10 @@ struct LibraryView: View {
                 .navigationTitle(selection.map { Text("^[\($0.count) Selected](inflect: true)") } ?? Text(filter.navigationTitle))
                 .toolbar {
                     if selection != nil {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Done") {
+                        // Done is the trailing action, as in every sheet;
+                        // what can be done to the selection sits opposite.
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done", role: .confirm) {
                                 withAnimation(.snappy) { selection = nil }
                             }
                         }
@@ -64,7 +66,7 @@ private struct AddBooksButton: View {
             }
         } else {
             ProgressView()
-                .accessibilityLabel(Text("Adding \(library.imports.count) books"))
+                .accessibilityLabel(Text("Adding ^[\(library.imports.count) book](inflect: true)"))
         }
     }
 }
@@ -77,10 +79,12 @@ private struct LibraryOptionsMenu: View {
     let select: () -> Void
 
     var body: some View {
-        Menu("View Options", systemImage: "line.3.horizontal.decrease") {
-            Button("Select Books", systemImage: "checkmark.circle", action: select)
+        // The same More menu as a shared library's screen, so every
+        // screen's extra actions are found under the same symbol.
+        Menu("More", systemImage: "ellipsis") {
+            Button("Select", systemImage: "checkmark.circle", action: select)
                 .disabled(!canSelect)
-            Picker("Show", selection: $filter) {
+            Picker("Filter", selection: $filter) {
                 ForEach(LibraryFilter.allCases) { filter in
                     Text(filter.title).tag(filter)
                 }
@@ -122,7 +126,7 @@ private struct LibraryContent: View {
         content
             .toolbar {
                 if let selection {
-                    ToolbarItem(placement: .primaryAction) {
+                    ToolbarItem(placement: .topBarLeading) {
                         SelectionActions(books: books.filter { selection.contains($0.id) }, all: books, selection: $selection)
                     }
                 }
@@ -133,7 +137,7 @@ private struct LibraryContent: View {
         Group {
             if books.isEmpty {
                 if filter == .finished {
-                    EmptyState("Nothing Finished Yet", systemImage: "checkmark.circle", description: Text("Books you finish, or mark as finished, collect here."))
+                    EmptyState("No Finished Books", systemImage: "checkmark.circle", description: Text("Books you finish appear here."))
                 } else if filter != .all {
                     EmptyState(filter == .comics ? "No Comics" : "No Books", systemImage: "books.vertical")
                 } else {
@@ -176,7 +180,7 @@ private struct LibraryContent: View {
                             // once, before you've confirmed, and the list then
                             // disagrees with the books it shows.
                             .swipeActions(allowsFullSwipe: false) {
-                                Button("Remove", systemImage: "trash") {
+                                Button("Delete", systemImage: "trash") {
                                     bookToRemove = book
                                 }
                                 .tint(.red)
@@ -210,7 +214,7 @@ private struct SelectionActions: View {
     @State private var isConfirmingRemoval = false
 
     var body: some View {
-        Menu("Actions", systemImage: "ellipsis.circle") {
+        Menu("More", systemImage: "ellipsis") {
             if books.count < all.count {
                 Button("Select All", systemImage: "checkmark.circle") {
                     selection = Set(all.map(\.id))
@@ -226,28 +230,28 @@ private struct SelectionActions: View {
                 selection = nil
             }
             .disabled(books.isEmpty || books.allSatisfy { $0.finishedAt != nil })
-            Button("Mark as Unread", systemImage: "arrow.counterclockwise") {
+            Button("Mark as Unread", systemImage: "circle") {
                 library.markUnread(books)
                 selection = nil
             }
             .disabled(books.isEmpty || books.allSatisfy { $0.lastOpenedAt == nil && $0.finishedAt == nil })
             Divider()
-            Button("Remove…", systemImage: "trash", role: .destructive) {
+            Button("Delete…", systemImage: "trash", role: .destructive) {
                 isConfirmingRemoval = true
             }
             .disabled(books.isEmpty)
         }
         .confirmationDialog(
-            "Remove ^[\(books.count) Book](inflect: true)?",
+            "Delete ^[\(books.count) Book](inflect: true)?",
             isPresented: $isConfirmingRemoval,
             titleVisibility: .visible
         ) {
-            Button("Remove", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 library.remove(books)
                 selection = nil
             }
         } message: {
-            Text("Their files and your places in them are deleted from this device.")
+            Text("Their files and reading positions are deleted from this device.")
         }
     }
 }
@@ -301,9 +305,9 @@ private struct EmptyLibraryView: View {
 
     var body: some View {
         EmptyState(
-            "No Books Yet",
+            "No Books",
             systemImage: "books.vertical",
-            description: Text("Add books and comics from Files, or drop them here. They stay on this device.")
+            description: Text("Add books and comics from Files or iCloud Drive. They're stored on this device.")
         ) {
             Button("Add Books") {
                 router.addBooks()

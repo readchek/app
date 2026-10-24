@@ -64,8 +64,8 @@ enum FollowNotifications {
             let content = UNMutableNotificationContent()
             content.title = item.title
             content.body = item.count == 1
-                ? String(localized: "A new chapter is out.")
-                : String(localized: "\(item.count) new chapters are out.")
+                ? String(localized: "A new chapter is available.")
+                : String(localized: "\(item.count) new chapters are available.")
             content.sound = .default
             content.threadIdentifier = item.key
             content.userInfo = [

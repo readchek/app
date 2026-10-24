@@ -23,7 +23,7 @@ struct ReadingHint: View {
                     .overlay(alignment: .bottom) {
                         // On its own panel: the dimmed page's text still
                         // shows through, and white on it isn't readable.
-                        Text("Tap the edges to turn pages and the middle for controls. Swipe to turn too.")
+                        Text("Tap the edges or swipe to turn pages. Tap the middle to show the controls.")
                             .font(.subheadline)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.white)
@@ -36,7 +36,7 @@ struct ReadingHint: View {
                     .onTapGesture { dismiss() }
                     .transition(.opacity)
                     .accessibilityAddTraits(.isButton)
-                    .accessibilityLabel(Text("Reading tips. Tap to dismiss."))
+                    .accessibilityLabel(Text("Reading tips. Double-tap to dismiss."))
             }
         }
         .animation(.easeInOut(duration: 0.25), value: isVisible)

@@ -23,7 +23,7 @@ struct ContentsPanel: View {
                 .listStyle(.plain)
                 .overlay {
                     if entries.isEmpty {
-                        EmptyState("No Contents", systemImage: "list.bullet", description: Text("This publication doesn't list its chapters."))
+                        EmptyState("No Contents", systemImage: "list.bullet", description: Text("This book doesn't have a table of contents."))
                     }
                 }
                 .onAppear {
@@ -36,8 +36,10 @@ struct ContentsPanel: View {
             .navigationTitle("Contents")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done", systemImage: "checkmark") {
+                // Nothing is saved here, so the panel closes rather than
+                // finishing, with the same button as the reader itself.
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close", systemImage: "xmark") {
                         dismiss()
                     }
                 }

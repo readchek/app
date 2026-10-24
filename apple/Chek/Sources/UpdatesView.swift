@@ -46,11 +46,11 @@ struct UpdatesView: View {
                 }
             case .loaded(let entries) where entries.isEmpty:
                 EmptyState(
-                    "Nothing New",
+                    "No New Chapters",
                     systemImage: "checkmark.circle",
                     description: Text(follows.isEmpty
-                        ? "Follow a series from a site and its new chapters show up here."
-                        : "You've seen every chapter in the series you follow. Chek checks for more a few times a day.")
+                        ? "New chapters of series you follow appear here."
+                        : "Chek checks for new chapters a few times a day.")
                 ) {
                     if !follows.isEmpty {
                         Button(followStore.isChecking ? "Checking…" : "Check Now") {

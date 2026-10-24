@@ -186,7 +186,7 @@ private struct ServerHomeContent: View {
                     EmptyState(
                         "Signed Out",
                         systemImage: "person.crop.circle.badge.exclamationmark",
-                        description: Text("Sign in to \(account.name) again to keep reading.")
+                        description: Text("Sign in to \(account.name) to keep reading.")
                     ) {
                         Button("Sign In") {
                             router.sheet = .signIn(account.id)
@@ -237,7 +237,7 @@ private struct ServerHomeContent: View {
                                 // A reader starts with no libraries until
                                 // the admin shares some, which the server
                                 // can't say more about.
-                                Text("Nothing here yet. Ask whoever shares \(account.name) with you to give you access.")
+                                Text("No collections are shared with you yet. Ask the library's administrator for access.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, Metrics.margin)

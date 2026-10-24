@@ -220,7 +220,7 @@ final class Downloads {
             } catch {
                 item.folder.remove()
                 failure = DisplayError(
-                    title: String(localized: "Couldn't download \(item.title)."),
+                    title: String(localized: "Couldn't Download “\(item.title)”"),
                     message: DisplayError(error).title
                 )
             }
@@ -262,7 +262,7 @@ final class Downloads {
         let access = ServerAccess(account: item.server, store: servers)
         let requests = try await pageRequests(for: item, access: access)
         guard !requests.isEmpty else {
-            throw DisplayError(title: String(localized: "It has no pages to download."))
+            throw DisplayError(title: String(localized: "No Pages to Download"))
         }
         let folder = item.folder
         try folder.prepare()

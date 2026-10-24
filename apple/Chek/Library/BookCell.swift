@@ -16,7 +16,7 @@ struct BookActions: View {
                 library.markFinished(book)
             }
         } else {
-            Button("Mark as Unread", systemImage: "arrow.counterclockwise") {
+            Button("Mark as Unread", systemImage: "circle") {
                 library.markUnread(book)
             }
         }
@@ -24,14 +24,14 @@ struct BookActions: View {
             Label("Share", systemImage: "square.and.arrow.up")
         }
         Divider()
-        Button("Remove…", systemImage: "trash", role: .destructive) {
+        Button("Delete…", systemImage: "trash", role: .destructive) {
             bookToRemove = book
         }
     }
 }
 
 extension View {
-    /// Asks before removing a book, since its file goes with it.
+    /// Asks before deleting a book, since its file goes with it.
     func removeBookConfirmation(book: Binding<Book?>) -> some View {
         modifier(RemoveBookConfirmation(book: book))
     }
@@ -43,16 +43,16 @@ private struct RemoveBookConfirmation: ViewModifier {
 
     func body(content: Content) -> some View {
         content.confirmationDialog(
-            "Remove This Book?",
+            Text("Delete “\(book?.title ?? "")”?"),
             isPresented: Binding { book != nil } set: { if !$0 { book = nil } },
             titleVisibility: .visible,
             presenting: book
         ) { book in
-            Button("Remove “\(book.title)”", role: .destructive) {
+            Button("Delete Book", role: .destructive) {
                 library.remove(book)
             }
         } message: { _ in
-            Text("Its file and your place in it are deleted from this device.")
+            Text("Its file and reading position are deleted from this device.")
         }
     }
 }

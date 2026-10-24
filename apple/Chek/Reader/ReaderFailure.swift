@@ -7,34 +7,35 @@ extension DisplayError {
     /// and nest each layer's reason, so they're turned into a short title
     /// and the one reason that matters.
     init(reader error: ReaderError, kind: PublicationKind) {
-        let what = kind == .comic ? String(localized: "this comic") : String(localized: "this book")
+        // Titles are title-case fragments, so the noun is capitalized too.
+        let what = kind == .comic ? String(localized: "This Comic") : String(localized: "This Book")
         switch error {
         case .network(let reason):
             self.init(
-                title: String(localized: "Couldn't load \(what)."),
-                message: Self.innermostReason(reason) ?? String(localized: "Check your connection and try again.")
+                title: String(localized: "Couldn't Load \(what)"),
+                message: Self.innermostReason(reason) ?? String(localized: "Check your internet connection and try again.")
             )
         case .unsupportedFormat, .formatNotIncluded, .notYetImplemented:
             self.init(
-                title: String(localized: "Chek can't read \(what)."),
-                message: String(localized: "It's a kind of file Chek doesn't open.")
+                title: String(localized: "Can't Open \(what)"),
+                message: String(localized: "Chek doesn't support this kind of file.")
             )
         case .drmProtected:
             self.init(
-                title: String(localized: "Chek can't read \(what)."),
-                message: String(localized: "It's copy-protected by the store it came from, so only that store's app can open it.")
+                title: String(localized: "Can't Open \(what)"),
+                message: String(localized: "It's copy-protected and can be opened only in the app it was bought from.")
             )
         case .malformed(let reason):
             self.init(
-                title: String(localized: "Couldn't open \(what)."),
-                message: Self.innermostReason(reason) ?? String(localized: "It may be damaged."))
+                title: String(localized: "Couldn't Open \(what)"),
+                message: Self.innermostReason(reason) ?? String(localized: "The file may be damaged."))
         case .limitExceeded:
             self.init(
-                title: String(localized: "Couldn't open \(what)."),
+                title: String(localized: "Couldn't Open \(what)"),
                 message: String(localized: "It's too large to open on this device.")
             )
         case .cancelled:
-            self.init(title: String(localized: "Opening stopped."))
+            self.init(title: String(localized: "Opening Stopped"))
         }
     }
 

@@ -55,7 +55,7 @@ private struct HomeContent: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
                         if !continueReading.isEmpty {
-                            Shelf(title: "Continue", items: continueReading, isFeatured: true)
+                            Shelf(title: "Continue Reading", items: continueReading, isFeatured: true)
                         }
                         FollowingShelf()
                         if !newBooks.isEmpty {
@@ -346,8 +346,8 @@ private struct SignedOutHomeView: View {
             "Signed Out",
             systemImage: "person.crop.circle.badge.exclamationmark",
             description: Text(accounts.count == 1
-                ? "Sign in to \(accounts[0].name) again to pick up where you left off."
-                : "Sign in to your shared libraries again to pick up where you left off.")
+                ? "Sign in to \(accounts[0].name) to keep reading."
+                : "Sign in to your shared libraries to keep reading.")
         ) {
             ForEach(accounts.prefix(1)) { account in
                 Button(accounts.count == 1 ? String(localized: "Sign In") : String(localized: "Sign In to \(account.name)")) {

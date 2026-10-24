@@ -34,7 +34,7 @@ struct RootView: View {
             // hiding a section from it still pushes Search into More, so
             // the section only exists where the sidebar does.
             if sizeClass == .regular {
-                TabSection("Shared") {
+                TabSection("Shared Libraries") {
                     ForEach(accounts) { account in
                         Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "building.columns", value: AppTab.server(account.id)) {
                             ServerTab(account: account)

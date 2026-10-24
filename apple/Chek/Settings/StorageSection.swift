@@ -17,7 +17,7 @@ struct StorageSection: View {
 
     var body: some View {
         Section {
-            LabeledContent("Your Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file)) } ?? "…")
+            LabeledContent("Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file)) } ?? "…")
             LabeledContent("Downloads", value: sizes.map { $0.chapters.formatted(.byteCount(style: .file)) } ?? "…")
             LabeledContent("Recently Read", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file)) } ?? "…")
             LabeledContent("Cover Images", value: sizes.map { $0.covers.formatted(.byteCount(style: .file)) } ?? "…")
@@ -30,17 +30,17 @@ struct StorageSection: View {
                 }
             }
             .disabled(isClearing || sizes.map { $0.downloads + $0.covers == 0 } ?? true)
-            Button("Remove All Downloads…", role: .destructive) {
+            Button("Remove All Downloads", role: .destructive) {
                 isConfirmingChapterRemoval = true
             }
             .disabled(downloads.isEmpty)
         } header: {
             Text("Storage")
         } footer: {
-            Text("Freeing up space clears recently read books from shared libraries and cover images. They come back as you read. Your library, downloads and places stay.")
+            Text("Freeing up space clears copies of recently read books from shared libraries and cover images. They're fetched again as you read. Your library, downloads, and reading positions are kept.")
         }
         .confirmationDialog("Remove All Downloads?", isPresented: $isConfirmingChapterRemoval, titleVisibility: .visible) {
-            Button("Remove", role: .destructive) {
+            Button("Remove Downloads", role: .destructive) {
                 downloads.removeAll()
                 Task { sizes = await Self.measure() }
             }

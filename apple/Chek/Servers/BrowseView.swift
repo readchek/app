@@ -14,9 +14,9 @@ struct BrowseView: View {
             Group {
                 if accounts.isEmpty {
                     EmptyState(
-                        "Nothing Shared Yet",
+                        "No Shared Libraries",
                         systemImage: "building.columns",
-                        description: Text("When someone shares their Chek library with you, add it here to read from it on all your devices.")
+                        description: Text("Add a library someone shares with you to read its books and comics here.")
                     ) {
                         Button("Add Shared Library") {
                             router.sheet = .addServer
@@ -38,10 +38,11 @@ struct BrowseView: View {
                             // disagrees with the servers it shows.
                             .swipeActions(allowsFullSwipe: false) {
                                 if account.id == DemoMode.accountID {
+                                    // Gray, not red: closing the sample loses nothing.
                                     Button("Close", systemImage: "xmark") {
                                         Task { await servers.endDemo() }
                                     }
-                                    .tint(.red)
+                                    .tint(.gray)
                                 } else {
                                     Button("Remove", systemImage: "trash") {
                                         editing = .remove(account)
@@ -97,7 +98,7 @@ struct ServerRow: View {
                 Text(account.name)
                 // The demo is a temporary account, which its row says
                 // rather than naming a user nobody signed in as.
-                Text(isDemo ? "Until you close Chek" : servers.state(of: account.id) == .signedOut ? "Sign in again to read" : account.userName)
+                Text(isDemo ? "Temporary" : servers.state(of: account.id) == .signedOut ? "Signed Out" : account.userName)
                     .font(.subheadline)
                     .foregroundStyle(servers.state(of: account.id) == .signedOut ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
             }
@@ -157,7 +158,7 @@ struct ServerActions: View {
 
     var body: some View {
         if account.id == DemoMode.accountID {
-            Button("Close the Sample Library", systemImage: "xmark", role: .destructive) {
+            Button("Close Sample Library", systemImage: "xmark") {
                 Task { await servers.endDemo() }
             }
         } else {
@@ -174,7 +175,7 @@ struct ServerActions: View {
                 }
             }
             Divider()
-            Button("Remove", systemImage: "trash", role: .destructive) {
+            Button("Remove…", systemImage: "trash", role: .destructive) {
                 editing = .remove(account)
             }
         }
@@ -196,7 +197,7 @@ private struct ServerEditing: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .alert("Rename", isPresented: isRenaming) {
+            .alert("Rename Library", isPresented: isRenaming) {
                 TextField("Name", text: $name)
                 Button("Cancel", role: .cancel) {}
                 Button("Save") {
@@ -205,10 +206,10 @@ private struct ServerEditing: ViewModifier {
                     }
                 }
             } message: {
-                Text("Only you see this name.")
+                Text("This name is only shown on this device.")
             }
             .confirmationDialog(removalTitle, isPresented: isRemoving, titleVisibility: .visible) {
-                Button("Remove", role: .destructive) {
+                Button("Remove Library", role: .destructive) {
                     guard case .remove(let account) = editing else { return }
                     let id = account.id
                     if router.browsePath.first == .server(id) {
@@ -218,7 +219,7 @@ private struct ServerEditing: ViewModifier {
                     Task { await servers.remove(account) }
                 }
             } message: {
-                Text("It's removed from this device along with its downloads. Your places are kept, so adding it again picks up where you left off.")
+                Text("Its downloads are deleted from this device. Your reading positions are kept on the library.")
             }
             .onChange(of: editing?.id) {
                 if case .rename(let account) = editing {
@@ -245,7 +246,7 @@ private struct ServerEditing: ViewModifier {
 
     private var removalTitle: String {
         if case .remove(let account) = editing {
-            String(localized: "Remove \(account.name)?")
+            String(localized: "Remove “\(account.name)”?")
         } else {
             ""
         }

@@ -61,7 +61,7 @@ nonisolated struct SourcePageSource: PageSource {
         }
         let pages = try await list.pages()
         guard !pages.isEmpty else {
-            throw DisplayError(title: String(localized: "This chapter has no pages."), message: String(localized: "The site didn't have any. It may not be out yet."))
+            throw DisplayError(title: String(localized: "No Pages in This Chapter"), message: String(localized: "The site hasn't published it yet."))
         }
         return pages.count
     }

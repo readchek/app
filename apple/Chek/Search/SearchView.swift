@@ -16,7 +16,7 @@ struct SearchView: View {
                 .navigationTitle("Search")
                 .routeDestinations()
         }
-        .searchable(text: $text, prompt: Text("Books, Comics and Authors"))
+        .searchable(text: $text, prompt: Text("Books, Comics, and Authors"))
         .task(id: text) {
             // Waiting for a pause in typing keeps servers from getting a
             // request per keystroke. A new keystroke cancels the wait.
@@ -163,13 +163,13 @@ private struct SearchResults: View {
 
     var body: some View {
         if text.trimmingCharacters(in: .whitespaces).isEmpty {
-            EmptyState("Search Everything", systemImage: "magnifyingglass", description: Text("Look for books, comics and authors in your library, shared libraries and sites."))
+            EmptyState("Search", systemImage: "magnifyingglass", description: Text("Find books, comics, and authors in your library, shared libraries, and sites."))
         } else if books.isEmpty && serverResults.isEmpty {
             ContentUnavailableView.search(text: text)
         } else {
             List {
                 if !books.isEmpty {
-                    Section("Your Library") {
+                    Section("Library") {
                         ForEach(books) { book in
                             SearchBookRow(book: book)
                         }

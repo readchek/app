@@ -133,8 +133,8 @@ final class ReaderSession {
                 throw DisplayError(ChekError.unauthorized)
             }
             throw DisplayError(
-                title: String(localized: "Couldn't download this."),
-                message: String(localized: "Check your connection and try again.")
+                title: String(localized: "Couldn't Download This Book"),
+                message: String(localized: "Check your internet connection and try again.")
             )
         }
         try FileManager.default.createDirectory(at: download.destination.deletingLastPathComponent(), withIntermediateDirectories: true)
