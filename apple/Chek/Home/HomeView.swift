@@ -274,7 +274,7 @@ private struct HomeEmptyView: View {
         EmptyState(
             "Nothing to Read Yet",
             systemImage: "books.vertical",
-            description: Text("Add books and comics from Files to start reading. No account or server needed.")
+            description: Text("Add books and comics from Files to start reading.")
         ) {
             Button("Add Books") {
                 router.addBooks()

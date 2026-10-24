@@ -4,7 +4,7 @@ import SwiftUI
 /// icon, a title, a line on why and what to do, then its actions.
 ///
 /// It has at most one action that matters, the only prominent button.
-/// Anything else is a quiet link under it, so a screen never offers
+/// Anything else is a quiet link at the foot, so a screen never offers
 /// several equal choices.
 struct EmptyState<Action: View, Secondary: View>: View {
     private let title: Text
@@ -54,18 +54,23 @@ struct EmptyState<Action: View, Secondary: View>: View {
                 description
             }
         } actions: {
-            VStack(spacing: 20) {
-                // Styled here rather than by the caller, so every screen's
-                // main action looks the same.
-                action
-                    .buttonStyle(.glassProminent)
-                    .controlSize(.large)
-                VStack(spacing: 6) {
+            // Styled here rather than by each screen, so every main action
+            // looks the same.
+            action
+                .buttonStyle(.borderedProminent)
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            // Other ways in sit apart from the main one, at the foot of the
+            // screen, quiet enough that they never compete with it.
+            if Secondary.self != EmptyView.self {
+                HStack(spacing: 24) {
                     secondary
                 }
                 .buttonStyle(.borderless)
                 .labelStyle(.titleOnly)
                 .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.bottom, 20)
             }
         }
     }
