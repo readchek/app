@@ -7,6 +7,7 @@ struct BrowseView: View {
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
     @Environment(ServerStore.self) private var servers
     @State private var editing: ServerEdit?
+    @State private var isOpeningSample = false
 
     var body: some View {
         @Bindable var router = router
@@ -14,16 +15,14 @@ struct BrowseView: View {
             Group {
                 if accounts.isEmpty {
                     EmptyState(
-                        "No Shared Libraries",
-                        systemImage: "building.columns",
-                        description: Text("Add a library someone shares with you to read its books and comics here.")
-                    ) {
-                        Button("Add Shared Library") {
-                            router.sheet = .addServer
-                        }
-                    } secondary: {
-                        TryDemoButton()
-                    }
+                        "[Add a library](chek-action://add) someone shares with you to read its books and comics here, or [open the sample library](chek-action://sample) to look around.",
+                        systemImage: "person.2",
+                        actions: [
+                            "add": { router.sheet = .addServer },
+                            "sample": { isOpeningSample = true },
+                        ]
+                    )
+                    .sampleLibraryOpener(isOpening: $isOpeningSample)
                 } else {
                     List {
                         ForEach(accounts) { account in

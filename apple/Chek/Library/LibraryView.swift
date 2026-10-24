@@ -141,13 +141,9 @@ private struct LibraryContent: View {
         Group {
             if books.isEmpty {
                 if filter == .finished {
-                    EmptyState("No Finished Books", systemImage: "checkmark.circle", description: Text("Books you finish appear here."))
+                    EmptyState("Books you finish appear here.", systemImage: "checkmark.circle")
                 } else if filter != .all {
-                    EmptyState(
-                        filter == .comics ? "No Comics" : "No Books",
-                        systemImage: "books.vertical",
-                        description: Text(filter == .comics ? "Comics you add appear here." : "Books you add appear here.")
-                    )
+                    EmptyState(filter == .comics ? "Comics you add appear here." : "Books you add appear here.", systemImage: "books.vertical")
                 } else {
                     EmptyLibraryView()
                 }
@@ -316,13 +312,9 @@ private struct EmptyLibraryView: View {
 
     var body: some View {
         EmptyState(
-            "No Books",
+            "[Add books](chek-action://add) and comics from Files or iCloud Drive. They're stored on this device.",
             systemImage: "books.vertical",
-            description: Text("Add books and comics from Files or iCloud Drive. They're stored on this device.")
-        ) {
-            Button("Add Books") {
-                router.addBooks()
-            }
-        }
+            actions: ["add": { router.addBooks() }]
+        )
     }
 }

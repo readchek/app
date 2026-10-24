@@ -15,11 +15,7 @@ struct SourceView: View {
     var body: some View {
         Group {
             if !source.usable {
-                EmptyState(
-                    "Site Turned Off",
-                    systemImage: "lock",
-                    description: Text("The library's administrator turned this site off.")
-                )
+                EmptyState("The library's administrator turned this site off.", systemImage: "lock")
             } else if let series {
                 SourceSeriesGrid(account: account, source: source.id, series: series, isSearching: !submittedQuery.isEmpty)
             } else {
@@ -112,7 +108,7 @@ private struct SourceSeriesGrid: View {
             if isSearching, series.phase == .complete, series.items.isEmpty {
                 ContentUnavailableView.search
             } else if kept.isEmpty {
-                PagedListOverlay(phase: series.phase, isEmpty: series.items.isEmpty, emptyTitle: "No Series") {
+                PagedListOverlay(phase: series.phase, isEmpty: series.items.isEmpty, emptyMessage: "This site has no series to show.") {
                     Task { await series.reload() }
                 }
             }

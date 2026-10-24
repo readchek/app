@@ -267,46 +267,24 @@ private struct ReaderFailureView: View {
         return false
     }
 
-    private var title: String {
-        if signedOutServer != nil {
-            String(localized: "Signed Out")
-        } else if isDamagedLocalFile {
-            session.item.kind == .comic ? String(localized: "Can't Open This Comic") : String(localized: "Can't Open This Book")
-        } else {
-            error.title
-        }
-    }
-
-    private var description: Text? {
+    /// What went wrong and what to do, with the way out as links.
+    private var message: Text {
         if let server = signedOutServer {
-            Text("Sign in to \(server.name) to keep reading.")
+            Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this book.")
         } else if isDamagedLocalFile {
-            Text("The file may be damaged or of a kind Chek doesn't support. Deleting it from Chek doesn't affect the original.")
+            Text("The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it.")
         } else {
-            error.message.map { Text($0) }
+            Text("\(error.message ?? error.title) [Try again](chek-action://retry) or [close](chek-action://close) this book.")
         }
     }
 
     var body: some View {
-        EmptyState(verbatim: title, systemImage: signedOutServer == nil ? "book.closed" : "person.crop.circle.badge.xmark", description: description) {
-            if isDamagedLocalFile {
-                Button("Delete Book", role: .destructive) {
-                    isConfirmingRemoval = true
-                }
-            } else if signedOutServer != nil {
-                Button("Sign In") {
-                    session.isSigningIn = true
-                }
-            } else {
-                Button("Try Again") {
-                    Task { await session.open() }
-                }
-            }
-        } secondary: {
-            Button("Close") {
-                router.closeReader()
-            }
-        }
+        EmptyState(systemImage: signedOutServer == nil ? "book.closed" : "person.crop.circle.badge.xmark", message: message, actions: [
+            "signin": { session.isSigningIn = true },
+            "delete": { isConfirmingRemoval = true },
+            "retry": { Task { await session.open() } },
+            "close": { router.closeReader() },
+        ])
         .confirmationDialog("Delete “\(session.item.title)”?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
             Button("Delete Book", role: .destructive) {
                 if case .local(let id) = session.item.ref, let book = library.book(id) {

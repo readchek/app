@@ -6,7 +6,7 @@ struct RootView: View {
     @Environment(AppRouter.self) private var router
     @Environment(LibraryStore.self) private var library
     @Namespace private var readerTransition
-    /// Followed series, for the count of new chapters on the Reading Now
+    /// Followed series, for the count of new chapters on the Home
     /// tab, so there's a sign of them from anywhere in the app.
     @Query private var follows: [FollowedSeries]
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
@@ -16,14 +16,14 @@ struct RootView: View {
         @Bindable var router = router
         let newChapters = follows.reduce(0) { $0 + $1.unseenChapterIDs.count }
         TabView(selection: $router.tab) {
-            Tab("Reading Now", systemImage: "book", value: AppTab.home) {
+            Tab("Home", systemImage: "house", value: AppTab.home) {
                 HomeView()
             }
             .badge(newChapters)
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 LibraryView()
             }
-            Tab("Shared", systemImage: "building.columns", value: AppTab.browse) {
+            Tab("Shared", systemImage: "person.2", value: AppTab.browse) {
                 BrowseView()
             }
             Tab(value: AppTab.search, role: .search) {
@@ -36,7 +36,7 @@ struct RootView: View {
             if sizeClass == .regular {
                 TabSection("Shared Libraries") {
                     ForEach(accounts) { account in
-                        Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "building.columns", value: AppTab.server(account.id)) {
+                        Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "person.2", value: AppTab.server(account.id)) {
                             ServerTab(account: account)
                         }
                     }

@@ -3,53 +3,68 @@ import SwiftUI
 /// Starts the demo: signs in to the demo server and goes to it. One
 /// button, shown wherever someone new might look for something to read.
 struct TryDemoButton: View {
-    @Environment(ServerStore.self) private var servers
-    @Environment(AppRouter.self) private var router
-    @State private var isStarting = false
-    @State private var failure: DisplayError?
+    @State private var isOpening = false
 
     var body: some View {
         Button {
-            start()
+            isOpening = true
         } label: {
-            if isStarting {
+            if isOpening {
                 ProgressView()
             } else {
                 Label("Open Sample Library", systemImage: "sparkles")
             }
         }
-        .disabled(isStarting)
-        .alert(
-            failure?.title ?? "",
-            isPresented: Binding { failure != nil } set: { if !$0 { failure = nil } }
-        ) {
-            Button("OK") {}
-        } message: {
-            if let message = failure?.message {
-                Text(message)
-            }
-        }
+        .disabled(isOpening)
+        .sampleLibraryOpener(isOpening: $isOpening)
     }
+}
 
-    private func start() {
-        isStarting = true
-        Task {
-            defer { isStarting = false }
-            do {
-                try await servers.startDemo()
-                // Straight to the demo server, where every kind of
-                // publication is a tap away.
-                router.sheet = nil
-                router.tab = .browse
-                router.browsePath = [.server(DemoMode.accountID)]
-            } catch {
-                let reason = DisplayError(error)
-                failure = DisplayError(
-                    title: String(localized: "Couldn't Open Sample Library"),
-                    message: reason.message ?? reason.title
-                )
+extension View {
+    /// Opens the sample library when `isOpening` turns true, as a button
+    /// or a link in an empty state's sentence asks, and goes to it, saying
+    /// so if it can't. `isOpening` turns false again once it's done.
+    func sampleLibraryOpener(isOpening: Binding<Bool>) -> some View {
+        modifier(SampleLibraryOpener(isOpening: isOpening))
+    }
+}
+
+private struct SampleLibraryOpener: ViewModifier {
+    @Binding var isOpening: Bool
+    @Environment(ServerStore.self) private var servers
+    @Environment(AppRouter.self) private var router
+    @State private var failure: DisplayError?
+
+    func body(content: Content) -> some View {
+        content
+            .task(id: isOpening) {
+                guard isOpening else { return }
+                defer { isOpening = false }
+                do {
+                    try await servers.startDemo()
+                    // Straight to the demo server, where every kind of
+                    // publication is a tap away.
+                    router.sheet = nil
+                    router.tab = .browse
+                    router.browsePath = [.server(DemoMode.accountID)]
+                } catch {
+                    let reason = DisplayError(error)
+                    failure = DisplayError(
+                        title: String(localized: "Couldn't Open Sample Library"),
+                        message: reason.message ?? reason.title
+                    )
+                }
             }
-        }
+            .alert(
+                failure?.title ?? "",
+                isPresented: Binding { failure != nil } set: { if !$0 { failure = nil } }
+            ) {
+                Button("OK") {}
+            } message: {
+                if let message = failure?.message {
+                    Text(message)
+                }
+            }
     }
 }
 

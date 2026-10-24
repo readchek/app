@@ -47,11 +47,11 @@ One word per idea, everywhere, including accessibility labels.
 | Mark as Finished / Mark as Unread | books and chapters alike | Mark as Read |
 | Follow / Following / Unfollow | a series watched for new chapters | subscribe |
 | New | unread and unopened | unseen |
-| Continue Reading / Recently Added / Downloaded / Following / Collections / Sites | shelf and section names; a shared library's or a site's shelf on Reading Now is headed by its name | Continue, New in |
+| Continue Reading / Recently Added / Downloaded / Following / Collections / Sites | shelf and section names; a shared library's or a site's shelf on Home is headed by its name | Continue, New in |
 
 ## Standard wording
 
-- **Empty screen.** Title "No <Things>" (no "Yet"); one sentence on what appears here and how to get it; at most one button, a verb phrase. "No Books — Add books and comics from Files or iCloud Drive. They're stored on this device. [Add Books]". (`hig:/writing`, "Provide clear next steps on any blank screens")
+- **Empty screen.** No title (the screen's title already says where you are), just one sentence on what appears here and how to get it, with the action as a link in it rather than a button: "[Add books] and comics from Files or iCloud Drive. They're stored on this device." Link the verb phrase the sentence starts with where it can. (`hig:/writing`, "Provide clear next steps on any blank screens")
 - **Load failed.** Title names what failed, message says the fix: "Couldn't Connect — Check your internet connection and try again. [Try Again]". A refresh that fails with content still showing is a one-line notice above it, not an alert. (`hig:/alerts`, "Avoid showing an alert when your app starts")
 - **Signed out.** Title "Signed Out"; message "Sign in to <Library> to keep reading."; button "Sign In".
 - **Confirming removal.** Title "Remove “<Name>”?" or "Delete “<Name>”?" (with a count: "Delete 3 Books?"); message says only what is lost and what is kept; the action button repeats the verb with its object ("Delete Book", "Remove Library"). Cancel is implicit.
@@ -73,7 +73,7 @@ Patterns follow what the app already does where that was sound, so changes stay 
 - **Menus.** Verb phrases, no articles, grouped by dividers; a toggled state is a checkmark in a picker, not two items.
 - **Lists vs grids.** Covers in a grid (Library, collections, sites, search results from sites) or a shelf; text rows in a plain list (chapters, a series' books, search results from libraries, collections and sites on a library's screen). Forms are system `Form`s. Section headers on shelf pages are `SectionHeader`, bold title with a chevron only when they lead somewhere. (`hig:/lists-and-tables`)
 - **Status under a cover.** Only where you are: "Started", "42%", "Finished", or a count of new chapters. Nothing for something unopened; "New" on every cover would mean nothing.
-- **Empty and failed screens.** Always `EmptyState` / `FailureState` (`ContentUnavailableView` underneath): system symbol, title, one sentence, one prominent button at default size, optional quiet links right under it. No custom layouts, no oversized type, no full-width buttons. The one exception is the first screen (an empty Reading Now): a welcome rather than an empty state ("Start Reading"), with the standard symbol, title and sentence, but its Add Books button spans the foot, as on a welcome screen, with the other ways in as quiet links under it. Loading is `LoadingState`, which waits a moment before showing a spinner. Layout rules are in [design.md](design.md).
+- **Empty and failed screens.** Always `EmptyState` / `FailureState`: a system symbol and one sentence whose links are the actions; no title and no buttons, the first screen included. Loading is `LoadingState`, or a shimmering placeholder where the layout is known. Layout rules are in [design.md](design.md).
 - **Search.** One Search tab for everything; a local search field, always visible, only inside a collection or a site, with the prompt "Search <Name>". No results is the system `ContentUnavailableView.search`. (`hig:/searching`, `hig:/search-fields`)
-- **Tabs.** Reading Now, Library, Shared, Search. Tabs are nouns; badges only for things that need attention. (`hig:/tab-bars`)
+- **Tabs.** Home, Library, Shared, Search, each one short word. Tabs are nouns; badges only for things that need attention. (`hig:/tab-bars`)
 - **Onboarding.** None. The first screens are empty states that lead to content; the reader's one-time hint is the only overlay, and it's dismissed with a tap. (`hig:/onboarding`)

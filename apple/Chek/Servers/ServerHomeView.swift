@@ -23,7 +23,7 @@ struct ServerHomeView: View {
                     }
                     .serverEditing($editing)
             } else {
-                EmptyState("Library Removed", systemImage: "building.columns")
+                EmptyState("This library has been removed.", systemImage: "building.columns")
             }
         }
         // Signing back in loads the home again, rather than leaving what
@@ -182,14 +182,10 @@ private struct ServerHomeContent: View {
         if servers.state(of: account.id) == .signedOut {
             let kept = downloads.comics(on: account.id)
             let signedOut = EmptyState(
-                "Signed Out",
+                "[Sign in](chek-action://signin) to \(account.name) to keep reading.",
                 systemImage: "person.crop.circle.badge.exclamationmark",
-                description: Text("Sign in to \(account.name) to keep reading.")
-            ) {
-                Button("Sign In") {
-                    router.sheet = .signIn(account.id)
-                }
-            }
+                actions: ["signin": { router.sheet = .signIn(account.id) }]
+            )
             if kept.isEmpty {
                 signedOut
             } else {

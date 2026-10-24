@@ -1,43 +1,22 @@
 import SwiftUI
 
-/// Reading Now before there's anything to read: the first screen most
-/// people see. It's the one empty screen laid out like a welcome, with its
-/// action across the foot where a thumb rests, because what someone does
-/// here decides whether Chek is any use to them. Your own books are the
-/// one path that always works, so adding them is the one button; a shared
-/// library and the sample library are offered quietly under it.
+/// Home before there's anything to read: the first screen most people see.
+/// Your own books are the one path that always works, so adding them leads
+/// the sentence; a shared library and the sample library follow it.
 struct HomeStartView: View {
     @Environment(AppRouter.self) private var router
+    @State private var isOpeningSample = false
 
     var body: some View {
-        ContentUnavailableView {
-            Label("Start Reading", systemImage: "book")
-        } description: {
-            Text("Add books and comics from Files, or open a library someone shares with you.")
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
-            VStack(spacing: 14) {
-                Button {
-                    router.addBooks()
-                } label: {
-                    Text("Add Books")
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                HStack(spacing: 24) {
-                    Button("Add Shared Library") {
-                        router.sheet = .addServer
-                    }
-                    TryDemoButton()
-                }
-                .buttonStyle(.borderless)
-                .labelStyle(.titleOnly)
-                .font(.subheadline)
-            }
-            .frame(maxWidth: 440)
-            .padding(.horizontal, 24)
-            .padding(.bottom, 20)
-        }
+        EmptyState(
+            "[Add books](chek-action://add) and comics from Files or iCloud Drive, or [add a library](chek-action://library) someone shares with you. You can also [open the sample library](chek-action://sample) to look around.",
+            systemImage: "books.vertical",
+            actions: [
+                "add": { router.addBooks() },
+                "library": { router.sheet = .addServer },
+                "sample": { isOpeningSample = true },
+            ]
+        )
+        .sampleLibraryOpener(isOpening: $isOpeningSample)
     }
 }

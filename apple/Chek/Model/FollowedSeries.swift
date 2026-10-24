@@ -3,7 +3,7 @@ import SwiftData
 
 extension ChekSchemaV4 {
     /// A series from a server's source you're following, so new chapters
-    /// show up on Reading Now without searching for it again.
+    /// show up on Home without searching for it again.
     @Model
     final class FollowedSeries {
         /// `server/source/series`, one follow per series.

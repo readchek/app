@@ -108,7 +108,7 @@ private struct SeriesContent: View {
         }
         .listStyle(.plain)
         .overlay {
-            PagedListOverlay(phase: publications.phase, isEmpty: publications.items.isEmpty, emptyTitle: "No Books", placeholder: .spinner) {
+            PagedListOverlay(phase: publications.phase, isEmpty: publications.items.isEmpty, emptyMessage: "There are no books in this series yet.", placeholder: .spinner) {
                 Task { await publications.reload() }
             }
         }

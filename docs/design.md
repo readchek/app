@@ -16,7 +16,7 @@ Named values in `Metrics` (`apple/Chek/Components/PublicationViews.swift`). Ever
 | `sectionSpacing` | 28 | Between shelves on a shelf page, header to header. A shelf row's insets are 12 above and 16 below, so the sum holds. |
 | `captionSpacing` | 6 | Cover to its caption. Within the caption, 2. |
 | `gridColumns` | 3 on iPhone (`adaptive(minimum: 100, maximum: 150)`), `adaptive(minimum: 140, maximum: 190)` on iPad | Grids. |
-| `shelfColumns` | 3 on iPhone, 5 on iPad | A shelf cell is a `containerRelativeFrame` of this many across, less `coverSpacing`, so a cover is the same size on a shelf as in a grid and Reading Now, a library's screen, and a collection agree. `shelfCell()` applies it. |
+| `shelfColumns` | 3 on iPhone, 5 on iPad | A shelf cell is a `containerRelativeFrame` of this many across, less `coverSpacing`, so a cover is the same size on a shelf as in a grid and Home, a library's screen, and a collection agree. `shelfCell()` applies it. |
 | `featuredCoverWidth` | 150 iPhone, 200 iPad | Continue Reading only. |
 | `rowCoverWidth`, `rowCoverRadius` | 44, 4 | Covers in list rows, with tighter corners so a small cover doesn't look like a pill. |
 | `headerCoverWidth` | 110 iPhone, 140 iPad | The cover in a series header. |
@@ -62,9 +62,10 @@ SF Symbols, default rendering, at the text size they sit beside (`hig:/sf-symbol
 
 | Idea | Symbol |
 |---|---|
-| Reading Now | `book` (tab) |
+| Home | `house` (tab) |
 | Library, a collection | `books.vertical` |
-| Shared, a shared library | `building.columns` |
+| Shared (tab), and its empty state | `person.2` |
+| A shared library | `building.columns` |
 | Sample Library | `sparkles` |
 | A site | `globe` |
 | Add | `plus` |
@@ -89,7 +90,7 @@ Six kinds of screen. Every screen is one of them, and a new screen picks one bef
 
 | Type | Built from | Screens |
 |---|---|---|
-| **Shelf page** | A plain `List`. Each shelf (`CoverShelf`, or `Shelf` for publications) is one row, `shelfRow()`: no separator, a `SectionHeader` at `margin`, then a horizontal `ScrollView` of cells with `contentMargins(margin)`, snapping to covers. Navigation rows (collections, sites) are ordinary `List` rows with a `Label` and the system chevron, under a `SectionHeader` row (`headerRow()`), so nothing pins while scrolling. On Reading Now, every shared library and every site has a shelf headed by its name, leading to its screen. | Reading Now, a shared library's screen |
+| **Shelf page** | A plain `List`. Each shelf (`CoverShelf`, or `Shelf` for publications) is one row, `shelfRow()`: no separator, a `SectionHeader` at `margin`, then a horizontal `ScrollView` of cells with `contentMargins(margin)`, snapping to covers. Navigation rows (collections, sites) are ordinary `List` rows with a `Label` and the system chevron, under a `SectionHeader` row (`headerRow()`), so nothing pins while scrolling. On Home, every shared library and every site has a shelf headed by its name, leading to its screen. | Home, a shared library's screen |
 | **Grid page** | A `ScrollView` of `LazyVGrid(gridColumns, spacing: gridRowSpacing)`, cells top-aligned, padded `margin` and 8 vertically. A search field in the bar drawer when the page is a collection or site. | Library (grid), a collection, a site, a site's search |
 | **List page** | A plain `List` of `PublicationRow` or `Label` rows; system section headers. | Library (list), Shared, Search results, Updates, Sites, Advanced, a series' books, a series' chapters (under a series header row) |
 | **Form** | A system `Form` (inset grouped), system labels and footers. | Settings and its subscreens, Add Shared Library, Sign In, Add Repository |
@@ -100,26 +101,26 @@ A series screen is a list page whose first row is the series header: cover at `h
 
 ## Navigation
 
-- Tab roots (Reading Now, Library, Shared, Search) and a shared library's own screen use large titles. Everything pushed deeper is inline: a collection, a site, Sites, Advanced, Updates, and every Settings subscreen. (`hig:/toolbars`, "Use a large title to help people stay oriented")
+- Tab roots (Home, Library, Shared, Search) and a shared library's own screen use large titles. Everything pushed deeper is inline: a collection, a site, Sites, Advanced, Updates, and every Settings subscreen. (`hig:/toolbars`, "Use a large title to help people stay oriented")
 - A series screen's title is inline and hidden while its header is on screen, as Music does for an album.
 - Sheets are inline.
 - Screen toolbars hold at most two items a side: `plus` and the More `ellipsis` menu trailing, Edit or Cancel leading. The system groups them.
-- The tab bar is the system's, with the search tab, minimizing on scroll, and the Now Reading bar as its accessory. Only the Reading Now tab carries a badge, for new chapters.
+- The tab bar is the system's, with the search tab, minimizing on scroll, and the Now Reading bar as its accessory. Only the Home tab carries a badge, for new chapters.
 
 ## States
 
 Every screen has the same five states, built from four components and nothing else:
 
-- `EmptyState` (a `ContentUnavailableView`: symbol, title, one sentence, one `.borderedProminent` button at the regular size, and optional quiet `.borderless` buttons in the same `actions` block under it). The one exception is the first screen, below.
-- `FailureState` (`EmptyState` with `wifi.exclamationmark`, the error's title and message, and Try Again).
+- `EmptyState`: a 48-pt secondary symbol and one sentence in secondary body text, centered. No title, since the screen's own title says where you are, and no buttons: what you can do is part of the sentence as links ("[Add books](chek-action://add) and comics from Files…"), each link's host naming an action. This holds for every screen, the first one included.
+- `FailureState` (`EmptyState` with `wifi.exclamationmark` and the error's explanation, with "try again" linked: the words already in it, else added at the end).
 - `LoadingState`: a centered system `ProgressView()` at the default size, after 300 ms so quick loads never flash it; at the foot of a paging list, the same spinner in a row. Never `.large`, never captioned. (`hig:/progress-indicators`, "Avoid labeling a spinning progress indicator")
 - `StaleNotice`: a `.footnote` secondary `Label` with `wifi.exclamationmark` as the first row of a page that still shows what loaded before.
 
-Offline is a failure whose title is "Couldn't Connect"; it looks like any other failure and is never a separate screen. Signed out is an `EmptyState` with the signed-out symbol and a Sign In button. Content kept on the device (downloads) shows under the state, not instead of it.
+Offline is a failure like any other ("Check your internet connection and try again.") and is never a separate screen. Signed out is an `EmptyState` with the signed-out symbol: "[Sign in](…) to Home to keep reading." Content kept on the device (downloads) shows under the state, not instead of it.
 
 | Screen | Empty | Loading | Failed, nothing cached | Failed or offline, cached | Signed out |
 |---|---|---|---|---|---|
-| Reading Now | First screen (below); with only shared libraries and nothing read: a shelf per library and per site | Shelves from the last snapshot; no spinner | Last snapshot; nothing to say here, each library's screen says it | Same | `EmptyState` "Signed Out" with Sign In when every library is signed out and nothing else is here; otherwise a signed-out library's shelves are left out |
+| Home | First screen (below); with only shared libraries and nothing read: a shelf per library and per site | Shelves from the last snapshot; no spinner | Last snapshot; nothing to say here, each library's screen says it | Same | `EmptyState` "Signed Out" with Sign In when every library is signed out and nothing else is here; otherwise a signed-out library's shelves are left out |
 | Library | `EmptyState` "No Books" + Add Books; filtered: "No Comics" / "No Finished Books" with no button | — | — | — | — |
 | Shared | `EmptyState` "No Shared Libraries" + Add Shared Library, Open Sample Library under it | — | — | — | Row subtitle "Signed Out" |
 | A shared library | Shelves absent; Collections section with the one-line explanation; Sites section with Add Sites | `LoadingState` | `FailureState` + Try Again | `StaleNotice` above the last snapshot | `EmptyState` "Signed Out" + Sign In, then the Downloaded shelf if any |
@@ -131,7 +132,7 @@ Offline is a failure whose title is "Couldn't Connect"; it looks like any other 
 | Settings, forms | — | Spinner in the confirming button's place | Red footnote under the section at fault | — | — |
 | Reader | — | Spinner over the page until it opens | `FailureState` with the reader's title and message; Close stays | — | Alert: Sign In / Not Now |
 
-**The first screen.** An empty Reading Now with no shared library is the only welcome: `book`, "Start Reading", "Add books and comics from Files, or open a library someone shares with you." It keeps the standard symbol, title, and sentence, with a full-width `.borderedProminent` Add Books at the foot, where a thumb rests, and the other ways in as quiet buttons under it. It's the one full-width button in the app, and the one place a secondary action sits at the foot rather than under the main button, because here the choice decides whether Chek is any use. It is not Library's empty state, which stays "No Books".
+**The first screen.** An empty Home with no shared library: `books.vertical` and "Add books and comics from Files or iCloud Drive, or add a library someone shares with you. You can also open the sample library to look around.", each way in a link in that sentence, the same pattern as every other empty screen.
 
 ## Lists and rows
 

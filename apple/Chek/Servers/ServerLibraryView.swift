@@ -105,7 +105,7 @@ private struct SeriesGrid: View {
             }
         }
         .overlay {
-            PagedListOverlay(phase: series.phase, isEmpty: series.items.isEmpty, emptyTitle: "No Series") {
+            PagedListOverlay(phase: series.phase, isEmpty: series.items.isEmpty, emptyMessage: "There are no series here yet.") {
                 Task { await series.reload() }
             }
         }
@@ -150,7 +150,7 @@ private struct LibrarySearchResults: View {
             if found.phase == .complete, found.items.isEmpty {
                 ContentUnavailableView.search(text: query)
             } else {
-                PagedListOverlay(phase: found.phase, isEmpty: found.items.isEmpty, emptyTitle: "No Results") {
+                PagedListOverlay(phase: found.phase, isEmpty: found.items.isEmpty, emptyMessage: "Nothing here matches your search.") {
                     Task { await found.reload() }
                 }
             }
@@ -193,7 +193,7 @@ struct PagedListOverlay: View {
 
     let phase: PagedListPhase
     let isEmpty: Bool
-    let emptyTitle: LocalizedStringKey
+    let emptyMessage: LocalizedStringKey
     var placeholder = Placeholder.grid
     let retry: () -> Void
 
@@ -211,7 +211,7 @@ struct PagedListOverlay: View {
                 retry()
             }
         case .complete where isEmpty:
-            EmptyState(emptyTitle, systemImage: "books.vertical")
+            EmptyState(emptyMessage, systemImage: "books.vertical")
         default:
             EmptyView()
         }

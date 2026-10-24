@@ -48,19 +48,7 @@ struct RecentSearchesView: View {
 
     var body: some View {
         if recents.items.isEmpty {
-            // No title: the page is already called Search, and the symbol
-            // says the rest. Laid out as an empty state is, since one
-            // without a title shrinks its symbol.
-            VStack(spacing: 14) {
-                Image(systemName: "magnifyingglass")
-                    .font(.system(size: 48))
-                    .foregroundStyle(.secondary)
-                Text("Find books, comics, and authors in your library, shared libraries, and sites.")
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-            .padding(.horizontal, 40)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            EmptyState("Find books, comics, and authors in your library, shared libraries, and sites.", systemImage: "magnifyingglass")
         } else {
             List {
                 Section {

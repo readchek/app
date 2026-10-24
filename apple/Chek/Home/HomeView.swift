@@ -11,7 +11,7 @@ struct HomeView: View {
         NavigationStack(path: $router.homePath) {
             HomeContent()
                 .demoBanner()
-                .navigationTitle("Reading Now")
+                .navigationTitle("Home")
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         Button("Settings", systemImage: "gearshape") {
@@ -328,34 +328,34 @@ nonisolated private struct HomeSnapshot: Codable {
     }
 }
 
-/// Reading Now when every shared library needs signing in again and
+/// Home when every shared library needs signing in again and
 /// nothing else is here.
 private struct SignedOutHomeView: View {
     let accounts: [ServerAccount]
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        EmptyState(
-            "Signed Out",
-            systemImage: "person.crop.circle.badge.exclamationmark",
-            description: Text(accounts.count == 1
-                ? "Sign in to \(accounts[0].name) to keep reading."
-                : "Sign in to your shared libraries to keep reading.")
-        ) {
-            ForEach(accounts.prefix(1)) { account in
-                Button(accounts.count == 1 ? String(localized: "Sign In") : String(localized: "Sign In to \(account.name)")) {
-                    router.sheet = .signIn(account.id)
-                }
-            }
-        } secondary: {
-            ForEach(accounts.dropFirst()) { account in
-                Button("Sign In to \(account.name)") {
-                    router.sheet = .signIn(account.id)
-                }
-            }
-            Button("Add Books") {
-                router.addBooks()
-            }
+        if accounts.count == 1 {
+            EmptyState(
+                "[Sign in](chek-action://signin) to \(accounts[0].name) to keep reading, or [add books](chek-action://add) from Files.",
+                systemImage: "person.crop.circle.badge.exclamationmark",
+                actions: actions
+            )
+        } else {
+            // Each library is signed in to on its own, from Shared.
+            EmptyState(
+                "Sign in to your libraries in [Shared](chek-action://shared) to keep reading, or [add books](chek-action://add) from Files.",
+                systemImage: "person.crop.circle.badge.exclamationmark",
+                actions: actions
+            )
         }
+    }
+
+    private var actions: [String: () -> Void] {
+        [
+            "signin": { if let account = accounts.first { router.sheet = .signIn(account.id) } },
+            "shared": { router.tab = .browse },
+            "add": { router.addBooks() },
+        ]
     }
 }

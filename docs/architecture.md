@@ -5,7 +5,7 @@ predictable. Read this before adding a screen, a store or a data model.
 
 ## Experience
 
-Chek opens on **Reading Now**, which puts whatever you were reading first,
+Chek opens on **Home**, which puts whatever you were reading first,
 from anywhere, then a shelf for each shared library and each site you've
 added. **Library** is the books and comics kept on the device. **Shared**
 holds the libraries people share with you (each one a Chek server) and
@@ -90,7 +90,7 @@ once and still work when a server can't be reached:
 | Where | What | Cleared by |
 | --- | --- | --- |
 | Caches/Covers | Cover images, by `PublicationRef` key (`ImagePipeline`). | Settings, or iOS when space is short. |
-| Caches/Servers | Books downloaded from servers to open, and each server's last Reading Now and server screen (`HomeSnapshot`, `ServerHomeSnapshot`). | Settings, removing the server, or iOS. |
+| Caches/Servers | Books downloaded from servers to open, and each server's last Home and server screen (`HomeSnapshot`, `ServerHomeSnapshot`). | Settings, removing the server, or iOS. |
 | Application Support/Chapters | Source chapters downloaded to read offline, a folder of pages per chapter with a note of its series (`ChapterFiles`, `PageFolder`). | You, from the series or Settings; removing the server. |
 | Application Support/Publications | Server comics downloaded to read offline, a folder of pages per publication with the publication as its note (`PublicationFiles`). | You, from the series or Settings; removing the server. |
 | Application Support/SourceSeries | Each source series' last listing (`SeriesCache`), so the series screen, the chapter list and Next Chapter work offline. | Removing the server. |

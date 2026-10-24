@@ -214,11 +214,7 @@ private struct SourceSeriesContent: View {
                     }
                     .listRowSeparator(.hidden)
                 case .loaded where chapters.entries.isEmpty, .loadingMore where chapters.entries.isEmpty:
-                    EmptyState(
-                        "No Chapters",
-                        systemImage: "books.vertical",
-                        description: Text("This site doesn't have chapters for this series. Licensed series are often available only from their publisher.")
-                    )
+                    EmptyState("This site doesn't have chapters for this series. Licensed series are often available only from their publisher.", systemImage: "books.vertical")
                     .listRowSeparator(.hidden)
                 case .loaded, .loadingMore:
                     chapterRows(statuses: statuses)
@@ -527,7 +523,7 @@ struct SourceSeriesHeader: View {
                     }
                     .buttonStyle(.borderedProminent)
                 }
-                // Following keeps the series on Reading Now, with its new
+                // Following keeps the series on Home, with its new
                 // chapters counted, so you don't have to search again.
                 Button {
                     toggleFollow()

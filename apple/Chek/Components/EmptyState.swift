@@ -1,111 +1,81 @@
 import SwiftUI
 
-/// The one look for a screen, or part of one, with nothing to show: an
-/// icon, a title, a line on why and what to do, then its actions.
+/// The one look for a screen, or part of one, with nothing to show: a
+/// symbol and a sentence on why and what to do. There's no title, since
+/// the screen's own title already says where you are.
 ///
-/// It has at most one action that matters, the only prominent button.
-/// Anything else is a quiet link at the foot, so a screen never offers
-/// several equal choices.
-struct EmptyState<Action: View, Secondary: View>: View {
-    private let title: Text
+/// What you can do is part of the sentence, as links, rather than buttons
+/// under it: "[Add books](chek-action://add) and comics from Files…". Each
+/// link's host names its entry in `actions`.
+struct EmptyState: View {
     private let systemImage: String
-    private let description: Text?
-    private let action: Action
-    private let secondary: Secondary
+    private let message: Text
+    private let actions: [String: () -> Void]
 
-    init(
-        _ title: LocalizedStringKey,
-        systemImage: String,
-        description: Text? = nil,
-        @ViewBuilder action: () -> Action,
-        @ViewBuilder secondary: () -> Secondary
-    ) {
-        self.title = Text(title)
+    init(systemImage: String, message: Text, actions: [String: () -> Void] = [:]) {
         self.systemImage = systemImage
-        self.description = description
-        self.action = action()
-        self.secondary = secondary()
+        self.message = message
+        self.actions = actions
     }
 
-    /// For titles that are already localized, such as an error's.
-    init(
-        verbatim title: String,
-        systemImage: String,
-        description: Text? = nil,
-        @ViewBuilder action: () -> Action,
-        @ViewBuilder secondary: () -> Secondary
-    ) {
-        self.title = Text(verbatim: title)
-        self.systemImage = systemImage
-        self.description = description
-        self.action = action()
-        self.secondary = secondary()
+    /// `message` is Markdown, so its links can name actions.
+    init(_ message: LocalizedStringKey, systemImage: String, actions: [String: () -> Void] = [:]) {
+        self.init(systemImage: systemImage, message: Text(message), actions: actions)
     }
 
     var body: some View {
-        ContentUnavailableView {
-            Label {
-                title
-            } icon: {
-                Image(systemName: systemImage)
-            }
-        } description: {
-            if let description {
-                description
-            }
-        } actions: {
-            // Styled here rather than by each screen, so every main action
-            // looks the same. Other ways in sit right under it, quiet
-            // enough that they never compete with it.
-            VStack(spacing: 16) {
-                action
-                    .buttonStyle(.borderedProminent)
-                if Secondary.self != EmptyView.self {
-                    HStack(spacing: 24) {
-                        secondary
-                    }
-                    .buttonStyle(.borderless)
-                    .labelStyle(.titleOnly)
-                    .font(.subheadline)
-                }
-            }
+        VStack(spacing: 14) {
+            Image(systemName: systemImage)
+                .font(.system(size: 48))
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            message
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
+        .padding(.horizontal, 40)
+        .padding(.vertical, 24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .environment(\.openURL, OpenURLAction { url in
+            guard url.scheme == EmptyState.scheme, let action = actions[url.host() ?? ""] else { return .systemAction }
+            action()
+            return .handled
+        })
+    }
+
+    static let scheme = "chek-action"
+
+    /// A link in a message that runs the action named `name`.
+    static func link(_ name: String) -> URL {
+        URL(string: "\(scheme)://\(name)")!
     }
 }
 
-extension EmptyState where Secondary == EmptyView {
-    init(_ title: LocalizedStringKey, systemImage: String, description: Text? = nil, @ViewBuilder action: () -> Action) {
-        self.init(title, systemImage: systemImage, description: description, action: action) { EmptyView() }
-    }
-
-    init(verbatim title: String, systemImage: String, description: Text? = nil, @ViewBuilder action: () -> Action) {
-        self.init(verbatim: title, systemImage: systemImage, description: description, action: action) { EmptyView() }
-    }
-}
-
-extension EmptyState where Action == EmptyView, Secondary == EmptyView {
-    init(_ title: LocalizedStringKey, systemImage: String, description: Text? = nil) {
-        self.init(title, systemImage: systemImage, description: description) { EmptyView() }
-    }
-
-    init(verbatim title: String, systemImage: String, description: Text? = nil) {
-        self.init(verbatim: title, systemImage: systemImage, description: description) { EmptyView() }
-    }
-}
-
-/// A load that failed, said the same way on every screen, with the way to
-/// try again when there is one.
+/// A load that failed, said the same way on every screen: what to do
+/// about it, with "try again" as a link when trying again can help.
 struct FailureState: View {
     let error: DisplayError
     var retry: (() async -> Void)?
 
     var body: some View {
-        EmptyState(verbatim: error.title, systemImage: "wifi.exclamationmark", description: error.message.map { Text($0) }) {
-            if let retry {
-                Button("Try Again") {
-                    Task { await retry() }
-                }
-            }
+        EmptyState(systemImage: "wifi.exclamationmark", message: Text(message), actions: [
+            "retry": { Task { await retry?() } },
+        ])
+    }
+
+    /// The error's explanation, else its title, with "try again" linked:
+    /// the words already in it when it says so, else added at the end.
+    private var message: AttributedString {
+        var text = AttributedString(error.message ?? error.title)
+        guard retry != nil else { return text }
+        if let range = text.range(of: String(localized: "try again"), options: .caseInsensitive) {
+            text[range].link = EmptyState.link("retry")
+        } else {
+            var link = AttributedString(String(localized: "Try Again"))
+            link.link = EmptyState.link("retry")
+            text += AttributedString(" ") + link
         }
+        return text
     }
 }

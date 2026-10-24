@@ -44,19 +44,16 @@ struct UpdatesView: View {
                     await load()
                 }
             case .loaded(let entries) where entries.isEmpty:
-                EmptyState(
-                    "No New Chapters",
-                    systemImage: "checkmark.circle",
-                    description: Text(follows.isEmpty
-                        ? "New chapters of series you follow appear here."
-                        : "Chek checks for new chapters a few times a day.")
-                ) {
-                    if !follows.isEmpty {
-                        Button(followStore.isChecking ? "Checking…" : "Check Now") {
-                            Task { await followStore.checkForNewChapters(force: true) }
-                        }
-                        .disabled(followStore.isChecking)
-                    }
+                if follows.isEmpty {
+                    EmptyState("New chapters of series you follow appear here.", systemImage: "checkmark.circle")
+                } else if followStore.isChecking {
+                    EmptyState("Checking for new chapters…", systemImage: "checkmark.circle")
+                } else {
+                    EmptyState(
+                        "No new chapters. Chek checks a few times a day, or you can [check now](chek-action://check).",
+                        systemImage: "checkmark.circle",
+                        actions: ["check": { Task { await followStore.checkForNewChapters(force: true) } }]
+                    )
                 }
             case .loaded(let entries):
                 List(entries) { entry in

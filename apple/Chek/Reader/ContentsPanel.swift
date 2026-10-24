@@ -23,7 +23,7 @@ struct ContentsPanel: View {
                 .listStyle(.plain)
                 .overlay {
                     if entries.isEmpty {
-                        EmptyState("No Contents", systemImage: "list.bullet", description: Text("This book doesn't have a table of contents."))
+                        EmptyState("This book doesn't have a table of contents.", systemImage: "list.bullet")
                     }
                 }
                 .onAppear {

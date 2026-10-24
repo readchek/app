@@ -291,11 +291,7 @@ private struct ExtensionsList: View {
         List {
             if content.available.isEmpty, orphans.isEmpty {
                 Section {
-                    EmptyState(
-                        "No Sites",
-                        systemImage: "globe",
-                        description: Text("The library's administrator hasn't added any sites yet.")
-                    )
+                    EmptyState("The library's administrator hasn't added any sites yet.", systemImage: "globe")
                 }
             } else if !content.available.isEmpty {
                 Section {
@@ -303,7 +299,7 @@ private struct ExtensionsList: View {
                         ExtensionRow(item: item, installed: installed[item.id], isChanging: model.changing.contains(item.id), model: model)
                     }
                 } footer: {
-                    Text("Sites you add appear in Reading Now and Search on all your devices.")
+                    Text("Sites you add appear on Home and in Search on all your devices.")
                 }
             }
             if !orphans.isEmpty {

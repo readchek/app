@@ -2,7 +2,7 @@ import SwiftData
 import SwiftUI
 
 /// The series you follow from sources, newest chapters first, each with
-/// how many chapters you haven't seen. A row of Reading Now's list.
+/// how many chapters you haven't seen. A row of Home's list.
 struct FollowingShelf: View {
     @Query(sort: \FollowedSeries.followedAt, order: .reverse) private var follows: [FollowedSeries]
 

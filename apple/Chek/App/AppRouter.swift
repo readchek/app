@@ -87,7 +87,7 @@ final class AppRouter {
         }
     }
 
-    /// Goes to `route` on Reading Now, over whatever is open, as a tapped
+    /// Goes to `route` on Home, over whatever is open, as a tapped
     /// notification does.
     func show(_ route: Route) {
         sheet = nil
