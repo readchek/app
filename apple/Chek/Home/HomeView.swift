@@ -267,18 +267,30 @@ private struct HomeEmptyView: View {
         ContentUnavailableView {
             Label("Nothing to Read Yet", systemImage: "books.vertical")
         } description: {
-            Text("Add books and comics from Files, or connect a Chek server to read from it.")
+            Text("Add books and comics from Files to start reading. No account or server needed.")
         } actions: {
-            Button("Add Books") {
-                router.addBooks()
+            // Your own files are the one path that always works, so it's
+            // the only prominent choice. Servers are for people who already
+            // run one, and the demo is a look around, so both stay quiet.
+            VStack(spacing: 20) {
+                Button {
+                    router.addBooks()
+                } label: {
+                    Text("Add Books")
+                        .frame(minWidth: 180)
+                }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                VStack(spacing: 6) {
+                    Button("Connect a Server") {
+                        router.sheet = .addServer
+                    }
+                    TryDemoButton()
+                }
+                .buttonStyle(.borderless)
+                .labelStyle(.titleOnly)
+                .font(.subheadline)
             }
-            .buttonStyle(.borderedProminent)
-            Button("Connect a Server") {
-                router.sheet = .addServer
-            }
-            // Nothing to read yet is the moment to show what reading
-            // from a server is like.
-            TryDemoButton()
         }
     }
 }
