@@ -61,11 +61,28 @@ final class ExtensionsModel {
         var available: [ChekAPI.AvailableExtension]
         var installed: [ChekAPI.InstalledExtension]
         var repositories: [ChekAPI.ExtensionRepository]
+        /// Nil from a server older than its settings.
+        var settings: ChekAPI.ServerSettings?
+        var isAdmin: Bool
+
+        /// Admins add to the list everyone sees; others add their own
+        /// once the admin allows it.
+        var canAddRepositories: Bool {
+            isAdmin || settings?.allowAnyRepository == true
+        }
+
+        /// Admins manage every repository; others only the ones they added.
+        func canManage(_ repository: ChekAPI.ExtensionRepository) -> Bool {
+            isAdmin || !repository.allowListed
+        }
     }
 
     private(set) var state: LoadState<Content> = .idle
     /// Extensions being installed, updated or removed, by id.
     private(set) var changing: Set<String> = []
+    /// Repositories being removed, by id.
+    private(set) var removingRepositories: Set<Int64> = []
+    private(set) var isSavingSettings = false
     /// Why the last change failed, until it's been shown.
     var failure: DisplayError?
 
@@ -76,6 +93,9 @@ final class ExtensionsModel {
         self.account = account
         self.servers = servers
     }
+
+    /// The shared demo account can't change anything, so it isn't offered.
+    var isDemo: Bool { account == DemoMode.accountID }
 
     func load() async {
         if state.value == nil {
@@ -89,7 +109,10 @@ final class ExtensionsModel {
                     async let available = client.availableExtensions()
                     async let installed = client.installedExtensions()
                     async let repositories = client.extensionRepositories()
-                    return try await Content(available: available, installed: installed, repositories: repositories)
+                    async let user = client.currentUser()
+                    // Missing settings only hide the admin's switch.
+                    async let settings = try? client.settings()
+                    return try await Content(available: available, installed: installed, repositories: repositories, settings: settings, isAdmin: user.isAdmin)
                 } catch let error as ChekError {
                     throw error
                 } catch {
@@ -121,6 +144,88 @@ final class ExtensionsModel {
             }
         }
         await load()
+    }
+
+    /// Adds a repository, signing in to it when it's private. Throws why
+    /// it couldn't, for the form to show next to what was typed.
+    func addRepository(_ address: String, signIn: RepositorySignIn) async throws(DisplayError) {
+        let address = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        let credentials = signIn.credentials
+        do {
+            _ = try await servers.request(account) { client throws(ChekError) in
+                try await client.addRepository(address, credentials: credentials)
+            }
+        } catch {
+            throw Self.repositoryError(error)
+        }
+        await load()
+    }
+
+    /// Replaces a repository's sign-in details, or removes them for `.none`.
+    func setSignIn(_ signIn: RepositorySignIn, of repository: ChekAPI.ExtensionRepository) async throws(DisplayError) {
+        let credentials = signIn.credentials
+        do {
+            _ = try await servers.request(account) { client throws(ChekError) in
+                try await client.setCredentials(credentials, of: repository.id)
+            }
+        } catch {
+            throw Self.repositoryError(error)
+        }
+        await load()
+    }
+
+    /// Removes a repository, and with it every extension installed from it.
+    func remove(_ repository: ChekAPI.ExtensionRepository) async {
+        guard !removingRepositories.contains(repository.id) else { return }
+        removingRepositories.insert(repository.id)
+        defer { removingRepositories.remove(repository.id) }
+        do {
+            try await servers.request(account) { client throws(ChekError) in
+                try await client.removeRepository(repository.id)
+            }
+        } catch {
+            failure = Self.repositoryError(error)
+        }
+        await load()
+    }
+
+    func setAllowAnyRepository(_ allow: Bool) async {
+        guard !isSavingSettings else { return }
+        isSavingSettings = true
+        defer { isSavingSettings = false }
+        // The switch moves at once; the reload below sets it back if the
+        // server didn't take it.
+        if case .loaded(var content) = state {
+            content.settings?.allowAnyRepository = allow
+            state = .loaded(content)
+        }
+        do {
+            _ = try await servers.request(account) { client throws(ChekError) in
+                try await client.saveSettings(ChekAPI.ServerSettings(allowAnyRepository: allow))
+            }
+        } catch {
+            failure = DisplayError(error)
+        }
+        await load()
+    }
+
+    private static func repositoryError(_ error: ChekError) -> DisplayError {
+        switch error {
+        case .server(status: 403, "demo_account"):
+            DisplayError(title: String(localized: "The demo account can't change its sources."), message: String(localized: "Connect a server of your own to add repositories."))
+        case .server(status: 403, "repository_not_allowed"):
+            DisplayError(title: String(localized: "Only the server's admin can add repositories."), message: String(localized: "Ask them to turn on Anyone Can Add Repositories."))
+        case .server(status: 403, _):
+            DisplayError(title: String(localized: "Only the server's admin can change this repository."))
+        case .server(status: 400, _):
+            DisplayError(title: String(localized: "Check the address and sign-in details."), message: String(localized: "Repositories are served over HTTPS, and a token, user name or header name can't be empty."))
+        case .server(status: 409, _):
+            DisplayError(title: String(localized: "This repository is already added."))
+        case .server(status: 502, _):
+            DisplayError(title: String(localized: "The server couldn't read this repository."), message: String(localized: "Check the address. If the repository is private, check that its sign-in details can read it."))
+        default:
+            DisplayError(error)
+        }
     }
 
     /// Installs `item`, or updates it when it's installed already.
@@ -161,6 +266,8 @@ final class ExtensionsModel {
 private struct ExtensionsList: View {
     let content: ExtensionsModel.Content
     let model: ExtensionsModel
+    @State private var sheet: RepositorySheet?
+    @State private var removing: ChekAPI.ExtensionRepository?
 
     var body: some View {
         let installed = Dictionary(content.installed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -197,16 +304,99 @@ private struct ExtensionsList: View {
                     Text("Sources run on the server, which reaches only the sites each lists, so reading from them works the same on all your devices.")
                 }
             }
-            if !content.repositories.isEmpty {
-                Section("Repositories") {
-                    ForEach(content.repositories) { repository in
-                        RepositoryRow(repository: repository)
-                    }
+            repositories
+            if content.isAdmin, !model.isDemo, let settings = content.settings {
+                Section {
+                    Toggle("Anyone Can Add Repositories", isOn: Binding {
+                        settings.allowAnyRepository
+                    } set: { allow in
+                        Task { await model.setAllowAnyRepository(allow) }
+                    })
+                    .disabled(model.isSavingSettings)
+                } footer: {
+                    Text("Lets everyone on this server add repositories that only they see. Turned off, theirs stay, but nothing from them can be installed or run.")
                 }
             }
         }
         .refreshable {
             await model.refreshRepositories()
+        }
+        .sheet(item: $sheet) { sheet in
+            switch sheet {
+            case .add:
+                AddRepositoryView(model: model, isShared: content.isAdmin)
+            case .signIn(let repository):
+                RepositorySignInView(repository: repository, model: model)
+            }
+        }
+        .confirmationDialog(
+            Text("Remove \(removing?.displayName ?? "")?"),
+            isPresented: Binding { removing != nil } set: { if !$0 { removing = nil } },
+            titleVisibility: .visible,
+            presenting: removing
+        ) { repository in
+            Button("Remove", role: .destructive) {
+                Task { await model.remove(repository) }
+            }
+        } message: { repository in
+            Text(repository.allowListed ? "Its extensions are removed for everyone on this server." : "Extensions installed from it are removed too.")
+        }
+    }
+
+    @ViewBuilder private var repositories: some View {
+        let canAdd = !model.isDemo && content.canAddRepositories
+        if !content.repositories.isEmpty || canAdd {
+            Section {
+                ForEach(content.repositories) { repository in
+                    let canManage = !model.isDemo && content.canManage(repository)
+                    RepositoryRow(repository: repository, isRemoving: model.removingRepositories.contains(repository.id))
+                        .swipeActions(allowsFullSwipe: false) {
+                            if canManage {
+                                Button("Remove", systemImage: "trash") {
+                                    removing = repository
+                                }
+                                .tint(.red)
+                                Button("Sign-In Details", systemImage: "key") {
+                                    sheet = .signIn(repository)
+                                }
+                            }
+                        }
+                        .contextMenu {
+                            if canManage {
+                                Button("Sign-In Details", systemImage: "key") {
+                                    sheet = .signIn(repository)
+                                }
+                                Button("Remove", systemImage: "trash", role: .destructive) {
+                                    removing = repository
+                                }
+                            }
+                        }
+                }
+                if canAdd {
+                    Button("Add Repository", systemImage: "plus") {
+                        sheet = .add
+                    }
+                }
+            } header: {
+                Text("Repositories")
+            } footer: {
+                if canAdd {
+                    Text(content.isAdmin ? "Repositories you add are open to everyone on this server." : "Repositories you add are only yours.")
+                }
+            }
+        }
+    }
+}
+
+/// The forms the repositories section opens.
+private enum RepositorySheet: Identifiable {
+    case add
+    case signIn(ChekAPI.ExtensionRepository)
+
+    var id: String {
+        switch self {
+        case .add: "add"
+        case .signIn(let repository): "sign-in/\(repository.id)"
         }
     }
 }
@@ -318,10 +508,29 @@ private struct OrphanExtensionRow: View {
 /// Where extensions come from, and why one can't be read.
 private struct RepositoryRow: View {
     let repository: ChekAPI.ExtensionRepository
+    let isRemoving: Bool
 
     var body: some View {
+        HStack(spacing: 12) {
+            details
+            Spacer(minLength: 8)
+            if isRemoving {
+                ProgressView()
+            }
+        }
+    }
+
+    private var details: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(repository.name ?? URL(string: repository.url)?.host() ?? repository.url)
+            HStack(spacing: 4) {
+                Text(repository.displayName)
+                if repository.hasCredentials == true {
+                    Image(systemName: "lock.fill")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(Text("Private"))
+                }
+            }
             if let error = repository.fetchError {
                 Text(error)
                     .font(.caption)
@@ -337,5 +546,12 @@ private struct RepositoryRow: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+nonisolated extension ChekAPI.ExtensionRepository {
+    /// What the repository calls itself, else its site.
+    var displayName: String {
+        name ?? URL(string: url)?.host() ?? url
     }
 }

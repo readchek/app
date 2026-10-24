@@ -28,6 +28,11 @@ nonisolated struct ChekClient: Sendable {
         return try await send(request, session: session)
     }
 
+    /// The signed-in user, with their role.
+    func currentUser() async throws(ChekError) -> ChekAPI.User {
+        try await get("api/v1/me")
+    }
+
     func signOut() async {
         var request = authorized("api/v1/auth/sign-out")
         request.httpMethod = "POST"
@@ -100,6 +105,63 @@ nonisolated struct ChekClient: Sendable {
         request.httpMethod = "POST"
         request.timeoutInterval = 60
         try await Self.sendWithoutBody(request, session: session)
+    }
+
+    /// Adds a repository by what was typed: its address, the folder holding
+    /// its `index.json`, or `github:owner/repo`. The server reads it first
+    /// and refuses one it can't, so this can take a while.
+    func addRepository(_ address: String, credentials: ChekAPI.RepositoryCredentials?) async throws(ChekError) -> ChekAPI.ExtensionRepository {
+        struct Body: Encodable {
+            var url: String
+            var credentials: ChekAPI.RepositoryCredentials?
+        }
+        var request = authorized("api/v1/extension-repositories")
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(Body(url: address, credentials: credentials))
+        return try await Self.send(request, session: session)
+    }
+
+    /// Replaces `repository`'s credentials, or removes them when nil. The
+    /// server refuses ones it can't read the repository with.
+    func setCredentials(_ credentials: ChekAPI.RepositoryCredentials?, of repository: Int64) async throws(ChekError) -> ChekAPI.ExtensionRepository {
+        struct Body: Encodable {
+            var credentials: ChekAPI.RepositoryCredentials?
+
+            // Null, not left out, says to remove them.
+            func encode(to encoder: any Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(credentials, forKey: .credentials)
+            }
+
+            enum CodingKeys: String, CodingKey { case credentials }
+        }
+        var request = authorized("api/v1/extension-repositories/\(repository)")
+        request.httpMethod = "PATCH"
+        request.timeoutInterval = 60
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(Body(credentials: credentials))
+        return try await Self.send(request, session: session)
+    }
+
+    /// Removes `repository` and every extension installed from it.
+    func removeRepository(_ repository: Int64) async throws(ChekError) {
+        var request = authorized("api/v1/extension-repositories/\(repository)")
+        request.httpMethod = "DELETE"
+        try await Self.sendWithoutBody(request, session: session)
+    }
+
+    func settings() async throws(ChekError) -> ChekAPI.ServerSettings {
+        try await get("api/v1/settings")
+    }
+
+    func saveSettings(_ settings: ChekAPI.ServerSettings) async throws(ChekError) -> ChekAPI.ServerSettings {
+        var request = authorized("api/v1/settings")
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(settings)
+        return try await Self.send(request, session: session)
     }
 
     /// Installs `id` from `repository`, or updates it when it's installed.

@@ -25,6 +25,55 @@ struct SourceAPITests {
         #expect(item.update == nil)
     }
 
+    @Test func repositoriesDecodeWithAndWithoutCredentials() throws {
+        let json = Data("""
+        {"items":[
+          {"id":1,"url":"https://chek.page/extensions/index.json","name":"Chek","allowListed":true,"usable":true,"hasCredentials":false,"extensionCount":2,"fetchedAt":null,"fetchError":null,"createdAt":"2026-10-20T00:00:00Z"},
+          {"id":2,"url":"https://example.org/index.json","name":null,"allowListed":false,"usable":true,"extensionCount":0,"fetchedAt":null,"fetchError":null,"createdAt":"2026-10-20T00:00:00Z"}
+        ]}
+        """.utf8)
+        let items = try JSONDecoder().decode(ChekAPI.Items<ChekAPI.ExtensionRepository>.self, from: json).items
+        #expect(items[0].hasCredentials == false)
+        #expect(items[1].hasCredentials == nil)
+        #expect(items[1].displayName == "example.org")
+    }
+
+    @Test func credentialsEncodeAsTheServerReadsThem() throws {
+        func object(_ credentials: ChekAPI.RepositoryCredentials) throws -> [String: String] {
+            try JSONDecoder().decode([String: String].self, from: JSONEncoder().encode(credentials))
+        }
+        #expect(try object(.bearer(token: "t")) == ["type": "bearer", "token": "t"])
+        #expect(try object(.basic(username: "u", password: "p")) == ["type": "basic", "username": "u", "password": "p"])
+        #expect(try object(.header(name: "X-Api-Key", value: "v")) == ["type": "header", "name": "X-Api-Key", "value": "v"])
+    }
+
+    @Test func signInTrimsPastedTokensButNotPasswords() {
+        var signIn = RepositorySignIn(kind: .token, token: "  ghp_abc\n")
+        #expect(signIn.isComplete)
+        #expect(signIn.credentials == .bearer(token: "ghp_abc"))
+
+        signIn.kind = .password
+        signIn.username = " reader "
+        signIn.password = " secret "
+        #expect(signIn.credentials == .basic(username: "reader", password: " secret "))
+    }
+
+    @Test func signInNeedsEveryFieldItsKindUses() {
+        #expect(RepositorySignIn().isComplete)
+        #expect(RepositorySignIn().credentials == nil)
+        #expect(!RepositorySignIn(kind: .token, token: "  ").isComplete)
+        #expect(!RepositorySignIn(kind: .password, password: "p").isComplete)
+        #expect(!RepositorySignIn(kind: .header, headerName: "X-Key").isComplete)
+        #expect(RepositorySignIn(kind: .header, headerName: "X-Key", headerValue: "v").isComplete)
+    }
+
+    @Test func usersDecodeTheirRole() throws {
+        let admin = try JSONDecoder().decode(ChekAPI.User.self, from: Data(#"{"id":1,"name":"a","role":"admin","libraryIds":[],"createdAt":"2026-10-20T00:00:00Z"}"#.utf8))
+        #expect(admin.isAdmin)
+        let reader = try JSONDecoder().decode(ChekAPI.User.self, from: Data(#"{"id":2,"name":"r","role":"reader"}"#.utf8))
+        #expect(!reader.isAdmin)
+    }
+
     @Test func seriesSnapshotsRoundTrip() throws {
         let series = ChekAPI.SourceSeries(id: "s", title: "T", summary: nil, coverUrl: "/api/x", contributors: [.init(name: "A", role: "author")], readingDirection: "rtl")
         let data = try JSONEncoder().encode(series)

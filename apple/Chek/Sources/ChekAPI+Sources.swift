@@ -46,6 +46,47 @@ nonisolated extension ChekAPI {
         /// When the index was last read, nil until it has been.
         var fetchedAt: Date?
         var fetchError: String?
+        /// Whether the server keeps credentials for it, which it never
+        /// sends back. Absent from servers before private repositories.
+        var hasCredentials: Bool?
+    }
+
+    /// How the server signs in to a private repository. It sends them only
+    /// to the repository's own site.
+    enum RepositoryCredentials: Encodable, Hashable, Sendable {
+        /// `Authorization: Bearer`, such as a GitHub access token.
+        case bearer(token: String)
+        case basic(username: String, password: String)
+        /// Any other header, such as an API key.
+        case header(name: String, value: String)
+
+        private enum CodingKeys: String, CodingKey {
+            case type, token, username, password, name, value
+        }
+
+        func encode(to encoder: any Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            switch self {
+            case .bearer(let token):
+                try container.encode("bearer", forKey: .type)
+                try container.encode(token, forKey: .token)
+            case .basic(let username, let password):
+                try container.encode("basic", forKey: .type)
+                try container.encode(username, forKey: .username)
+                try container.encode(password, forKey: .password)
+            case .header(let name, let value):
+                try container.encode("header", forKey: .type)
+                try container.encode(name, forKey: .name)
+                try container.encode(value, forKey: .value)
+            }
+        }
+    }
+
+    /// Server-wide settings everyone can read and only an admin changes.
+    struct ServerSettings: Codable, Hashable, Sendable {
+        /// Whether people other than the admin may add repositories, which
+        /// only they see.
+        var allowAnyRepository: Bool
     }
 
     /// A series as a source lists it.

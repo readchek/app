@@ -198,7 +198,7 @@ struct SignInView: View {
     }
 }
 
-private struct FormError: View {
+struct FormError: View {
     let error: DisplayError
 
     var body: some View {

@@ -16,6 +16,10 @@ nonisolated enum ChekAPI {
     struct User: Decodable, Sendable {
         var id: Int64
         var name: String
+        /// `admin` or `reader`.
+        var role: String?
+
+        var isAdmin: Bool { role == "admin" }
     }
 
     struct Library: Codable, Identifiable, Hashable, Sendable {

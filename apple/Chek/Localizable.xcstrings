@@ -15,15 +15,19 @@
       "comment": "Section title for a sign-in"
     },
     "Actions": {},
+    "Add": {},
     "Add Books": {},
     "Add EPUB, PDF, comics, MOBI, FictionBook, text and Markdown files from Files, or drop them here. They stay on this device.": {},
+    "Add Repository": {},
     "Add books and comics from Files, or connect a Chek server to read from it.": {},
     "Adding %lld books": {},
     "Address": {},
     "All": {},
     "All Unread": {},
     "Another device saved a different place.": {},
+    "Anyone Can Add Repositories": {},
     "Appearance": {},
+    "Ask them to turn on Anyone Can Add Repositories.": {},
     "Author": {},
     "Automatic": {
       "comment": "Lets the file or source decide"
@@ -44,7 +48,9 @@
       "comment": "A chapter known only by its number"
     },
     "Chapters": {},
+    "Check the address and sign-in details.": {},
     "Check the address, and that the server is running.": {},
+    "Check the address. If the repository is private, check that its sign-in details can read it.": {},
     "Check your connection and the server's address.": {},
     "Check your connection and try again.": {},
     "Chek Demo": {},
@@ -61,6 +67,7 @@
     "Connect": {},
     "Connect a Chek server to read from it without downloading first. Your place follows you between devices.": {},
     "Connect a Server": {},
+    "Connect a server of your own to add repositories.": {},
     "Connect a server of your own to install sources.": {},
     "Contents": {},
     "Continue": {
@@ -101,12 +108,14 @@
     "Exit": {},
     "Exit the Demo": {},
     "Exit the demo": {},
+    "Extensions installed from it are removed too.": {},
     "Find books and comics on this device, your servers and their sources by title, series or author.": {},
     "Finished": {},
     "Following": {
       "comment": "Series the reader follows for new chapters"
     },
     "Font": {},
+    "For a private GitHub repository, use a fine-grained token that can only read its contents. The server keeps these and sends them only to the repository's own site.": {},
     "For this series. Manga reads right to left; Automatic follows what the file or source says.": {},
     "Get": {},
     "Get Sources": {},
@@ -114,6 +123,8 @@
     "Grid": {
       "comment": "Library layout: covers in a grid"
     },
+    "Header": {},
+    "Header Name": {},
     "Installed": {
       "comment": "Badge on an extension already on the server"
     },
@@ -125,11 +136,14 @@
     "It's larger than Chek can open on this device.": {},
     "It's protected with DRM, which Chek doesn't open.": {},
     "Its extension may need an update, or may have been removed or turned off. Check Manage Sources.": {},
+    "Its extensions are removed for everyone on this server.": {},
     "Its file and your place in it are deleted from this device.": {},
+    "Its saved details aren't shown. Enter new ones to replace them, or choose None to remove them.": {},
     "Its site may be down or slow. Try again in a moment.": {},
     "Larger Text": {},
     "Layout": {},
     "Left to Right": {},
+    "Lets everyone on this server add repositories that only they see. Turned off, theirs stay, but nothing from them can be installed or run.": {},
     "Libraries": {},
     "Library": {
       "comment": "Tab for the books on this device"
@@ -169,6 +183,7 @@
     "No Extensions": {},
     "No Servers": {},
     "No repository the server can read offers these now, so they can't be updated, only removed.": {},
+    "None": {},
     "None shared with you yet. Ask the admin of %@ for access to a library.": {},
     "Not Allowed": {},
     "Not Allowed on This Server": {},
@@ -185,6 +200,8 @@
     "On Hiatus": {},
     "On This Device": {},
     "Ongoing": {},
+    "Only the server's admin can add repositories.": {},
+    "Only the server's admin can change this repository.": {},
     "Opening stopped.": {},
     "Order": {},
     "Original": {
@@ -197,6 +214,8 @@
     "Password": {},
     "Position": {},
     "Privacy Policy": {},
+    "Private": {},
+    "Private Repository": {},
     "Read": {
       "comment": "Button on a book that opens it"
     },
@@ -227,6 +246,10 @@
     "Rename Server": {},
     "Report a Problem": {},
     "Repositories": {},
+    "Repositories are served over HTTPS, and a token, user name or header name can't be empty.": {},
+    "Repositories you add are only yours.": {},
+    "Repositories you add are open to everyone on this server.": {},
+    "Repository": {},
     "Reset to Original": {},
     "Right to Left": {},
     "San Francisco": {},
@@ -251,11 +274,13 @@
     "Share": {},
     "Show": {},
     "Sign In": {},
+    "Sign In With": {},
     "Sign In to %@": {},
     "Sign Out": {},
     "Sign in again to keep reading from it.": {},
     "Sign in to %@ again to read from it.": {},
     "Sign in to keep reading.": {},
+    "Sign-In Details": {},
     "Signed Out": {},
     "Signed out of %@": {},
     "Slide": {
@@ -275,9 +300,12 @@
     "That doesn't look like a server address.": {},
     "The demo account can't change its sources.": {},
     "The demo ends on its own when Chek is closed. Exiting now forgets it straight away.": {},
+    "The folder holding its index.json, or a GitHub repository as github:owner/repo. Everyone on this server can install from it.": {},
+    "The folder holding its index.json, or a GitHub repository as github:owner/repo. Only you see it.": {},
     "The name is only used in Chek on this device.": {},
     "The name or password is wrong.": {},
     "The repository couldn't be reached.": {},
+    "The server couldn't read this repository.": {},
     "The server had a problem (%lld).": {},
     "The server's admin hasn't allowed this repository.": {},
     "The server's answer didn't make sense.": {},
@@ -293,11 +321,13 @@
     "This is a shared demo account, so nothing on it can be changed.": {},
     "This isn't on the server anymore.": {},
     "This publication doesn't list its chapters.": {},
+    "This repository is already added.": {},
     "This server doesn't have sources yet.": {},
     "This source comes from a repository the server's admin hasn't allowed.": {},
     "This source has no chapters it can show for this series. Licensed series are often only on the publisher's own site.": {},
     "This source isn't available on the server.": {},
     "Title": {},
+    "Token": {},
     "Too many attempts.": {},
     "Try Again": {},
     "Try again in a moment.": {},
@@ -308,7 +338,9 @@
     "Update the Chek server to add extensions.": {},
     "Updates": {},
     "User Name": {},
+    "User Name and Password": {},
     "Uses the server's browser": {},
+    "Value": {},
     "Version": {},
     "Version %@": {
       "comment": "An extension's version"
