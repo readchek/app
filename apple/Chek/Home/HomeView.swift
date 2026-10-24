@@ -88,7 +88,9 @@ private struct HomeContent: View {
                 }
             }
         }
-        .task(id: servers.signedOut) {
+        // Again when the content ratings change, since they decide which
+        // series a site's shelf shows.
+        .task(id: [servers.signedOut.map(\.uuidString).sorted().joined(), String(servers.contentRatingsRevision)]) {
             // Sites answer slowly, so their shelves load beside the rest
             // rather than holding it up.
             async let sites: Void = model.loadSites(from: servers)

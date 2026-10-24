@@ -40,7 +40,9 @@ struct SourceView: View {
             }
             submittedQuery = trimmed
         }
-        .task(id: submittedQuery) {
+        // Listed again when the content ratings change, since they decide
+        // which series the site answers with.
+        .task(id: [submittedQuery, String(servers.contentRatingsRevision)]) {
             guard source.usable else { return }
             let list = makeList(query: submittedQuery)
             series = list
@@ -149,11 +151,31 @@ struct SourceSeriesCell: View {
         NavigationLink(value: Route.sourceSeries(account, source: source, seriesID: series.id, title: series.title)) {
             VStack(alignment: .leading, spacing: Metrics.captionSpacing) {
                 CoverView(source: servers.sourceImage(series.coverUrl, on: account), title: series.title)
+                    .overlay(alignment: .topLeading) {
+                        if series.rating?.isMature == true {
+                            MatureBadge()
+                                .padding(6)
+                        }
+                    }
                 CoverCaption(title: series.title)
             }
             .contentShape(.rect)
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+    }
+}
+
+/// "18+" on the cover of a series its source rates erotica or
+/// pornographic, so it's never mistaken for one that isn't.
+struct MatureBadge: View {
+    var body: some View {
+        Text("18+")
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(.black.opacity(0.6), in: .capsule)
+            .accessibilityLabel(Text("For adults"))
     }
 }

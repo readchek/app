@@ -482,7 +482,7 @@ struct SourceSeriesHeader: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
                     }
-                    if let detail = Self.detail(count: count, status: series.status, year: series.year) {
+                    if let detail = Self.detail(count: count, status: series.status, year: series.year, rating: series.rating) {
                         Text(detail)
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
@@ -567,8 +567,8 @@ struct SourceSeriesHeader: View {
         .padding(.vertical, 8)
     }
 
-    /// "97 chapters · Ongoing · 2018", from whatever is known.
-    static func detail(count: Int, status: String?, year: Int?) -> String? {
+    /// "97 chapters · Ongoing · 2018 · Suggestive", from whatever is known.
+    static func detail(count: Int, status: String?, year: Int?, rating: ChekAPI.ContentRating? = nil) -> String? {
         var parts: [String] = []
         // Inflection markup only works in `Text`, so the plural is spelt out.
         if count == 1 {
@@ -585,6 +585,10 @@ struct SourceSeriesHeader: View {
         }
         if let year {
             parts.append(String(year))
+        }
+        // Safe goes without saying; anything more is worth knowing.
+        if let rating, rating != .safe {
+            parts.append(String(localized: rating.title))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

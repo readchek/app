@@ -156,4 +156,25 @@ struct SourceAPITests {
         let data = try JSONEncoder().encode(series)
         #expect(try JSONDecoder().decode(ChekAPI.SourceSeries.self, from: data) == series)
     }
+
+    /// A rating this app doesn't know yet leaves the series unrated
+    /// rather than failing the whole list.
+    @Test func contentRatingsDecodeAndUnknownOnesAreIgnored() throws {
+        let json = Data("""
+        [{"id":"a","title":"A","coverUrl":null,"contentRating":"erotica"},{"id":"b","title":"B","coverUrl":null,"contentRating":"violent"},{"id":"c","title":"C","coverUrl":null,"contentRating":null}]
+        """.utf8)
+        let items = try JSONDecoder().decode([ChekAPI.SourceSeriesItem].self, from: json)
+        #expect(items[0].rating == .erotica)
+        #expect(items[0].rating?.isMature == true)
+        #expect(items[1].rating == nil)
+        #expect(items[2].rating == nil)
+    }
+
+    @Test func ratingPresetsMatchTheirSets() {
+        typealias Preset = ContentRatingsSection.Preset
+        #expect(Preset([.safe]) == .everyone)
+        #expect(Preset([.safe, .suggestive]) == .teen)
+        #expect(Preset(Set(ChekAPI.ContentRating.allCases)) == .mature)
+        #expect(Preset([.safe, .erotica]) == .custom)
+    }
 }

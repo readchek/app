@@ -15,6 +15,7 @@
     "%lld+ books": {},
     "%lld–%lld": {},
     "1 chapter": {},
+    "18+": {},
     "A new chapter is available.": {},
     "Aa": {},
     "About": {},
@@ -36,6 +37,7 @@
     "Another device": {},
     "Anyone Can Add Repositories": {},
     "Appearance": {},
+    "Applies to search and sites in this library, on all your devices.": {},
     "Applies to this series. Manga reads right to left. Automatic follows the file or site.": {},
     "Ask them to turn on “Anyone Can Add Repositories”.": {},
     "Author": {},
@@ -76,6 +78,7 @@
     "Comics you add appear here.": {},
     "Compact": {},
     "Completed": {},
+    "Content": {},
     "Contents": {},
     "Continue": {
       "comment": "Alert button that goes to the reading position from another device"
@@ -104,6 +107,7 @@
       "comment": "A page turn that curls over like paper"
     },
     "Current chapter": {},
+    "Custom": {},
     "Dark": {},
     "Date Added": {},
     "Default Release": {},
@@ -123,6 +127,9 @@
     "Downloads": {},
     "Enter the address you were given, such as books.example.com.": {},
     "Enter the address you were given. A name helps tell libraries apart and is only shown on this device.": {},
+    "Erotica": {},
+    "Erotica and pornographic series are for adults only.": {},
+    "Everyone": {},
     "Find books, comics, and authors in your library, shared libraries, and sites.": {},
     "Finished": {},
     "Follow": {},
@@ -131,6 +138,7 @@
     },
     "Font": {},
     "For a private GitHub repository, use a fine-grained token that can only read its contents. For Cloudflare Access, add two headers: CF-Access-Client-Id and CF-Access-Client-Secret. The library keeps these and sends them only to the repository.": {},
+    "For adults": {},
     "Free Up Space": {},
     "Freeing up space clears copies of recently read books from shared libraries and cover images. They're fetched again as you read. Your library, downloads, and reading positions are kept.": {},
     "Go to Chapters": {},
@@ -140,6 +148,7 @@
     "Header Name": {},
     "Headers": {},
     "Home": {},
+    "I'm 18 or Older": {},
     "Incorrect User Name or Password": {},
     "It may have been removed from this library.": {},
     "It's copy-protected and can be opened only in the app it was bought from.": {},
@@ -166,6 +175,7 @@
     "Mark Previous as Finished": {},
     "Mark as Finished": {},
     "Mark as Unread": {},
+    "Mature": {},
     "More": {},
     "Name": {
       "comment": "A server's friendly name, or the account's user name"
@@ -218,6 +228,7 @@
       "comment": "Comic layout: one page at a time"
     },
     "Password": {},
+    "Pornographic": {},
     "Position": {},
     "Position Saved on Another Device": {},
     "Privacy Policy": {},
@@ -262,6 +273,7 @@
     "Repository Refused the Download": {},
     "Reset Appearance": {},
     "Right to Left": {},
+    "Safe": {},
     "Sample Library": {},
     "Sample Library Can't Be Changed": {},
     "San Francisco": {},
@@ -279,6 +291,7 @@
     "Shared Libraries": {},
     "Show": {},
     "Show Earlier Chapters": {},
+    "Show Mature Series?": {},
     "Show Newer Chapters": {},
     "Shows less of the summary": {},
     "Shows the whole summary": {},
@@ -311,7 +324,9 @@
     "Start Reading": {},
     "Started": {},
     "Storage": {},
+    "Suggestive": {},
     "Tap the edges or swipe to turn pages. Tap the middle to show the controls.": {},
+    "Teen": {},
     "Text": {
       "comment": "Plain text files, and the text settings section in the reader"
     },
@@ -322,6 +337,7 @@
     "The library's administrator hasn't added any sites yet.": {},
     "The library's administrator turned this site off.": {},
     "The sample library is removed when you close Chek.": {},
+    "The sample library shows safe and suggestive series.": {},
     "The site hasn't published it yet.": {},
     "Their files and reading positions are deleted from this device.": {},
     "There are no books in this series yet.": {},

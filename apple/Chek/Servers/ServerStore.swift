@@ -19,6 +19,9 @@ final class ServerStore {
 
     /// Accounts whose session ended. Every other account is signed in.
     private(set) var signedOut: Set<UUID> = []
+    /// Goes up whenever the content ratings of any server change, so
+    /// screens that list a source's series ask again.
+    private(set) var contentRatingsRevision = 0
     /// Told when a server is removed, so what else was kept for it goes too.
     @ObservationIgnored var onRemove: ((UUID) -> Void)?
 
@@ -262,6 +265,14 @@ final class ServerStore {
 
     /// The server said `account`'s session ended, so its token is dropped
     /// and screens show it signed out until it signs in again.
+    /// Notes that `account`'s content ratings changed. Searches on it were
+    /// kept for a while under the old ratings, so the kept answers go, and
+    /// screens listing series are told to ask again.
+    func contentRatingsChanged(on account: UUID) {
+        URLCache.shared.removeAllCachedResponses()
+        contentRatingsRevision += 1
+    }
+
     func sessionEnded(_ account: UUID) {
         keychain.removeToken(for: account)
         clients[account] = nil

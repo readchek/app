@@ -101,11 +101,47 @@ nonisolated extension ChekAPI {
     }
 
     /// A series as a source lists it.
+    /// How mature a series is, as its source rates it. A user's search
+    /// on a server is limited to the ratings they chose there.
+    enum ContentRating: String, Codable, CaseIterable, Comparable, Sendable {
+        case safe, suggestive, erotica, pornographic
+
+        /// Old enough only for adults, which the app asks you to confirm
+        /// before showing and marks on covers.
+        var isMature: Bool {
+            self == .erotica || self == .pornographic
+        }
+
+        var title: LocalizedStringResource {
+            switch self {
+            case .safe: "Safe"
+            case .suggestive: "Suggestive"
+            case .erotica: "Erotica"
+            case .pornographic: "Pornographic"
+            }
+        }
+
+        static func < (a: Self, b: Self) -> Bool {
+            allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)!
+        }
+    }
+
+    struct ContentRatings: Codable, Sendable {
+        var contentRatings: [String]
+    }
+
     struct SourceSeriesItem: Codable, Identifiable, Hashable, Sendable {
         var id: String
         var title: String
         /// A path on the server that serves the image.
         var coverUrl: String?
+        /// As the source rates it, kept as written so a rating this app
+        /// doesn't know yet doesn't fail the whole list.
+        var contentRating: String?
+
+        var rating: ContentRating? {
+            contentRating.flatMap(ContentRating.init(rawValue:))
+        }
     }
 
     struct SourceSearchPage: Decodable, Sendable {
@@ -133,6 +169,12 @@ nonisolated extension ChekAPI {
         var year: Int?
         /// Genres and themes as the source names them, most important first.
         var tags: [String]?
+        /// As the source rates it; nil when it doesn't.
+        var contentRating: String?
+
+        var rating: ContentRating? {
+            contentRating.flatMap(ContentRating.init(rawValue:))
+        }
 
         init(id: String, title: String, summary: String?, coverUrl: String?, contributors: [Contributor], readingDirection: String?, status: String? = nil, year: Int? = nil, tags: [String]? = nil) {
             self.id = id

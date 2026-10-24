@@ -235,6 +235,23 @@ nonisolated struct ChekClient: Sendable {
         return try await Self.send(request, session: session)
     }
 
+    /// The content ratings your search on this server is limited to.
+    func contentRatings() async throws(ChekError) -> [ChekAPI.ContentRating] {
+        let answer: ChekAPI.ContentRatings = try await Self.send(authorized("api/v1/me/content-ratings"), session: session)
+        return answer.contentRatings.compactMap(ChekAPI.ContentRating.init(rawValue:))
+    }
+
+    /// Replaces the content ratings your search on this server is limited
+    /// to, giving back the ones it now uses.
+    func setContentRatings(_ ratings: Set<ChekAPI.ContentRating>) async throws(ChekError) -> [ChekAPI.ContentRating] {
+        var request = authorized("api/v1/me/content-ratings")
+        request.httpMethod = "PUT"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(ChekAPI.ContentRatings(contentRatings: ratings.sorted().map(\.rawValue)))
+        let answer: ChekAPI.ContentRatings = try await Self.send(request, session: session)
+        return answer.contentRatings.compactMap(ChekAPI.ContentRating.init(rawValue:))
+    }
+
     /// Makes `group`'s release of each chapter in a series the one picked,
     /// for you on every device, or goes back to the default for nil.
     func setReleaseGroup(_ group: String?, forSeries series: String, inSource source: String) async throws(ChekError) {

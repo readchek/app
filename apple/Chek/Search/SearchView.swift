@@ -36,7 +36,9 @@ struct SearchView: View {
                 recents.add(text)
             }
         }
-        .task(id: text) {
+        // Searched again when the content ratings change, since they
+        // decide which series the sites answer with.
+        .task(id: [text, String(servers.contentRatingsRevision)]) {
             // Waiting for a pause in typing keeps servers from getting a
             // request per keystroke. A new keystroke cancels the wait.
             try? await Task.sleep(for: .milliseconds(300))
@@ -72,6 +74,8 @@ final class ServerSearchModel {
     private(set) var sourceResults: [SourceResults] = []
     /// What the results are for.
     @ObservationIgnored private var query = ""
+    /// The content ratings the results were found under.
+    @ObservationIgnored private var revision = 0
     @ObservationIgnored private var generation = 0
     /// Each server's installed sources, asked for once rather than with
     /// every search.
@@ -88,8 +92,9 @@ final class ServerSearchModel {
         // The same search again, as when coming back to the tab, keeps
         // what each place found and asks only the ones that hadn't
         // answered, so nothing found flashes back to loading.
-        let isRepeat = query == self.query
+        let isRepeat = query == self.query && servers.contentRatingsRevision == revision
         self.query = query
+        revision = servers.contentRatingsRevision
         guard !query.isEmpty else {
             results = []
             sourceResults = []
