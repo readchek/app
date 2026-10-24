@@ -110,25 +110,25 @@ nonisolated enum ChekError: Error, Sendable {
 extension ChekError: LocalizedError {
     var errorDescription: String? {
         switch self {
-        case .unauthorized: String(localized: "You're signed out of this server.")
-        case .notFound: String(localized: "This isn't on the server anymore.")
+        case .unauthorized: String(localized: "You're signed out.")
+        case .notFound: String(localized: "This isn't available anymore.")
         case .progressConflict: String(localized: "Another device saved a different place.")
-        case .server(_, "demo_account"): String(localized: "This is a shared demo account, so nothing on it can be changed.")
-        case .server(_, "source_failed"): String(localized: "The source didn't answer.")
-        case .server(_, "source_unavailable"): String(localized: "This source isn't available on the server.")
-        case .server(let status, _): String(localized: "The server had a problem (\(status)).")
-        case .offline: String(localized: "Couldn't reach the server.")
-        case .invalidResponse: String(localized: "The server's answer didn't make sense.")
+        case .server(_, "demo_account"): String(localized: "This is a demo, so nothing in it can be changed.")
+        case .server(_, "source_failed"): String(localized: "This site isn't answering.")
+        case .server(_, "source_unavailable"): String(localized: "This site isn't available right now.")
+        case .server: String(localized: "Something went wrong.")
+        case .offline: String(localized: "Couldn't connect.")
+        case .invalidResponse: String(localized: "Something went wrong.")
         }
     }
 
     var recoverySuggestion: String? {
         switch self {
-        case .unauthorized: String(localized: "Sign in again to keep reading from it.")
-        case .offline: String(localized: "Check your connection and the server's address.")
-        case .invalidResponse: String(localized: "Make sure the address points at a Chek server.")
-        case .server(_, "source_failed"): String(localized: "Its site may be down or slow. Try again in a moment.")
-        case .server(_, "source_unavailable"): String(localized: "Its extension may need an update, or may have been removed or turned off. Check Manage Sources.")
+        case .unauthorized: String(localized: "Sign in again to keep reading.")
+        case .offline: String(localized: "Check that you're online and try again.")
+        case .invalidResponse, .server(_, nil): String(localized: "Try again in a moment. If it keeps happening, let whoever shares this library know.")
+        case .server(_, "source_failed"): String(localized: "It may be busy. Try again in a moment.")
+        case .server(_, "source_unavailable"): String(localized: "It may have been removed. Check Sites to add it again.")
         default: nil
         }
     }

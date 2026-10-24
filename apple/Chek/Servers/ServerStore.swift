@@ -169,7 +169,7 @@ final class ServerStore {
     /// starts as the server's host name.
     func connect(address: String, displayName: String = "", name: String, password: String) async throws(DisplayError) -> ServerAccount {
         guard let baseURL = Self.baseURL(from: address) else {
-            throw DisplayError(title: String(localized: "That doesn't look like a server address."), message: String(localized: "Enter an address such as chek.example.com."))
+            throw DisplayError(title: String(localized: "That doesn't look like an address."), message: String(localized: "Enter the address you were given, such as books.example.com."))
         }
         if let existing = accounts().first(where: { $0.baseURL == baseURL && $0.userName.caseInsensitiveCompare(name) == .orderedSame }) {
             try await signIn(existing, password: password)
@@ -272,14 +272,14 @@ final class ServerStore {
         do {
             try await ChekClient.checkHealth(at: baseURL)
         } catch {
-            throw DisplayError(title: String(localized: "Couldn't find a Chek server there."), message: String(localized: "Check the address, and that the server is running."))
+            throw DisplayError(title: String(localized: "Couldn't find a library at that address."), message: String(localized: "Check the address with whoever shared it, and that you're online."))
         }
         do {
             return try await ChekClient.signIn(at: baseURL, name: name, password: password, device: UIDevice.current.name)
         } catch .unauthorized {
             throw DisplayError(title: String(localized: "The name or password is wrong."))
         } catch .server(status: 429, _) {
-            throw DisplayError(title: String(localized: "Too many attempts."), message: String(localized: "Wait a minute and try again."))
+            throw DisplayError(title: String(localized: "Too many tries."), message: String(localized: "Wait a minute and try again."))
         } catch {
             throw DisplayError(error)
         }

@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Connects a Chek server: its address, your name and your password.
+/// Adds a library someone shares with you: its address, your user name
+/// and your password.
 struct AddServerView: View {
     @Environment(ServerStore.self) private var servers
     @Environment(AppRouter.self) private var router
@@ -30,7 +31,7 @@ struct AddServerView: View {
         NavigationStack {
             Form {
                 Section {
-                    TextField("chek.example.com", text: $address)
+                    TextField("Address", text: $address, prompt: Text(verbatim: "books.example.com"))
                         .textContentType(.URL)
                         .keyboardType(.URL)
                         .textInputAutocapitalization(.never)
@@ -38,14 +39,12 @@ struct AddServerView: View {
                         .focused($focus, equals: .address)
                         .submitLabel(.next)
                         .onSubmit { focus = .displayName }
-                    TextField("Name in Chek (optional)", text: $displayName, prompt: Text(Self.suggestedName(for: address) ?? String(localized: "Name in Chek (optional)")))
+                    TextField("Name", text: $displayName, prompt: Text(Self.suggestedName(for: address) ?? String(localized: "Name (optional)")))
                         .focused($focus, equals: .displayName)
                         .submitLabel(.next)
                         .onSubmit { focus = .name }
-                } header: {
-                    Text("Server")
                 } footer: {
-                    Text("A friendly name, such as “Home” or “Office”, for telling servers apart.")
+                    Text("Use the address you were given. You can name it something like “Home” to tell it apart.")
                 }
                 Section {
                     TextField("User Name", text: $name)
@@ -60,13 +59,11 @@ struct AddServerView: View {
                         .focused($focus, equals: .password)
                         .submitLabel(.go)
                         .onSubmit(connect)
-                } header: {
-                    Text("Account")
                 } footer: {
                     if case .failed(let error) = phase {
                         FormError(error: error)
                     } else {
-                        Text("Your password goes only to this server. Chek keeps the session it gets back in your Keychain.")
+                        Text("Your password is only sent to this library.")
                     }
                 }
             }
@@ -75,7 +72,7 @@ struct AddServerView: View {
             .onChange(of: [address, name, password]) {
                 if case .failed = phase { phase = .editing }
             }
-            .navigationTitle("Connect a Server")
+            .navigationTitle("Add Shared Library")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -87,7 +84,7 @@ struct AddServerView: View {
                     if phase == .connecting {
                         ProgressView()
                     } else {
-                        Button("Connect", systemImage: "checkmark", action: connect)
+                        Button("Add", systemImage: "checkmark", action: connect)
                             .disabled(!canConnect)
                     }
                 }
@@ -141,8 +138,8 @@ struct SignInView: View {
             if let server = servers.account(account) {
                 Form {
                     Section {
-                        LabeledContent("Server", value: server.name)
-                        LabeledContent("Name", value: server.userName)
+                        LabeledContent("Library", value: server.name)
+                        LabeledContent("User Name", value: server.userName)
                         SecureField("Password", text: $password)
                             .textContentType(.password)
                             .focused($isFocused)

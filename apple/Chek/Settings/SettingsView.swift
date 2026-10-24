@@ -9,7 +9,6 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
-                ServersSection()
                 Section {
                     NavigationLink {
                         ReaderAppearanceForm()
@@ -19,6 +18,7 @@ struct SettingsView: View {
                     }
                 }
                 NewChapterAlertsSection()
+                ServersSection()
                 StorageSection()
                 DemoSection()
                 Section {
@@ -68,7 +68,7 @@ private struct DemoSection: View {
     var body: some View {
         Section {
             if servers.isDemo {
-                Button("Exit the Demo", role: .destructive) {
+                Button("Close the Sample Library", role: .destructive) {
                     Task {
                         await servers.endDemo()
                         router.serverRemoved(DemoMode.accountID)
@@ -78,11 +78,11 @@ private struct DemoSection: View {
                 TryDemoButton()
             }
         } header: {
-            Text("Demo")
+            Text("Sample Library")
         } footer: {
             Text(servers.isDemo
-                ? "You're reading sample books from demo.chek.page. The demo ends on its own when Chek is closed, and your places in it stay on this device."
-                : "Connects to demo.chek.page for a look at books, comics and sources of every kind Chek reads. Nothing is kept once Chek is closed.")
+                ? "You're looking around a sample library. It goes away when you close Chek."
+                : "Look around a library of free books and comics to see what Chek can do. It goes away when you close Chek.")
         }
     }
 }
@@ -107,10 +107,10 @@ private struct NewChapterAlertsSection: View {
                     Text("Off")
                 }
             } label: {
-                Label("New Chapter Alerts", systemImage: "bell.badge")
+                Label("New Chapter Notifications", systemImage: "bell.badge")
             }
             if status == .notDetermined {
-                Button("Turn On Alerts") {
+                Button("Turn On Notifications") {
                     Task {
                         await FollowNotifications.askIfNeeded()
                         await refresh()
@@ -122,7 +122,7 @@ private struct NewChapterAlertsSection: View {
         } header: {
             Text("Following")
         } footer: {
-            Text("Chek checks the series you follow a few times a day and tells you when a chapter is out.")
+            Text("Chek looks for new chapters in the series you follow a few times a day and lets you know.")
         }
         .task { await refresh() }
         .onChange(of: scenePhase) { _, phase in
@@ -138,7 +138,7 @@ private struct NewChapterAlertsSection: View {
     }
 }
 
-/// Your servers, with signing out and removing each one.
+/// Your shared libraries, with signing out and removing each one.
 private struct ServersSection: View {
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
     @Environment(AppRouter.self) private var router
@@ -152,11 +152,11 @@ private struct ServersSection: View {
                     ServerRow(account: account)
                 }
             }
-            Button("Connect a Server", systemImage: "plus") {
+            Button("Add Shared Library", systemImage: "plus") {
                 router.sheet = .addServer
             }
         } header: {
-            Text("Servers")
+            Text("Shared Libraries")
         }
     }
 }
@@ -184,20 +184,20 @@ private struct ServerAccountForm: View {
                     }
                 }
                 LabeledContent("Address", value: account.baseURL.absoluteString)
-                LabeledContent("Account", value: account.userName)
+                LabeledContent("User Name", value: account.userName)
             }
             if isDemo {
                 // The demo has one way out, not a sign-out and a removal
                 // that would need its public password to undo.
                 Section {
-                    Button("Exit the Demo", role: .destructive) {
+                    Button("Close the Sample Library", role: .destructive) {
                         Task {
                             await servers.endDemo()
                             dismiss()
                         }
                     }
                 } footer: {
-                    Text("The demo ends on its own when Chek is closed. Exiting now forgets it straight away.")
+                    Text("It goes away on its own when you close Chek.")
                 }
             } else {
                 Section {
@@ -210,11 +210,11 @@ private struct ServerAccountForm: View {
                             router.sheet = .signIn(account.id)
                         }
                     }
-                    Button("Remove Server", role: .destructive) {
+                    Button("Remove Library", role: .destructive) {
                         isConfirmingRemoval = true
                     }
                 } footer: {
-                    Text("Removing the server forgets your places in its publications on this device, and deletes what you downloaded from it. Your places stay saved on the server.")
+                    Text("Removing it deletes its downloads from this device. Your places are kept, so adding it again picks up where you left off.")
                 }
             }
         }
@@ -226,7 +226,7 @@ private struct ServerAccountForm: View {
             }
         }
         .confirmationDialog("Remove \(account.name)?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
-            Button("Remove Server", role: .destructive) {
+            Button("Remove Library", role: .destructive) {
                 router.serverRemoved(account.id)
                 Task {
                     await servers.remove(account)

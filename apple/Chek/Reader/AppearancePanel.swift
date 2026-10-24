@@ -72,7 +72,7 @@ struct ReaderAppearanceForm: View {
                 } header: {
                     Text("Reading Direction")
                 } footer: {
-                    Text("For this series. Manga reads right to left; Automatic follows what the file or source says.")
+                    Text("For this series. Manga reads right to left; Automatic follows what the file or site says.")
                 }
             }
             Section("Page Turn") {

@@ -101,7 +101,7 @@ nonisolated extension ChekAPI {
     }
 
     /// A series as a source lists it.
-    struct SourceSeriesItem: Decodable, Identifiable, Hashable, Sendable {
+    struct SourceSeriesItem: Codable, Identifiable, Hashable, Sendable {
         var id: String
         var title: String
         /// A path on the server that serves the image.

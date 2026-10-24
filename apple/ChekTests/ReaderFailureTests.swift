@@ -20,7 +20,7 @@ struct ReaderFailureTests {
     @Test func unsupportedFormatsSaySo() {
         let error = DisplayError(reader: .unsupportedFormat(fileName: "x.xyz"), kind: .book)
         #expect(error.title == "Chek can't read this book.")
-        #expect(error.message == "It isn't in a format Chek reads.")
+        #expect(error.message == "It's a kind of file Chek doesn't open.")
     }
 
     @Test func damagedFilesKeepTheirReason() {

@@ -163,13 +163,13 @@ private struct SearchResults: View {
 
     var body: some View {
         if text.trimmingCharacters(in: .whitespaces).isEmpty {
-            EmptyState("Search Everything", systemImage: "magnifyingglass", description: Text("Find books and comics on this device, your servers and their sources by title, series or author."))
+            EmptyState("Search Everything", systemImage: "magnifyingglass", description: Text("Look for books, comics and authors in your library, shared libraries and sites."))
         } else if books.isEmpty && serverResults.isEmpty {
             ContentUnavailableView.search(text: text)
         } else {
             List {
                 if !books.isEmpty {
-                    Section("On This Device") {
+                    Section("Your Library") {
                         ForEach(books) { book in
                             SearchBookRow(book: book)
                         }

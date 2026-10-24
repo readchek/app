@@ -281,7 +281,7 @@ private struct ReaderFailureView: View {
         if signedOutServer != nil {
             Text("Sign in again to keep reading from it.")
         } else if isDamagedLocalFile {
-            Text("It may be damaged or not a format Chek reads. Removing it from the library leaves the original where you got it.")
+            Text("The file may be damaged, or be a kind Chek doesn't open. Removing it here leaves the original where you got it.")
         } else {
             error.message.map { Text($0) }
         }

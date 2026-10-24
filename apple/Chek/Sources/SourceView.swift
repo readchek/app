@@ -16,9 +16,9 @@ struct SourceView: View {
         Group {
             if !source.usable {
                 EmptyState(
-                    "Not Allowed on This Server",
+                    "Turned Off",
                     systemImage: "lock",
-                    description: Text("This source comes from a repository the server's admin hasn't allowed.")
+                    description: Text("Whoever runs this library has turned this site off.")
                 )
             } else if let series {
                 SourceSeriesGrid(account: account, source: source.id, series: series, isSearching: !submittedQuery.isEmpty)

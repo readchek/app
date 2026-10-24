@@ -175,7 +175,7 @@ private struct SeriesCell: View {
                     Text(series.displayTitle)
                         .font(.footnote.weight(.medium))
                         .lineLimit(2, reservesSpace: true)
-                    Text("^[\(series.publicationCount) item](inflect: true)")
+                    Text("^[\(series.publicationCount) book](inflect: true)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }

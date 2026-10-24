@@ -17,11 +17,11 @@ struct StorageSection: View {
 
     var body: some View {
         Section {
-            LabeledContent("Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file)) } ?? "…")
+            LabeledContent("Your Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file)) } ?? "…")
             LabeledContent("Downloads", value: sizes.map { $0.chapters.formatted(.byteCount(style: .file)) } ?? "…")
-            LabeledContent("Server Books", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file)) } ?? "…")
-            LabeledContent("Covers", value: sizes.map { $0.covers.formatted(.byteCount(style: .file)) } ?? "…")
-            Button("Clear Server Books and Covers") {
+            LabeledContent("Recently Read", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file)) } ?? "…")
+            LabeledContent("Cover Images", value: sizes.map { $0.covers.formatted(.byteCount(style: .file)) } ?? "…")
+            Button("Free Up Space") {
                 isClearing = true
                 Task {
                     await Self.clearCaches()
@@ -37,7 +37,7 @@ struct StorageSection: View {
         } header: {
             Text("Storage")
         } footer: {
-            Text("Server books and covers come back as you read; your library, places and downloads stay until you remove them.")
+            Text("Freeing up space clears recently read books from shared libraries and cover images. They come back as you read. Your library, downloads and places stay.")
         }
         .confirmationDialog("Remove All Downloads?", isPresented: $isConfirmingChapterRemoval, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
@@ -45,7 +45,7 @@ struct StorageSection: View {
                 Task { sizes = await Self.measure() }
             }
         } message: {
-            Text("Downloaded chapters and comics can be downloaded again from their series.")
+            Text("You can download them again any time.")
         }
         .task {
             sizes = await Self.measure()

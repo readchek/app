@@ -163,7 +163,7 @@ private struct SeriesHeader: View {
                     Text(title)
                         .font(.title2.weight(.bold))
                         .lineLimit(3)
-                    Text(isComplete ? "^[\(count) item](inflect: true)" : "\(count)+ items")
+                    Text(isComplete ? "^[\(count) book](inflect: true)" : "\(count)+ books")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }

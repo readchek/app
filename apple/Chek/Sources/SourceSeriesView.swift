@@ -210,7 +210,7 @@ private struct SourceSeriesContent: View {
                     EmptyState(
                         "No Chapters to Read",
                         systemImage: "books.vertical",
-                        description: Text("This source has no chapters it can show for this series. Licensed series are often only on the publisher's own site.")
+                        description: Text("This site has no chapters of this series to show. Licensed series are often only on the publisher's own site.")
                     )
                     .listRowSeparator(.hidden)
                 } else {
@@ -540,7 +540,7 @@ private struct SourceChapterRow: View {
                     ProgressView()
                 } else if status != .new {
                     // Most chapters are unread, so only the others say so.
-                    StatusText(status: status, fallback: nil)
+                    StatusText(status: status, showsNew: false)
                 }
                 DownloadIndicator(state: download)
             }

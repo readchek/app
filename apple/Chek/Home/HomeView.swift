@@ -43,10 +43,10 @@ private struct HomeContent: View {
     var body: some View {
         let continueReading = continueReadingItems()
         let signedOut = accounts.filter { servers.state(of: $0.id) == .signedOut }
-        let hasShelves = !continueReading.isEmpty || !newBooks.isEmpty || !model.newOnServers.isEmpty || !follows.isEmpty
+        let hasShelves = !continueReading.isEmpty || !newBooks.isEmpty || !model.newOnServers.isEmpty || !model.sites.isEmpty || !follows.isEmpty
         Group {
             if !hasShelves, accounts.isEmpty {
-                HomeEmptyView()
+                HomeStartView()
             } else if !hasShelves, !signedOut.isEmpty {
                 // Everything here came from servers you're signed out of, so
                 // the way back in is the one thing worth showing.
@@ -62,21 +62,32 @@ private struct HomeContent: View {
                             Shelf(title: "Recently Added", items: newBooks.prefix(20).map(PublicationItem.init))
                         }
                         ForEach(model.newOnServers) { shelf in
-                            Shelf(title: "New on \(shelf.serverName)", items: shelf.publications.map { publication in
+                            Shelf(title: "New in \(shelf.serverName)", items: shelf.publications.map { publication in
                                 PublicationItem(publication, status: statuses[publication.ref] ?? .new, cover: servers.cover(of: publication.id, on: publication.server))
                             })
+                        }
+                        // What each site you've added shows first, so adding
+                        // one puts something to read here straight away.
+                        ForEach(model.sites) { shelf in
+                            SiteShelf(shelf: shelf)
                         }
                     }
                     .padding(.vertical, 8)
                 }
                 .refreshable {
+                    async let sites: Void = model.loadSites(from: servers)
                     await model.load(from: servers)
+                    await sites
                     await followStore.checkForNewChapters(force: true)
                 }
             }
         }
         .task(id: servers.signedOut) {
+            // Sites answer slowly, so their shelves load beside the rest
+            // rather than holding it up.
+            async let sites: Void = model.loadSites(from: servers)
             await model.load(from: servers)
+            await sites
             await sync.fillMissingSourceCovers()
             await followStore.checkForNewChapters()
         }
@@ -133,9 +144,20 @@ final class HomeServersModel {
         let publications: [RemotePublication]
     }
 
+    /// The series a site added to a shared library shows first.
+    struct SiteShelf: Identifiable, Codable {
+        let account: UUID
+        let source: ChekAPI.InstalledExtension
+        let series: [ChekAPI.SourceSeriesItem]
+
+        var id: String { "\(account.uuidString)/\(source.id)" }
+    }
+
     private(set) var elsewhere: [Elsewhere] = []
     private(set) var newOnServers: [ServerShelf] = []
+    private(set) var sites: [SiteShelf] = []
     private var hasShownSnapshot = false
+    private var hasShownSitesSnapshot = false
 
     func load(from servers: ServerStore) async {
         let signedIn = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
@@ -197,6 +219,86 @@ final class HomeServersModel {
             shelves: shelves.map { HomeSnapshot.Shelf(id: $0.id, serverName: $0.serverName, publications: $0.publications) }
         ).write()
     }
+
+    /// Fills a shelf for every site added to a signed-in library, from the
+    /// first page each one lists.
+    func loadSites(from servers: ServerStore) async {
+        let signedIn = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
+        let accounts = Set(signedIn.map(\.id))
+        if !hasShownSitesSnapshot {
+            hasShownSitesSnapshot = true
+            if let saved = await SiteShelfSnapshot.read() {
+                sites = saved.filter { accounts.contains($0.account) }
+            }
+        }
+        var shelves: [SiteShelf] = []
+        for account in signedIn {
+            let id = account.id
+            guard let installed = try? await servers.request(id, { client throws(ChekError) in try await client.installedExtensionsIfSupported() }) else {
+                // Not reached: what it showed before stays.
+                shelves += sites.filter { $0.account == id }
+                continue
+            }
+            for source in installed ?? [] where source.usable {
+                if let page = try? await servers.request(id, { client throws(ChekError) in try await client.search(source: source.id, query: "", page: 1) }) {
+                    if !page.items.isEmpty {
+                        shelves.append(SiteShelf(account: id, source: source, series: Array(page.items.prefix(20))))
+                    }
+                } else if let before = sites.first(where: { $0.account == id && $0.source.id == source.id }) {
+                    // A site that's slow or down today keeps yesterday's shelf.
+                    shelves.append(before)
+                }
+            }
+        }
+        sites = shelves
+        await SiteShelfSnapshot.write(shelves)
+    }
+}
+
+/// The site shelves Home last showed, kept between launches so they appear
+/// at once rather than after every site has answered.
+nonisolated private enum SiteShelfSnapshot {
+    private static let url = URL.cachesDirectory.appending(path: "home-sites.json")
+
+    @concurrent
+    static func read() async -> [HomeServersModel.SiteShelf]? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode([HomeServersModel.SiteShelf].self, from: data)
+    }
+
+    @concurrent
+    static func write(_ shelves: [HomeServersModel.SiteShelf]) async {
+        guard let data = try? JSONEncoder().encode(shelves) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+}
+
+/// A site's shelf: its name leading to everything it has, then the series
+/// it shows first.
+private struct SiteShelf: View {
+    let shelf: HomeServersModel.SiteShelf
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            SectionHeader(title: "\(shelf.source.name)") {
+                SourceView(account: shelf.account, source: shelf.source)
+            }
+            ScrollView(.horizontal) {
+                LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
+                    ForEach(shelf.series) { series in
+                        SourceSeriesCell(account: shelf.account, source: shelf.source.id, series: series)
+                            .frame(width: Metrics.shelfCoverWidth(regular: sizeClass == .regular))
+                    }
+                }
+                .scrollTargetLayout()
+            }
+            .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
+            .scrollIndicators(.hidden)
+            .scrollTargetBehavior(.viewAligned)
+            .scrollClipDisabled()
+        }
+    }
 }
 
 /// What Home last showed from servers, kept between launches.
@@ -233,7 +335,8 @@ nonisolated private struct HomeSnapshot: Codable {
     }
 }
 
-/// Reading Now when every server is signed out and nothing else is here.
+/// Reading Now when every shared library needs signing in again and
+/// nothing else is here.
 private struct SignedOutHomeView: View {
     let accounts: [ServerAccount]
     @Environment(AppRouter.self) private var router
@@ -244,7 +347,7 @@ private struct SignedOutHomeView: View {
             systemImage: "person.crop.circle.badge.exclamationmark",
             description: Text(accounts.count == 1
                 ? "Sign in to \(accounts[0].name) again to pick up where you left off."
-                : "Sign in to your servers again to pick up where you left off.")
+                : "Sign in to your shared libraries again to pick up where you left off.")
         ) {
             ForEach(accounts.prefix(1)) { account in
                 Button(accounts.count == 1 ? String(localized: "Sign In") : String(localized: "Sign In to \(account.name)")) {
@@ -260,30 +363,6 @@ private struct SignedOutHomeView: View {
             Button("Add Books") {
                 router.addBooks()
             }
-        }
-    }
-}
-
-/// Shown before there's anything to read. Your own files are the one path
-/// that always works, so they come first; servers are for people who
-/// already run one, and the demo is a look around.
-private struct HomeEmptyView: View {
-    @Environment(AppRouter.self) private var router
-
-    var body: some View {
-        EmptyState(
-            "Nothing to Read Yet",
-            systemImage: "books.vertical",
-            description: Text("Add books and comics from Files to start reading.")
-        ) {
-            Button("Add Books") {
-                router.addBooks()
-            }
-        } secondary: {
-            Button("Connect a Server") {
-                router.sheet = .addServer
-            }
-            TryDemoButton()
         }
     }
 }

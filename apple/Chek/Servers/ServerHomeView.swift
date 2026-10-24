@@ -16,14 +16,14 @@ struct ServerHomeView: View {
                     .navigationTitle(server.name)
                     .toolbar {
                         ToolbarItem(placement: .primaryAction) {
-                            Menu("Server", systemImage: "ellipsis") {
+                            Menu("More", systemImage: "ellipsis") {
                                 ServerActions(account: server, editing: $editing)
                             }
                         }
                     }
                     .serverEditing($editing)
             } else {
-                EmptyState("Server Removed", systemImage: "server.rack")
+                EmptyState("Library Removed", systemImage: "building.columns")
             }
         }
         // Signing back in loads the home again, rather than leaving what
@@ -186,7 +186,7 @@ private struct ServerHomeContent: View {
                     EmptyState(
                         "Signed Out",
                         systemImage: "person.crop.circle.badge.exclamationmark",
-                        description: Text("Sign in to \(account.name) again to read from it.")
+                        description: Text("Sign in to \(account.name) again to keep reading.")
                     ) {
                         Button("Sign In") {
                             router.sheet = .signIn(account.id)
@@ -231,16 +231,13 @@ private struct ServerHomeContent: View {
                             // whether or not the server answers.
                             Shelf(title: "Downloaded", items: kept.map { servers.item($0, status: statuses[$0.id, or: content.serverStatuses[$0.id]]) })
                         }
-                        if let sources = content.sources {
-                            SourcesSection(account: account.id, sources: sources)
-                        }
                         VStack(alignment: .leading, spacing: 4) {
-                            SectionHeader(title: "Libraries")
+                            SectionHeader(title: "Collections")
                             if content.libraries.isEmpty {
                                 // A reader starts with no libraries until
                                 // the admin shares some, which the server
                                 // can't say more about.
-                                Text("None shared with you yet. Ask the admin of \(account.name) for access to a library.")
+                                Text("Nothing here yet. Ask whoever shares \(account.name) with you to give you access.")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                                     .padding(.horizontal, Metrics.margin)
@@ -254,6 +251,11 @@ private struct ServerHomeContent: View {
                                     showsDivider: library.id != content.libraries.last?.id
                                 )
                             }
+                        }
+                        // The sample library can't add sites, so an empty
+                        // section there would lead nowhere.
+                        if let sources = content.sources, !(sources.isEmpty && account.id == DemoMode.accountID) {
+                            SourcesSection(account: account.id, sources: sources)
                         }
                     }
                     .padding(.vertical, 8)

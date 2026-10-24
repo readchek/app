@@ -17,12 +17,12 @@ extension DisplayError {
         case .unsupportedFormat, .formatNotIncluded, .notYetImplemented:
             self.init(
                 title: String(localized: "Chek can't read \(what)."),
-                message: String(localized: "It isn't in a format Chek reads.")
+                message: String(localized: "It's a kind of file Chek doesn't open.")
             )
         case .drmProtected:
             self.init(
                 title: String(localized: "Chek can't read \(what)."),
-                message: String(localized: "It's protected with DRM, which Chek doesn't open.")
+                message: String(localized: "It's copy-protected by the store it came from, so only that store's app can open it.")
             )
         case .malformed(let reason):
             self.init(
@@ -31,7 +31,7 @@ extension DisplayError {
         case .limitExceeded:
             self.init(
                 title: String(localized: "Couldn't open \(what)."),
-                message: String(localized: "It's larger than Chek can open on this device.")
+                message: String(localized: "It's too large to open on this device.")
             )
         case .cancelled:
             self.init(title: String(localized: "Opening stopped."))

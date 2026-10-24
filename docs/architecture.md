@@ -5,11 +5,18 @@ predictable. Read this before adding a screen, a store or a data model.
 
 ## Experience
 
-Chek opens on **Home**, which puts whatever you were reading first, from any
-source. **Library** is the books and comics kept on the device. **Browse**
-holds the servers you've connected and everything on them. **Search** looks
-through all of it at once. On iPhone these are tabs; on iPad the same tabs
-become a sidebar that also lists each server's libraries.
+Chek opens on **Reading Now**, which puts whatever you were reading first,
+from anywhere, then a shelf for each shared library and each site you've
+added. **Library** is the books and comics kept on the device. **Shared**
+holds the libraries people share with you (each one a Chek server) and
+everything in them. **Search** looks through all of it at once. On iPhone
+these are tabs; on iPad the same tabs become a sidebar that also lists each
+shared library.
+
+The app is for readers, not the people who run servers. It says "shared
+library" rather than server, "site" rather than source or extension, and
+keeps repositories, tokens and admin settings on one Advanced screen or on
+the server's own web page.
 
 Reading is full screen. Opening a book zooms it out of its cover, and the
 controls stay out of the way until you tap the middle of the page. They are

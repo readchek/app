@@ -60,13 +60,13 @@ struct PublicationCell: View {
                             if item.status != .started {
                                 Text(verbatim: "·")
                                     .foregroundStyle(.tertiary)
-                                StatusText(status: item.status, fallback: nil, font: .caption2)
+                                StatusText(status: item.status, font: .caption2)
                             }
                         }
                         .font(.caption2)
                         .lineLimit(1)
                     } else {
-                        StatusText(status: item.status, fallback: nil, font: .caption2)
+                        StatusText(status: item.status, font: .caption2)
                     }
                 }
             }
@@ -102,7 +102,7 @@ struct PublicationRow: View {
                     }
                 }
                 Spacer(minLength: 8)
-                StatusText(status: item.status, fallback: nil)
+                StatusText(status: item.status, showsNew: false)
                 ItemDownloadIndicator(item: item)
             }
             .contentShape(.rect)
@@ -113,18 +113,22 @@ struct PublicationRow: View {
 }
 
 /// Where you are, in a few words of caption text: "New", "34%" or
-/// "Finished". Shows `fallback` when there's nothing to say yet.
+/// "Finished".
 struct StatusText: View {
     let status: ReadingStatus
-    let fallback: String?
+    /// Whether something unopened says "New". A list of a series' chapters
+    /// leaves it out, since there it would be on nearly every row.
+    var showsNew = true
     var font: Font = .caption
 
     var body: some View {
         Group {
             switch status {
             case .new:
-                Text("New")
-                    .foregroundStyle(.tint)
+                if showsNew {
+                    Text("New")
+                        .foregroundStyle(.tint)
+                }
             case .started:
                 Text("Started")
                     .foregroundStyle(.secondary)

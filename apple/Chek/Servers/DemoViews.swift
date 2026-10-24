@@ -3,7 +3,6 @@ import SwiftUI
 /// Starts the demo: signs in to the demo server and goes to it. One
 /// button, shown wherever someone new might look for something to read.
 struct TryDemoButton: View {
-    var isProminent = false
     @Environment(ServerStore.self) private var servers
     @Environment(AppRouter.self) private var router
     @State private var isStarting = false
@@ -16,7 +15,7 @@ struct TryDemoButton: View {
             if isStarting {
                 ProgressView()
             } else {
-                Label("Try the Demo", systemImage: "sparkles")
+                Label("Try Sample Books", systemImage: "sparkles")
             }
         }
         .disabled(isStarting)
@@ -46,7 +45,7 @@ struct TryDemoButton: View {
             } catch {
                 let reason = DisplayError(error)
                 failure = DisplayError(
-                    title: String(localized: "Couldn't start the demo."),
+                    title: String(localized: "Couldn't open the sample library."),
                     message: reason.message ?? reason.title
                 )
             }
@@ -75,9 +74,9 @@ private struct DemoBanner: ViewModifier {
                 HStack(spacing: 6) {
                     Image(systemName: "sparkles")
                         .font(.caption2)
-                    Text("Demo")
+                    Text("Sample")
                         .font(.caption.weight(.semibold))
-                    Button("Exit", systemImage: "xmark") {
+                    Button("Close", systemImage: "xmark") {
                         Task {
                             await servers.endDemo()
                             router.serverRemoved(DemoMode.accountID)
@@ -88,7 +87,7 @@ private struct DemoBanner: ViewModifier {
                     .labelStyle(.iconOnly)
                     .font(.caption2.weight(.bold))
                     .foregroundStyle(.secondary)
-                    .accessibilityLabel(Text("Exit the demo"))
+                    .accessibilityLabel(Text("Close the sample library"))
                 }
                 .padding(.leading, 10)
                 .padding(.trailing, 6)

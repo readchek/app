@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-/// The servers you've connected, and everything on them.
+/// The libraries shared with you, and everything in them.
 struct BrowseView: View {
     @Environment(AppRouter.self) private var router
     @Query(sort: \ServerAccount.sortIndex) private var accounts: [ServerAccount]
@@ -14,11 +14,11 @@ struct BrowseView: View {
             Group {
                 if accounts.isEmpty {
                     EmptyState(
-                        "No Servers Yet",
-                        systemImage: "server.rack",
-                        description: Text("Connect a Chek server to read from it without downloading first. Your place follows you between devices.")
+                        "Nothing Shared Yet",
+                        systemImage: "building.columns",
+                        description: Text("When someone shares their Chek library with you, add it here to read from it on all your devices.")
                     ) {
-                        Button("Connect a Server") {
+                        Button("Add Shared Library") {
                             router.sheet = .addServer
                         }
                     } secondary: {
@@ -38,7 +38,7 @@ struct BrowseView: View {
                             // disagrees with the servers it shows.
                             .swipeActions(allowsFullSwipe: false) {
                                 if account.id == DemoMode.accountID {
-                                    Button("Exit", systemImage: "xmark") {
+                                    Button("Close", systemImage: "xmark") {
                                         Task { await servers.endDemo() }
                                     }
                                     .tint(.red)
@@ -59,10 +59,10 @@ struct BrowseView: View {
                 }
             }
             .demoBanner()
-            .navigationTitle("Browse")
+            .navigationTitle("Shared")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Connect a Server", systemImage: "plus") {
+                    Button("Add Shared Library", systemImage: "plus") {
                         router.sheet = .addServer
                     }
                 }
@@ -97,12 +97,12 @@ struct ServerRow: View {
                 Text(account.name)
                 // The demo is a temporary account, which its row says
                 // rather than naming a user nobody signed in as.
-                Text(isDemo ? "Demo, until Chek is closed" : servers.state(of: account.id) == .signedOut ? "Signed out" : account.userName)
+                Text(isDemo ? "Until you close Chek" : servers.state(of: account.id) == .signedOut ? "Sign in again to read" : account.userName)
                     .font(.subheadline)
                     .foregroundStyle(servers.state(of: account.id) == .signedOut ? AnyShapeStyle(.orange) : AnyShapeStyle(.secondary))
             }
         } icon: {
-            Image(systemName: isDemo ? "sparkles" : "server.rack")
+            Image(systemName: isDemo ? "sparkles" : "building.columns")
         }
     }
 }
@@ -157,7 +157,7 @@ struct ServerActions: View {
 
     var body: some View {
         if account.id == DemoMode.accountID {
-            Button("Exit the Demo", systemImage: "xmark", role: .destructive) {
+            Button("Close the Sample Library", systemImage: "xmark", role: .destructive) {
                 Task { await servers.endDemo() }
             }
         } else {
@@ -196,7 +196,7 @@ private struct ServerEditing: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .alert("Rename Server", isPresented: isRenaming) {
+            .alert("Rename", isPresented: isRenaming) {
                 TextField("Name", text: $name)
                 Button("Cancel", role: .cancel) {}
                 Button("Save") {
@@ -205,10 +205,10 @@ private struct ServerEditing: ViewModifier {
                     }
                 }
             } message: {
-                Text("The name is only used in Chek on this device.")
+                Text("Only you see this name.")
             }
             .confirmationDialog(removalTitle, isPresented: isRemoving, titleVisibility: .visible) {
-                Button("Remove Server", role: .destructive) {
+                Button("Remove", role: .destructive) {
                     guard case .remove(let account) = editing else { return }
                     let id = account.id
                     if router.browsePath.first == .server(id) {
@@ -218,7 +218,7 @@ private struct ServerEditing: ViewModifier {
                     Task { await servers.remove(account) }
                 }
             } message: {
-                Text("Chek signs out and forgets your places in its publications on this device. They stay saved on the server.")
+                Text("It's removed from this device along with its downloads. Your places are kept, so adding it again picks up where you left off.")
             }
             .onChange(of: editing?.id) {
                 if case .rename(let account) = editing {

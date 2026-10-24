@@ -23,20 +23,20 @@ struct RootView: View {
             Tab("Library", systemImage: "books.vertical", value: AppTab.library) {
                 LibraryView()
             }
-            Tab("Browse", systemImage: "server.rack", value: AppTab.browse) {
+            Tab("Shared", systemImage: "building.columns", value: AppTab.browse) {
                 BrowseView()
             }
             Tab(value: AppTab.search, role: .search) {
                 SearchView()
             }
-            // Each server is a section of the iPad sidebar, so its shelves
+            // Each shared library is a tab in the iPad sidebar, so its shelves
             // are one tap away there. A compact tab bar has no room, and
             // hiding a section from it still pushes Search into More, so
             // the section only exists where the sidebar does.
             if sizeClass == .regular {
-                TabSection("Servers") {
+                TabSection("Shared") {
                     ForEach(accounts) { account in
-                        Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "server.rack", value: AppTab.server(account.id)) {
+                        Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "building.columns", value: AppTab.server(account.id)) {
                             ServerTab(account: account)
                         }
                     }

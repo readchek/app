@@ -11,7 +11,7 @@ import Foundation
 nonisolated enum DemoMode {
     static let accountID = UUID(uuidString: "D3A0C4E1-5E0B-4C6F-9B7E-0C5A1F2D9E01")!
     static let baseURL = URL(string: "https://demo.chek.page")!
-    static let name = String(localized: "Chek Demo")
+    static let name = String(localized: "Sample Library")
     /// A shared read-only account on the demo server. Its password is
     /// public: the server holds only sample publications.
     static let user = "demo"

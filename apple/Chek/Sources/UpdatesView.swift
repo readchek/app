@@ -49,7 +49,7 @@ struct UpdatesView: View {
                     "Nothing New",
                     systemImage: "checkmark.circle",
                     description: Text(follows.isEmpty
-                        ? "Follow a series from a source and its new chapters collect here."
+                        ? "Follow a series from a site and its new chapters show up here."
                         : "You've seen every chapter in the series you follow. Chek checks for more a few times a day.")
                 ) {
                     if !follows.isEmpty {

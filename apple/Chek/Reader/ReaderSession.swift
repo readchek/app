@@ -133,7 +133,7 @@ final class ReaderSession {
                 throw DisplayError(ChekError.unauthorized)
             }
             throw DisplayError(
-                title: String(localized: "Couldn't download this publication."),
+                title: String(localized: "Couldn't download this."),
                 message: String(localized: "Check your connection and try again.")
             )
         }

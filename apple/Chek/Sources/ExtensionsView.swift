@@ -23,7 +23,7 @@ struct ExtensionsView: View {
                 }
             }
         }
-        .navigationTitle("Sources")
+        .navigationTitle("Sites")
         .navigationBarTitleDisplayMode(.inline)
         .task(id: account) {
             let model = model ?? ExtensionsModel(account: account, servers: servers)
@@ -113,8 +113,8 @@ final class ExtensionsModel {
             state = .loaded(content)
         } catch .notFound {
             state = .failed(DisplayError(
-                title: String(localized: "This server doesn't have sources yet."),
-                message: String(localized: "Update the Chek server to add extensions.")
+                title: String(localized: "Sites aren't available here yet."),
+                message: String(localized: "Whoever runs this library needs to update Chek first.")
             ))
         } catch {
             if state.value == nil {
@@ -262,15 +262,15 @@ final class ExtensionsModel {
         do {
             try await servers.request(account, operation)
         } catch .server(status: 403, "demo_account") {
-            failure = DisplayError(title: String(localized: "The demo account can't change its sources."), message: String(localized: "Connect a server of your own to install sources."))
+            failure = DisplayError(title: String(localized: "Sites can't be added to the sample library."))
         } catch .server(status: 403, _) {
-            failure = DisplayError(title: String(localized: "The server's admin hasn't allowed this repository."))
+            failure = DisplayError(title: String(localized: "This site is turned off for this library."))
         } catch .server(status: 422, let code?) where code.hasPrefix("repository_") {
             failure = DisplayError(title: String(localized: "The repository refused the download."), message: String(localized: "Check its sign-in details under Repositories."))
         } catch .server(status: 422, _) {
-            failure = DisplayError(title: String(localized: "This extension couldn't be installed."), message: String(localized: "It doesn't match what its repository lists. Try again after the repository updates."))
+            failure = DisplayError(title: String(localized: "This site couldn't be added."), message: String(localized: "Try again later."))
         } catch .server(status: 502, _) {
-            failure = DisplayError(title: String(localized: "The repository couldn't be reached."), message: String(localized: "Try again in a moment."))
+            failure = DisplayError(title: String(localized: "Couldn't add this site right now."), message: String(localized: "Try again in a moment."))
         } catch {
             failure = DisplayError(error)
         }
@@ -282,8 +282,6 @@ final class ExtensionsModel {
 private struct ExtensionsList: View {
     let content: ExtensionsModel.Content
     let model: ExtensionsModel
-    @State private var sheet: RepositorySheet?
-    @State private var removing: ChekAPI.ExtensionRepository?
 
     var body: some View {
         let installed = Dictionary(content.installed.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
@@ -292,23 +290,12 @@ private struct ExtensionsList: View {
         let offered = Set(content.available.map(\.id))
         let orphans = content.installed.filter { !offered.contains($0.id) }
         List {
-            if !orphans.isEmpty {
-                Section {
-                    ForEach(orphans) { item in
-                        OrphanExtensionRow(item: item, isChanging: model.changing.contains(item.id), model: model)
-                    }
-                } header: {
-                    Text("Installed")
-                } footer: {
-                    Text("No repository the server can read offers these now, so they can't be updated, only removed.")
-                }
-            }
             if content.available.isEmpty, orphans.isEmpty {
                 Section {
                     EmptyState(
-                        "No Extensions",
-                        systemImage: "puzzlepiece.extension",
-                        description: Text("The server's repositories don't offer any yet.")
+                        "No Sites Yet",
+                        systemImage: "globe",
+                        description: Text("Whoever runs this library hasn't made any sites available yet.")
                     )
                 }
             } else if !content.available.isEmpty {
@@ -317,11 +304,63 @@ private struct ExtensionsList: View {
                         ExtensionRow(item: item, installed: installed[item.id], isChanging: model.changing.contains(item.id), model: model)
                     }
                 } footer: {
-                    Text("Sources run on the server, which reaches only the sites each lists, so reading from them works the same on all your devices.")
+                    Text("Sites you add show up on Reading Now and in Search, on all your devices.")
                 }
             }
+            if !orphans.isEmpty {
+                Section {
+                    ForEach(orphans) { item in
+                        OrphanExtensionRow(item: item, isChanging: model.changing.contains(item.id), model: model)
+                    }
+                } header: {
+                    Text("No Longer Offered")
+                } footer: {
+                    Text("These still work for now, but won't get fixes. You can remove them.")
+                }
+            }
+            // Where sites come from is for whoever runs the library, so
+            // it's a screen of its own rather than part of this list.
+            if !model.isDemo, content.canAddRepositories || !content.repositories.isEmpty {
+                Section {
+                    NavigationLink {
+                        SiteSourcesView(content: content, model: model)
+                    } label: {
+                        Text("Advanced")
+                    }
+                } footer: {
+                    Text("Where these sites come from, for whoever runs this library.")
+                }
+            }
+        }
+        .refreshable {
+            await model.refreshRepositories()
+        }
+    }
+}
+
+/// Where a library's sites come from: the repositories it reads, and for
+/// its admin whether everyone may add their own. Kept off the main list,
+/// since only whoever runs the library needs it.
+private struct SiteSourcesView: View {
+    let snapshot: ExtensionsModel.Content
+    let model: ExtensionsModel
+    @State private var sheet: RepositorySheet?
+    @State private var removing: ChekAPI.ExtensionRepository?
+
+    init(content: ExtensionsModel.Content, model: ExtensionsModel) {
+        snapshot = content
+        self.model = model
+    }
+
+    /// The latest the model has, so adding a repository shows here at once.
+    private var content: ExtensionsModel.Content {
+        model.state.value ?? snapshot
+    }
+
+    var body: some View {
+        List {
             repositories
-            if content.isAdmin, !model.isDemo, let settings = content.settings {
+            if content.isAdmin, let settings = content.settings {
                 Section {
                     Toggle("Anyone Can Add Repositories", isOn: Binding {
                         settings.allowAnyRepository
@@ -334,6 +373,8 @@ private struct ExtensionsList: View {
                 }
             }
         }
+        .navigationTitle("Advanced")
+        .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await model.refreshRepositories()
         }
@@ -448,10 +489,10 @@ private struct ExtensionRow: View {
                 } else {
                     Image(systemName: "checkmark")
                         .foregroundStyle(.secondary)
-                        .accessibilityLabel(Text("Installed"))
+                        .accessibilityLabel(Text("Added"))
                 }
             } else {
-                Button("Get") {
+                Button("Add") {
                     Task { await model.install(item) }
                 }
                 .buttonStyle(.bordered)
@@ -475,21 +516,13 @@ private struct ExtensionRow: View {
         }
     }
 
+    /// The site it reads from, which is what people know it by.
     private var details: String {
-        let version: String
+        let site = item.sites.first(where: { !$0.hasPrefix("*") }) ?? item.sites.first
         if let installed, installed.version != item.version {
-            version = String(localized: "Version \(installed.version), \(item.version) available")
-        } else {
-            version = String(localized: "Version \(item.version)")
+            return [site, String(localized: "Update available")].compactMap(\.self).joined(separator: " · ")
         }
-        var parts = [version]
-        if let site = item.sites.first(where: { !$0.hasPrefix("*") }) ?? item.sites.first {
-            parts.append(site)
-        }
-        if item.capabilities.contains("browser") {
-            parts.append(String(localized: "Uses the server's browser"))
-        }
-        return parts.joined(separator: " · ")
+        return site ?? ""
     }
 }
 
@@ -503,7 +536,7 @@ private struct OrphanExtensionRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
-                Text(item.usable ? String(localized: "Version \(item.version)") : String(localized: "Version \(item.version) · Not allowed on this server"))
+                Text(item.usable ? String(localized: "Still works for now") : String(localized: "Turned off for this library"))
                     .font(.caption)
                     .foregroundStyle(item.usable ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
             }
