@@ -250,7 +250,7 @@
     "Rename Server": {},
     "Report a Problem": {},
     "Repositories": {},
-    "Repositories are served over HTTPS, and a token, user name or header name can't be empty.": {},
+    "Repositories are served over HTTPS, a password goes in the sign-in details rather than the address, and a token, user name or header name can't be empty.": {},
     "Repositories you add are only yours.": {},
     "Repositories you add are open to everyone on this server.": {},
     "Repository": {},

@@ -241,7 +241,7 @@ final class ExtensionsModel {
         case .server(status: 403, _):
             DisplayError(title: String(localized: "Only the server's admin can change this repository."))
         case .server(status: 400, _):
-            DisplayError(title: String(localized: "Check the address and sign-in details."), message: String(localized: "Repositories are served over HTTPS, and a token, user name or header name can't be empty."))
+            DisplayError(title: String(localized: "Check the address and sign-in details."), message: String(localized: "Repositories are served over HTTPS, a password goes in the sign-in details rather than the address, and a token, user name or header name can't be empty."))
         case .server(status: 409, _):
             DisplayError(title: String(localized: "This repository is already added."))
         case .server(status: 502, _):
