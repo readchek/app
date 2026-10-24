@@ -36,6 +36,9 @@ final class ChapterList {
     /// Why the last page before or after couldn't be read, while the
     /// others still show.
     private(set) var moreFailure: DisplayError?
+    /// The series' first chapter, once asked for, for starting it from a
+    /// list that opens newest first.
+    private(set) var first: ChekAPI.SourceChapter?
     /// Whether these came from the device because the server couldn't be
     /// reached, in which case there's nothing more to page through.
     private(set) var isOffline = false
@@ -151,7 +154,11 @@ final class ChapterList {
         if let first = entries.first(where: { $0.position == 1 }) {
             return first.chapter
         }
-        return try? await fetch(offset: 0, limit: 1, order: .oldestFirst).items.first
+        if let first {
+            return first
+        }
+        first = try? await fetch(offset: 0, limit: 1, order: .oldestFirst).items.first
+        return first
     }
 
     private func reload(at offset: Int, refresh: Bool) async {

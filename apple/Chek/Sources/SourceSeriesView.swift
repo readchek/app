@@ -19,19 +19,17 @@ struct SourceSeriesView: View {
     var body: some View {
         Group {
             switch model?.state ?? .idle {
+            case .loaded(let series):
+                content(series)
+            case .idle where chapters?.entries.isEmpty == false, .loading where chapters?.entries.isEmpty == false:
+                // The chapters came first: they show under what's known of
+                // the series, and the rest of it fills in when it arrives.
+                content(ChekAPI.SourceSeries(id: seriesID, title: title, summary: nil, coverUrl: nil, contributors: [], readingDirection: nil))
             case .idle, .loading:
                 LoadingState()
             case .failed(let error):
                 FailureState(error: error) {
                     await model?.load()
-                }
-            case .loaded(let series):
-                if let chapters {
-                    SourceSeriesContent(account: account, source: source, series: series, chapters: chapters, staleError: model?.staleError) {
-                        async let reloaded: Void = model?.load() ?? ()
-                        await chapters.load(refresh: true)
-                        await reloaded
-                    }
                 }
             }
         }
@@ -62,10 +60,28 @@ struct SourceSeriesView: View {
             }
             self.model = model
             self.chapters = chapters
-            // The series and its first page of chapters load side by side.
+            // The series and its first page of chapters load side by side,
+            // and so does chapter 1 when the list opens newest first, since
+            // it's what Start Reading offers a new reader.
             async let series: Void = model.load()
+            async let first = chapters.order == .newestFirst ? chapters.firstChapter() : nil
             await chapters.load()
             await series
+            _ = await first
+        }
+    }
+}
+
+extension SourceSeriesView {
+    private func content(_ series: ChekAPI.SourceSeries) -> some View {
+        Group {
+            if let chapters {
+                SourceSeriesContent(account: account, source: source, series: series, chapters: chapters, staleError: model?.staleError) {
+                    async let reloaded: Void = model?.load() ?? ()
+                    await chapters.load(refresh: true)
+                    await reloaded
+                }
+            }
         }
     }
 }
@@ -234,7 +250,7 @@ private struct SourceSeriesContent: View {
                 followStore.didOpen(server: account, source: source, series: series, count: total)
             }
         }
-        .task(id: NextKey(states: states)) {
+        .task(id: NextKey(states: states, first: chapters.first?.id)) {
             next = await nextToRead(statuses: statuses)
         }
     }
@@ -329,8 +345,10 @@ private struct SourceSeriesContent: View {
     private struct NextKey: Hashable {
         var latest: String?
         var finished: Bool
+        var first: String?
 
-        init(states: [SourceReadingState]) {
+        init(states: [SourceReadingState], first: String?) {
+            self.first = first
             let latest = states.filter { $0.lastOpenedAt != nil }.max { ($0.lastOpenedAt ?? .distantPast) < ($1.lastOpenedAt ?? .distantPast) }
             self.latest = latest?.chapterID
             finished = latest?.readingStatus == .finished
