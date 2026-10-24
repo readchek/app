@@ -41,8 +41,11 @@ struct AddRepositoryView: View {
             .onChange(of: address) {
                 if case .failed = phase { phase = .editing }
             }
-            .onChange(of: signIn) {
-                if case .failed = phase { phase = .editing }
+            .onChange(of: signIn) { old, new in
+                // Switching kind, by hand or because the repository asked,
+                // keeps the message, which says what to choose; typing
+                // clears it.
+                if case .failed = phase, old.kind == new.kind { phase = .editing }
             }
             .navigationTitle("Add Repository")
             .navigationBarTitleDisplayMode(.inline)
@@ -71,11 +74,13 @@ struct AddRepositoryView: View {
         phase = .connecting
         Task {
             // A task's closure doesn't infer the typed throw, so it's spelled out.
-            do throws(DisplayError) {
+            do throws(ExtensionsModel.RepositoryFailure) {
                 try await model.addRepository(address, signIn: signIn)
                 dismiss()
             } catch {
-                phase = .failed(error)
+                // Straight to the fields the repository asked for.
+                if let asks = error.asks { signIn.kind = asks }
+                phase = .failed(error.error)
             }
         }
     }
@@ -115,8 +120,11 @@ struct RepositorySignInView: View {
                 }
                 RepositorySignInSection(signIn: $signIn, phase: phase)
             }
-            .onChange(of: signIn) {
-                if case .failed = phase { phase = .editing }
+            .onChange(of: signIn) { old, new in
+                // Switching kind, by hand or because the repository asked,
+                // keeps the message, which says what to choose; typing
+                // clears it.
+                if case .failed = phase, old.kind == new.kind { phase = .editing }
             }
             .navigationTitle("Sign-In Details")
             .navigationBarTitleDisplayMode(.inline)
@@ -144,18 +152,19 @@ struct RepositorySignInView: View {
         phase = .connecting
         Task {
             // A task's closure doesn't infer the typed throw, so it's spelled out.
-            do throws(DisplayError) {
+            do throws(ExtensionsModel.RepositoryFailure) {
                 try await model.setSignIn(signIn, of: repository)
                 dismiss()
             } catch {
-                phase = .failed(error)
+                if let asks = error.asks { signIn.kind = asks }
+                phase = .failed(error.error)
             }
         }
     }
 }
 
 /// How the server signs in to a private repository: a token, a user name
-/// and password, or a header of its own.
+/// and password, or headers of its own.
 private struct RepositorySignInSection: View {
     @Binding var signIn: RepositorySignIn
     let phase: AddServerView.Phase
@@ -166,7 +175,7 @@ private struct RepositorySignInSection: View {
                 Text("None").tag(RepositorySignIn.Kind.none)
                 Text("Token").tag(RepositorySignIn.Kind.token)
                 Text("User Name and Password").tag(RepositorySignIn.Kind.password)
-                Text("Header").tag(RepositorySignIn.Kind.header)
+                Text("Headers").tag(RepositorySignIn.Kind.header)
             }
             switch signIn.kind {
             case .none:
@@ -183,10 +192,22 @@ private struct RepositorySignInSection: View {
                 SecureField("Password", text: $signIn.password)
                     .textContentType(.password)
             case .header:
-                TextField("Header Name", text: $signIn.headerName, prompt: Text(verbatim: "X-Api-Key"))
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                SecureField("Value", text: $signIn.headerValue)
+                ForEach($signIn.headers) { $header in
+                    TextField("Header Name", text: $header.name, prompt: Text(verbatim: "X-Api-Key"))
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                    SecureField("Value", text: $header.value)
+                }
+                if signIn.headers.count > 1 {
+                    Button("Remove Last Header", systemImage: "minus.circle", role: .destructive) {
+                        signIn.headers.removeLast()
+                    }
+                }
+                if signIn.headers.count < RepositorySignIn.maxHeaders {
+                    Button("Add Header", systemImage: "plus.circle") {
+                        signIn.headers.append(RepositorySignIn.Header())
+                    }
+                }
             }
         } header: {
             Text("Private Repository")
@@ -194,7 +215,7 @@ private struct RepositorySignInSection: View {
             if case .failed(let error) = phase {
                 FormError(error: error)
             } else {
-                Text("For a private GitHub repository, use a fine-grained token that can only read its contents. The server keeps these and sends them only to the repository's own site.")
+                Text("For a private GitHub repository, use a fine-grained token that can only read its contents. For Cloudflare Access, add two headers: CF-Access-Client-Id and CF-Access-Client-Secret. The server keeps these and sends them only to the repository's own site.")
             }
         }
     }

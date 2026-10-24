@@ -146,9 +146,16 @@ final class ExtensionsModel {
         await load()
     }
 
+    /// Why a repository couldn't be added or signed in to, and the sign-in
+    /// it asked for, so the form can switch to it.
+    struct RepositoryFailure: Error {
+        var error: DisplayError
+        var asks: RepositorySignIn.Kind?
+    }
+
     /// Adds a repository, signing in to it when it's private. Throws why
     /// it couldn't, for the form to show next to what was typed.
-    func addRepository(_ address: String, signIn: RepositorySignIn) async throws(DisplayError) {
+    func addRepository(_ address: String, signIn: RepositorySignIn) async throws(RepositoryFailure) {
         let address = address.trimmingCharacters(in: .whitespacesAndNewlines)
         let credentials = signIn.credentials
         do {
@@ -156,20 +163,20 @@ final class ExtensionsModel {
                 try await client.addRepository(address, credentials: credentials)
             }
         } catch {
-            throw Self.repositoryError(error)
+            throw Self.repositoryFailure(error)
         }
         await load()
     }
 
     /// Replaces a repository's sign-in details, or removes them for `.none`.
-    func setSignIn(_ signIn: RepositorySignIn, of repository: ChekAPI.ExtensionRepository) async throws(DisplayError) {
+    func setSignIn(_ signIn: RepositorySignIn, of repository: ChekAPI.ExtensionRepository) async throws(RepositoryFailure) {
         let credentials = signIn.credentials
         do {
             _ = try await servers.request(account) { client throws(ChekError) in
                 try await client.setCredentials(credentials, of: repository.id)
             }
         } catch {
-            throw Self.repositoryError(error)
+            throw Self.repositoryFailure(error)
         }
         await load()
     }
@@ -184,7 +191,7 @@ final class ExtensionsModel {
                 try await client.removeRepository(repository.id)
             }
         } catch {
-            failure = Self.repositoryError(error)
+            failure = Self.repositoryFailure(error).error
         }
         await load()
     }
@@ -209,6 +216,22 @@ final class ExtensionsModel {
         await load()
     }
 
+    static func repositoryFailure(_ error: ChekError) -> RepositoryFailure {
+        let isPrivate = String(localized: "This repository is private.")
+        return switch error {
+        case .server(status: 422, "repository_needs_token"):
+            RepositoryFailure(error: DisplayError(title: isPrivate, message: String(localized: "Sign in with a token. For a private GitHub repository, use a fine-grained token that can read its contents.")), asks: .token)
+        case .server(status: 422, "repository_needs_password"):
+            RepositoryFailure(error: DisplayError(title: isPrivate, message: String(localized: "Sign in with its user name and password.")), asks: .password)
+        case .server(status: 422, "repository_needs_credentials"):
+            RepositoryFailure(error: DisplayError(title: isPrivate, message: String(localized: "Sign in with the headers its host asks for, such as a Cloudflare Access service token's ID and secret.")), asks: .header)
+        case .server(status: 422, "repository_credentials_refused"):
+            RepositoryFailure(error: DisplayError(title: String(localized: "The repository refused these sign-in details."), message: String(localized: "Check them, and that they can still read it.")))
+        default:
+            RepositoryFailure(error: repositoryError(error))
+        }
+    }
+
     private static func repositoryError(_ error: ChekError) -> DisplayError {
         switch error {
         case .server(status: 403, "demo_account"):
@@ -218,11 +241,11 @@ final class ExtensionsModel {
         case .server(status: 403, _):
             DisplayError(title: String(localized: "Only the server's admin can change this repository."))
         case .server(status: 400, _):
-            DisplayError(title: String(localized: "Check the address and sign-in details."), message: String(localized: "Repositories are served over HTTPS, and a token, user name or header name can't be empty."))
+            DisplayError(title: String(localized: "Check the address and sign-in details."), message: String(localized: "Repositories are served over HTTPS, a password goes in the sign-in details rather than the address, and a token, user name or header name can't be empty."))
         case .server(status: 409, _):
             DisplayError(title: String(localized: "This repository is already added."))
         case .server(status: 502, _):
-            DisplayError(title: String(localized: "The server couldn't read this repository."), message: String(localized: "Check the address. If the repository is private, check that its sign-in details can read it."))
+            DisplayError(title: String(localized: "The server couldn't read this repository."), message: String(localized: "Check the address, and that it holds an index.json."))
         default:
             DisplayError(error)
         }
@@ -251,6 +274,8 @@ final class ExtensionsModel {
             failure = DisplayError(title: String(localized: "The demo account can't change its sources."), message: String(localized: "Connect a server of your own to install sources."))
         } catch .server(status: 403, _) {
             failure = DisplayError(title: String(localized: "The server's admin hasn't allowed this repository."))
+        } catch .server(status: 422, let code?) where code.hasPrefix("repository_") {
+            failure = DisplayError(title: String(localized: "The repository refused the download."), message: String(localized: "Check its sign-in details under Repositories."))
         } catch .server(status: 422, _) {
             failure = DisplayError(title: String(localized: "This extension couldn't be installed."), message: String(localized: "It doesn't match what its repository lists. Try again after the repository updates."))
         } catch .server(status: 502, _) {
@@ -550,8 +575,15 @@ private struct RepositoryRow: View {
 }
 
 nonisolated extension ChekAPI.ExtensionRepository {
-    /// What the repository calls itself, else its site.
+    /// What the repository calls itself, else its site, or `owner/repo`
+    /// for one read from GitHub.
     var displayName: String {
-        name ?? URL(string: url)?.host() ?? url
+        if let name { return name }
+        guard let address = URL(string: url), let host = address.host() else { return url }
+        let path = address.pathComponents.filter { $0 != "/" }
+        if host == "raw.githubusercontent.com", path.count >= 2 {
+            return "\(path[0])/\(path[1])"
+        }
+        return host
     }
 }

@@ -59,9 +59,17 @@ nonisolated extension ChekAPI {
         case basic(username: String, password: String)
         /// Any other header, such as an API key.
         case header(name: String, value: String)
+        /// Several headers, such as a Cloudflare Access service token's ID
+        /// and secret. Servers before Chek's repository format 1 don't take it.
+        case headers([NamedHeader])
+
+        struct NamedHeader: Encodable, Hashable, Sendable {
+            var name: String
+            var value: String
+        }
 
         private enum CodingKeys: String, CodingKey {
-            case type, token, username, password, name, value
+            case type, token, username, password, name, value, headers
         }
 
         func encode(to encoder: any Encoder) throws {
@@ -78,6 +86,9 @@ nonisolated extension ChekAPI {
                 try container.encode("header", forKey: .type)
                 try container.encode(name, forKey: .name)
                 try container.encode(value, forKey: .value)
+            case .headers(let headers):
+                try container.encode("headers", forKey: .type)
+                try container.encode(headers, forKey: .headers)
             }
         }
     }

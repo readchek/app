@@ -16,12 +16,26 @@ nonisolated struct RepositorySignIn: Equatable, Sendable {
         var id: Self { self }
     }
 
+    /// One header of `.header`, in the order typed.
+    struct Header: Equatable, Identifiable, Sendable {
+        let id = UUID()
+        var name = ""
+        var value = ""
+
+        init(name: String = "", value: String = "") {
+            self.name = name
+            self.value = value
+        }
+    }
+
+    /// The most headers the server sends.
+    static let maxHeaders = 8
+
     var kind = Kind.none
     var token = ""
     var username = ""
     var password = ""
-    var headerName = ""
-    var headerValue = ""
+    var headers = [Header()]
 
     /// Whether every field the kind needs is filled in.
     var isComplete: Bool {
@@ -29,7 +43,9 @@ nonisolated struct RepositorySignIn: Equatable, Sendable {
         case .none: true
         case .token: !token.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         case .password: !username.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-        case .header: !headerName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !headerValue.isEmpty
+        case .header:
+            !headers.isEmpty && headers.count <= Self.maxHeaders
+                && headers.allSatisfy { !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !$0.value.isEmpty }
         }
     }
 
@@ -43,7 +59,10 @@ nonisolated struct RepositorySignIn: Equatable, Sendable {
         case .none: nil
         case .token: .bearer(token: trimmed(token))
         case .password: .basic(username: trimmed(username), password: password)
-        case .header: .header(name: trimmed(headerName), value: headerValue)
+        // One header goes as `header`, which every server with private
+        // repositories takes; only several need `headers`.
+        case .header where headers.count == 1: .header(name: trimmed(headers[0].name), value: headers[0].value)
+        case .header: .headers(headers.map { .init(name: trimmed($0.name), value: $0.value) })
         }
     }
 }

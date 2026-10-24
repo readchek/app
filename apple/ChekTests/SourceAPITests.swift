@@ -65,8 +65,38 @@ struct SourceAPITests {
         #expect(RepositorySignIn().credentials == nil)
         #expect(!RepositorySignIn(kind: .token, token: "  ").isComplete)
         #expect(!RepositorySignIn(kind: .password, password: "p").isComplete)
-        #expect(!RepositorySignIn(kind: .header, headerName: "X-Key").isComplete)
-        #expect(RepositorySignIn(kind: .header, headerName: "X-Key", headerValue: "v").isComplete)
+        #expect(!RepositorySignIn(kind: .header, headers: [.init(name: "X-Key")]).isComplete)
+        #expect(RepositorySignIn(kind: .header, headers: [.init(name: "X-Key", value: "v")]).isComplete)
+        #expect(!RepositorySignIn(kind: .header, headers: []).isComplete)
+        #expect(!RepositorySignIn(kind: .header, headers: [.init(name: "A", value: "v"), .init(value: "w")]).isComplete)
+    }
+
+    @Test func oneHeaderIsSentAsHeaderAndSeveralAsHeaders() throws {
+        let one = RepositorySignIn(kind: .header, headers: [.init(name: " X-Key ", value: "v")])
+        #expect(one.credentials == .header(name: "X-Key", value: "v"))
+
+        let access = RepositorySignIn(kind: .header, headers: [
+            .init(name: "CF-Access-Client-Id", value: "id"),
+            .init(name: "CF-Access-Client-Secret", value: "secret"),
+        ])
+        let json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(access.credentials)) as? [String: Any]
+        #expect(json?["type"] as? String == "headers")
+        let headers = json?["headers"] as? [[String: String]]
+        #expect(headers == [["name": "CF-Access-Client-Id", "value": "id"], ["name": "CF-Access-Client-Secret", "value": "secret"]])
+    }
+
+    @MainActor @Test func repositoryFailuresAskForTheSignInTheyNeed() {
+        #expect(ExtensionsModel.repositoryFailure(.server(status: 422, code: "repository_needs_token")).asks == .token)
+        #expect(ExtensionsModel.repositoryFailure(.server(status: 422, code: "repository_needs_password")).asks == .password)
+        #expect(ExtensionsModel.repositoryFailure(.server(status: 422, code: "repository_needs_credentials")).asks == .header)
+        #expect(ExtensionsModel.repositoryFailure(.server(status: 422, code: "repository_credentials_refused")).asks == nil)
+        #expect(ExtensionsModel.repositoryFailure(.server(status: 409, code: "repository_exists")).asks == nil)
+    }
+
+    @Test func githubRepositoriesAreNamedByOwnerAndRepo() throws {
+        let json = Data(#"{"id":3,"url":"https://raw.githubusercontent.com/arya/sources/HEAD/index.json","name":null,"allowListed":false,"usable":true,"extensionCount":1}"#.utf8)
+        let repository = try JSONDecoder().decode(ChekAPI.ExtensionRepository.self, from: json)
+        #expect(repository.displayName == "arya/sources")
     }
 
     @Test func usersDecodeTheirRole() throws {
