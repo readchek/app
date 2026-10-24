@@ -204,9 +204,9 @@ private struct SourceSeriesContent: View {
             Section {
                 switch chapters.phase {
                 case .idle, .loading:
-                    ProgressView()
-                        .frame(maxWidth: .infinity)
-                        .listRowSeparator(.hidden)
+                    ForEach(0..<8, id: \.self) { _ in
+                        PlaceholderChapterRow()
+                    }
                 case .failed(let failure):
                     // Under the header, not over it, so the series still reads.
                     FailureState(error: failure) {

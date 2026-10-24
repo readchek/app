@@ -183,13 +183,27 @@ private struct SeriesCell: View {
 
 /// The loading, failed and empty states shared by paged screens.
 struct PagedListOverlay: View {
+    /// What stands in while the first page loads.
+    enum Placeholder {
+        /// Grey covers where the grid's will be, for a grid page.
+        case grid
+        /// A spinner, for a page with more than the list on it.
+        case spinner
+    }
+
     let phase: PagedListPhase
     let isEmpty: Bool
     let emptyTitle: LocalizedStringKey
+    var placeholder = Placeholder.grid
     let retry: () -> Void
 
     var body: some View {
         switch phase {
+        case .loading where placeholder == .grid:
+            ScrollView {
+                PlaceholderGrid()
+            }
+            .scrollDisabled(true)
         case .loading:
             LoadingState()
         case .failed(let error) where isEmpty:

@@ -208,7 +208,17 @@ private struct ServerHomeContent: View {
         } else {
             switch model?.state ?? .idle {
             case .idle, .loading:
-                LoadingState()
+                // Shelves where the library's will be, so nothing jumps
+                // when they arrive.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
+                        ForEach(0..<2, id: \.self) { _ in
+                            PlaceholderShelf()
+                        }
+                    }
+                    .padding(.vertical, 12)
+                }
+                .scrollDisabled(true)
             case .failed(let error):
                 FailureState(error: error) {
                     await model?.load()

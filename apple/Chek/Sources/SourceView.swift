@@ -23,7 +23,10 @@ struct SourceView: View {
             } else if let series {
                 SourceSeriesGrid(account: account, source: source.id, series: series, isSearching: !submittedQuery.isEmpty)
             } else {
-                LoadingState()
+                ScrollView {
+                    PlaceholderGrid()
+                }
+                .scrollDisabled(true)
             }
         }
         .navigationTitle(source.name)

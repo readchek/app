@@ -7,16 +7,35 @@ struct SearchView: View {
     @Environment(ServerStore.self) private var servers
     @State private var text = ""
     @State private var serverResults = ServerSearchModel()
+    @State private var recents = RecentSearches()
 
     var body: some View {
         @Bindable var router = router
         NavigationStack(path: $router.searchPath) {
-            SearchResults(text: text, serverResults: serverResults)
-                .demoBanner()
-                .navigationTitle("Search")
-                .routeDestinations()
+            Group {
+                if text.trimmingCharacters(in: .whitespaces).isEmpty {
+                    RecentSearchesView(recents: recents) { query in
+                        text = query
+                    }
+                } else {
+                    SearchResults(text: text, serverResults: serverResults, servers: servers)
+                }
+            }
+            .demoBanner()
+            .navigationTitle("Search")
+            .routeDestinations()
         }
         .searchable(text: $text, prompt: Text("Books, Comics, and Authors"))
+        .onSubmit(of: .search) {
+            recents.add(text)
+        }
+        .onChange(of: router.searchPath.count) { old, new in
+            // Opening a result is as good as pressing Search: it was the
+            // search you meant.
+            if new > old {
+                recents.add(text)
+            }
+        }
         .task(id: text) {
             // Waiting for a pause in typing keeps servers from getting a
             // request per keystroke. A new keystroke cancels the wait.
@@ -51,6 +70,8 @@ final class ServerSearchModel {
 
     private(set) var results: [Results] = []
     private(set) var sourceResults: [SourceResults] = []
+    /// What the results are for.
+    @ObservationIgnored private var query = ""
     @ObservationIgnored private var generation = 0
     /// Each server's installed sources, asked for once rather than with
     /// every search.
@@ -64,6 +85,7 @@ final class ServerSearchModel {
         let current = generation
         let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
         let accounts = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
+        self.query = query
         guard !query.isEmpty else {
             results = []
             sourceResults = []
@@ -95,15 +117,7 @@ final class ServerSearchModel {
             let account = results.account
             let source = results.source.id
             return Task {
-                let state: LoadState<[ChekAPI.SourceSeriesItem]>
-                do {
-                    let page = try await servers.request(account) { client throws(ChekError) in
-                        try await client.search(source: source, query: query, page: 1)
-                    }
-                    state = .loaded(page.items)
-                } catch {
-                    state = .failed(DisplayError(error))
-                }
+                guard let state = await Self.searchSource(source, query: query, account: account, servers: servers) else { return }
                 guard current == generation, let index = sourceResults.firstIndex(where: { $0.id == id }) else { return }
                 sourceResults[index].state = state
             }
@@ -112,15 +126,7 @@ final class ServerSearchModel {
         let tasks = accounts.map { account in
             let id = account.id
             return Task {
-                let state: LoadState<[RemotePublication]>
-                do {
-                    let page = try await servers.request(id) { client throws(ChekError) in
-                        try await client.search(query, cursor: nil)
-                    }
-                    state = .loaded(page.items.map { RemotePublication($0, server: id) })
-                } catch {
-                    state = .failed(DisplayError(error))
-                }
+                guard let state = await Self.searchServer(id, query: query, servers: servers) else { return }
                 guard current == generation, let index = results.firstIndex(where: { $0.account == id }) else { return }
                 results[index].state = state
             }
@@ -143,50 +149,146 @@ final class ServerSearchModel {
     }
 }
 
+extension ServerSearchModel {
+    /// Searches one shared library again, after it failed.
+    func retry(server account: UUID, servers: ServerStore) async {
+        guard let index = results.firstIndex(where: { $0.account == account }) else { return }
+        let current = generation
+        results[index].state = .loading
+        guard let state = await Self.searchServer(account, query: query, servers: servers),
+              current == generation, let index = results.firstIndex(where: { $0.account == account }) else { return }
+        results[index].state = state
+    }
+
+    /// Searches one site again, after it failed.
+    func retry(source id: String, servers: ServerStore) async {
+        guard let index = sourceResults.firstIndex(where: { $0.id == id }) else { return }
+        let current = generation
+        let target = sourceResults[index]
+        sourceResults[index].state = .loading
+        guard let state = await Self.searchSource(target.source.id, query: query, account: target.account, servers: servers),
+              current == generation, let index = sourceResults.firstIndex(where: { $0.id == id }) else { return }
+        sourceResults[index].state = state
+    }
+
+    /// One library's results, or nil when the search was given up because
+    /// a newer one replaced it, which isn't a failure to show.
+    static func searchServer(_ id: UUID, query: String, servers: ServerStore) async -> LoadState<[RemotePublication]>? {
+        do {
+            let page = try await servers.request(id) { client throws(ChekError) in
+                try await client.search(query, cursor: nil)
+            }
+            return .loaded(page.items.map { RemotePublication($0, server: id) })
+        } catch {
+            return Task.isCancelled || error.isCancellation ? nil : .failed(DisplayError(error))
+        }
+    }
+
+    /// One site's results, or nil when the search was given up.
+    static func searchSource(_ source: String, query: String, account: UUID, servers: ServerStore) async -> LoadState<[ChekAPI.SourceSeriesItem]>? {
+        do {
+            let page = try await servers.request(account) { client throws(ChekError) in
+                try await client.search(source: source, query: query, page: 1)
+            }
+            return .loaded(page.items)
+        } catch {
+            return Task.isCancelled || error.isCancellation ? nil : .failed(DisplayError(error))
+        }
+    }
+}
+
+extension ChekError {
+    /// A request stopped because nobody wants its answer any more, as when
+    /// typing on replaces a search.
+    var isCancellation: Bool {
+        if case .offline(let error) = self { error.code == .cancelled } else { false }
+    }
+}
+
 private struct SearchResults: View {
     let text: String
     let serverResults: ServerSearchModel
+    let servers: ServerStore
     @Query private var books: [Book]
+    /// One book at most, only to know whether the library has any, so
+    /// its section shows even when nothing in it matches.
+    @Query private var anyBook: [Book]
 
-    init(text: String, serverResults: ServerSearchModel) {
+    init(text: String, serverResults: ServerSearchModel, servers: ServerStore) {
         self.text = text
         self.serverResults = serverResults
+        self.servers = servers
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         var descriptor = FetchDescriptor<Book>(
             predicate: Book.predicate(kind: nil, search: trimmed),
             sortBy: [SortDescriptor(\.title, comparator: .localizedStandard)]
         )
-        // An empty search would list the whole library.
-        descriptor.fetchLimit = trimmed.isEmpty ? 0 : 50
+        descriptor.fetchLimit = 50
         _books = Query(descriptor)
+        var any = FetchDescriptor<Book>()
+        any.fetchLimit = 1
+        _anyBook = Query(any)
     }
 
     var body: some View {
-        if text.trimmingCharacters(in: .whitespaces).isEmpty {
-            // Nothing under the field until there's something to find, as
-            // in Books: the field's prompt already says what it searches.
-            Color.clear
-        } else if books.isEmpty && serverResults.isEmpty {
+        if anyBook.isEmpty && serverResults.results.isEmpty && serverResults.sourceResults.isEmpty {
+            // Nowhere else to look, so the library's answer is the answer.
             ContentUnavailableView.search(text: text)
         } else {
+            // Every place keeps its section, in the same order, whether
+            // it's still looking, found nothing or failed, so the page
+            // doesn't jump as answers arrive.
             List {
-                if !books.isEmpty {
+                if !anyBook.isEmpty {
                     Section("Library") {
-                        ForEach(books) { book in
-                            SearchBookRow(book: book)
+                        if books.isEmpty {
+                            NoMatchesRow()
+                        } else {
+                            ForEach(books) { book in
+                                SearchBookRow(book: book)
+                            }
                         }
                     }
                 }
-                // What was found comes first; a server that couldn't be
-                // reached says so after it, not above it.
-                ForEach(serverResults.results.sorted { !$0.state.isFailed && $1.state.isFailed }) { results in
-                    ServerResultsSection(results: results)
+                ForEach(serverResults.results) { results in
+                    ServerResultsSection(results: results) {
+                        await serverResults.retry(server: results.account, servers: servers)
+                    }
                 }
-                ForEach(serverResults.sourceResults.sorted { !$0.state.isFailed && $1.state.isFailed }) { results in
-                    SourceResultsSection(results: results)
+                ForEach(serverResults.sourceResults) { results in
+                    SourceResultsSection(results: results) {
+                        await serverResults.retry(source: results.id, servers: servers)
+                    }
                 }
             }
             .listStyle(.plain)
+            .scrollDismissesKeyboard(.immediately)
+        }
+    }
+}
+
+/// A section that looked and found nothing.
+private struct NoMatchesRow: View {
+    var body: some View {
+        Text("No Matches")
+            .foregroundStyle(.secondary)
+    }
+}
+
+/// A section whose search failed, with the way to try it again.
+private struct SectionFailureRow: View {
+    let error: DisplayError
+    let retry: () async -> Void
+
+    var body: some View {
+        HStack {
+            Label(error.title, systemImage: "wifi.exclamationmark")
+                .foregroundStyle(.secondary)
+            Spacer()
+            Button("Try Again") {
+                Task { await retry() }
+            }
+            .buttonStyle(.borderless)
         }
     }
 }
@@ -206,49 +308,33 @@ private struct SearchBookRow: View {
 
 private struct ServerResultsSection: View {
     let results: ServerSearchModel.Results
+    let retry: () async -> Void
     @Query private var states: [RemoteReadingState]
     @Environment(ServerStore.self) private var servers
 
-    init(results: ServerSearchModel.Results) {
+    init(results: ServerSearchModel.Results, retry: @escaping () async -> Void) {
         self.results = results
+        self.retry = retry
         _states = Query(filter: RemoteReadingState.onServer(results.account))
     }
 
     var body: some View {
-        switch results.state {
-        case .idle:
-            EmptyView()
-        case .loading:
-            Section(results.name) {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            }
-        case .failed(let error):
-            Section(results.name) {
-                Label(error.title, systemImage: "wifi.exclamationmark")
-                    .foregroundStyle(.secondary)
-            }
-        case .loaded(let publications):
-            if !publications.isEmpty {
+        Section(results.name) {
+            switch results.state {
+            case .idle, .loading:
+                ForEach(0..<3, id: \.self) { _ in
+                    PlaceholderRow()
+                }
+            case .failed(let error):
+                SectionFailureRow(error: error, retry: retry)
+            case .loaded(let publications) where publications.isEmpty:
+                NoMatchesRow()
+            case .loaded(let publications):
                 let statuses = ReadingStatuses(states)
-                Section(results.name) {
-                    ForEach(publications) { publication in
-                        PublicationRow(item: servers.item(publication, status: statuses[publication.id]))
-                    }
+                ForEach(publications) { publication in
+                    PublicationRow(item: servers.item(publication, status: statuses[publication.id]))
                 }
             }
-        }
-    }
-}
-
-extension ServerSearchModel {
-    /// Whether no server found anything, counting ones still searching as
-    /// not empty so the "no results" screen doesn't flash.
-    var isEmpty: Bool {
-        results.allSatisfy { results in
-            if case .loaded(let items) = results.state { items.isEmpty } else { false }
-        } && sourceResults.allSatisfy { results in
-            if case .loaded(let items) = results.state { items.isEmpty } else { false }
         }
     }
 }
@@ -257,24 +343,26 @@ extension ServerSearchModel {
 /// since there are often many and covers tell them apart fastest.
 private struct SourceResultsSection: View {
     let results: ServerSearchModel.SourceResults
+    let retry: () async -> Void
 
     var body: some View {
-        switch results.state {
-        case .idle:
-            EmptyView()
-        case .loading:
-            Section(header) {
-                ProgressView()
-                    .frame(maxWidth: .infinity)
-            }
-        case .failed(let error):
-            Section(header) {
-                Label(error.title, systemImage: "wifi.exclamationmark")
-                    .foregroundStyle(.secondary)
-            }
-        case .loaded(let series):
-            if !series.isEmpty {
-                Section(header) {
+        Section(header) {
+            Group {
+                switch results.state {
+                case .idle, .loading:
+                    PlaceholderShelf()
+                case .failed(let error):
+                    // The shelf's room is kept, with why it's empty.
+                    EmptyShelf {
+                        SectionFailureRow(error: error, retry: retry)
+                            .padding(.horizontal, Metrics.margin)
+                    }
+                case .loaded(let series) where series.isEmpty:
+                    EmptyShelf {
+                        Text("No Series Found")
+                            .foregroundStyle(.secondary)
+                    }
+                case .loaded(let series):
                     ScrollView(.horizontal) {
                         LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
                             ForEach(series) { item in
@@ -283,20 +371,34 @@ private struct SourceResultsSection: View {
                             }
                         }
                         .scrollTargetLayout()
-                        .padding(.vertical, 4)
                     }
                     // The row spans the screen and the shelf keeps its own
                     // margins, so its cells are the size of a grid's.
                     .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
                     .scrollIndicators(.hidden)
                     .scrollTargetBehavior(.viewAligned)
-                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
                 }
             }
+            .padding(.vertical, 4)
+            .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
         }
     }
 
     private var header: String {
         "\(results.source.name) · \(results.serverName)"
+    }
+}
+
+/// A shelf with nothing on it: faint cover outlines holding the shelf's
+/// height, so the page doesn't shift, with what to say over them.
+private struct EmptyShelf<Message: View>: View {
+    @ViewBuilder let message: Message
+
+    var body: some View {
+        PlaceholderShelf(isLoading: false)
+            .opacity(0.35)
+            .overlay {
+                message
+            }
     }
 }
