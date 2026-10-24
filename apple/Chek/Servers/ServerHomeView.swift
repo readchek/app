@@ -23,7 +23,7 @@ struct ServerHomeView: View {
                     }
                     .serverEditing($editing)
             } else {
-                ContentUnavailableView("Server Removed", systemImage: "server.rack")
+                EmptyState("Server Removed", systemImage: "server.rack")
             }
         }
         // Signing back in loads the home again, rather than leaving what
@@ -183,15 +183,14 @@ private struct ServerHomeContent: View {
             let kept = downloads.comics(on: account.id)
             ScrollView {
                 VStack(spacing: Metrics.sectionSpacing) {
-                    ContentUnavailableView {
-                        Label("Signed Out", systemImage: "person.crop.circle.badge.exclamationmark")
-                    } description: {
-                        Text("Sign in to \(account.name) again to read from it.")
-                    } actions: {
+                    EmptyState(
+                        "Signed Out",
+                        systemImage: "person.crop.circle.badge.exclamationmark",
+                        description: Text("Sign in to \(account.name) again to read from it.")
+                    ) {
                         Button("Sign In") {
                             router.sheet = .signIn(account.id)
                         }
-                        .buttonStyle(.borderedProminent)
                     }
                     .frame(minHeight: kept.isEmpty ? 480 : 320)
                     if !kept.isEmpty {
@@ -206,17 +205,8 @@ private struct ServerHomeContent: View {
                 ProgressView()
                     .controlSize(.large)
             case .failed(let error):
-                ContentUnavailableView {
-                    Label(error.title, systemImage: "wifi.exclamationmark")
-                } description: {
-                    if let message = error.message {
-                        Text(message)
-                    }
-                } actions: {
-                    Button("Try Again") {
-                        Task { await model?.load() }
-                    }
-                    .buttonStyle(.bordered)
+                FailureState(error: error) {
+                    await model?.load()
                 }
             case .loaded(let content):
                 let statuses = ReadingStatuses(states)

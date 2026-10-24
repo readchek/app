@@ -163,7 +163,7 @@ private struct SearchResults: View {
 
     var body: some View {
         if text.trimmingCharacters(in: .whitespaces).isEmpty {
-            ContentUnavailableView("Search Everything", systemImage: "magnifyingglass", description: Text("Find books and comics on this device, your servers and their sources by title, series or author."))
+            EmptyState("Search Everything", systemImage: "magnifyingglass", description: Text("Find books and comics on this device, your servers and their sources by title, series or author."))
         } else if books.isEmpty && serverResults.isEmpty {
             ContentUnavailableView.search(text: text)
         } else {

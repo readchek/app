@@ -200,18 +200,11 @@ struct PagedListOverlay: View {
             ProgressView()
                 .controlSize(.large)
         case .failed(let error) where isEmpty:
-            ContentUnavailableView {
-                Label(error.title, systemImage: "wifi.exclamationmark")
-            } description: {
-                if let message = error.message {
-                    Text(message)
-                }
-            } actions: {
-                Button("Try Again", action: retry)
-                    .buttonStyle(.bordered)
+            FailureState(error: error) {
+                retry()
             }
         case .complete where isEmpty:
-            ContentUnavailableView(emptyTitle, systemImage: "books.vertical")
+            EmptyState(emptyTitle, systemImage: "books.vertical")
         default:
             EmptyView()
         }

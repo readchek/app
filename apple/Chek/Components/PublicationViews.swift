@@ -194,6 +194,7 @@ struct Shelf: View {
     /// Larger covers with titles, for what you're reading.
     var isFeatured = false
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var bookToRemove: Book?
 
     var body: some View {
         let regular = sizeClass == .regular
@@ -204,6 +205,13 @@ struct Shelf: View {
                     ForEach(items) { item in
                         PublicationCell(item: item)
                             .frame(width: isFeatured ? Metrics.featuredCoverWidth(regular: regular) : Metrics.shelfCoverWidth(regular: regular))
+                            // The same menu as in Library, so a book can be
+                            // finished, shared or removed where you see it.
+                            .contextMenu {
+                                if case .local(let book) = item.source {
+                                    BookActions(book: book, bookToRemove: $bookToRemove)
+                                }
+                            }
                     }
                 }
                 .scrollTargetLayout()
@@ -213,6 +221,7 @@ struct Shelf: View {
             .scrollTargetBehavior(.viewAligned)
             .scrollClipDisabled()
         }
+        .removeBookConfirmation(book: $bookToRemove)
     }
 }
 

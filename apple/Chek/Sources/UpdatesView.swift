@@ -41,20 +41,21 @@ struct UpdatesView: View {
                 ProgressView()
                     .controlSize(.large)
             case .failed(let error):
-                ContentUnavailableView(error.title, systemImage: "exclamationmark.triangle", description: error.message.map(Text.init))
+                FailureState(error: error) {
+                    await load()
+                }
             case .loaded(let entries) where entries.isEmpty:
-                ContentUnavailableView {
-                    Label("Nothing New", systemImage: "checkmark.circle")
-                } description: {
-                    Text(follows.isEmpty
+                EmptyState(
+                    "Nothing New",
+                    systemImage: "checkmark.circle",
+                    description: Text(follows.isEmpty
                         ? "Follow a series from a source and its new chapters collect here."
                         : "You've seen every chapter in the series you follow. Chek checks for more a few times a day.")
-                } actions: {
+                ) {
                     if !follows.isEmpty {
                         Button(followStore.isChecking ? "Checking…" : "Check Now") {
                             Task { await followStore.checkForNewChapters(force: true) }
                         }
-                        .buttonStyle(.bordered)
                         .disabled(followStore.isChecking)
                     }
                 }

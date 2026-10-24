@@ -33,7 +33,7 @@ struct ChaptersPanel: View {
                 case .idle, .loading:
                     ProgressView()
                 case .failed(let error):
-                    ContentUnavailableView(error.title, systemImage: "wifi.exclamationmark", description: error.message.map(Text.init))
+                    FailureState(error: error)
                 case .loaded(let chapters):
                     ScrollViewReader { proxy in
                         List(chapters) { item in

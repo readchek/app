@@ -14,17 +14,8 @@ struct ExtensionsView: View {
                 ProgressView()
                     .controlSize(.large)
             case .failed(let error):
-                ContentUnavailableView {
-                    Label(error.title, systemImage: "wifi.exclamationmark")
-                } description: {
-                    if let message = error.message {
-                        Text(message)
-                    }
-                } actions: {
-                    Button("Try Again") {
-                        Task { await model?.load() }
-                    }
-                    .buttonStyle(.bordered)
+                FailureState(error: error) {
+                    await model?.load()
                 }
             case .loaded(let content):
                 if let model {
@@ -314,7 +305,7 @@ private struct ExtensionsList: View {
             }
             if content.available.isEmpty, orphans.isEmpty {
                 Section {
-                    ContentUnavailableView(
+                    EmptyState(
                         "No Extensions",
                         systemImage: "puzzlepiece.extension",
                         description: Text("The server's repositories don't offer any yet.")

@@ -13,15 +13,15 @@ struct BrowseView: View {
         NavigationStack(path: $router.browsePath) {
             Group {
                 if accounts.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Servers", systemImage: "server.rack")
-                    } description: {
-                        Text("Connect a Chek server to read from it without downloading first. Your place follows you between devices.")
-                    } actions: {
+                    EmptyState(
+                        "No Servers Yet",
+                        systemImage: "server.rack",
+                        description: Text("Connect a Chek server to read from it without downloading first. Your place follows you between devices.")
+                    ) {
                         Button("Connect a Server") {
                             router.sheet = .addServer
                         }
-                        .buttonStyle(.borderedProminent)
+                    } secondary: {
                         TryDemoButton()
                     }
                 } else {

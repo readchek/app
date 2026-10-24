@@ -267,38 +267,42 @@ private struct ReaderFailureView: View {
         return false
     }
 
+    private var title: String {
+        if let server = signedOutServer {
+            String(localized: "You're signed out of \(server.name).")
+        } else if isDamagedLocalFile {
+            String(localized: "This File Can't Be Opened")
+        } else {
+            error.title
+        }
+    }
+
+    private var description: Text? {
+        if signedOutServer != nil {
+            Text("Sign in again to keep reading from it.")
+        } else if isDamagedLocalFile {
+            Text("It may be damaged or not a format Chek reads. Removing it from the library leaves the original where you got it.")
+        } else {
+            error.message.map { Text($0) }
+        }
+    }
+
     var body: some View {
-        ContentUnavailableView {
-            if let server = signedOutServer {
-                Label("You're signed out of \(server.name).", systemImage: "person.crop.circle.badge.xmark")
-            } else {
-                Label(isDamagedLocalFile ? String(localized: "This File Can't Be Opened") : error.title, systemImage: "book.closed")
-            }
-        } description: {
-            if signedOutServer != nil {
-                Text("Sign in again to keep reading from it.")
-            } else if isDamagedLocalFile {
-                Text("It may be damaged or not a format Chek reads. Removing it from the library leaves the original where you got it.")
-            } else if let message = error.message {
-                Text(message)
-            }
-        } actions: {
+        EmptyState(verbatim: title, systemImage: signedOutServer == nil ? "book.closed" : "person.crop.circle.badge.xmark", description: description) {
             if isDamagedLocalFile {
                 Button("Remove from Library", role: .destructive) {
                     isConfirmingRemoval = true
                 }
-                .buttonStyle(.bordered)
             } else if signedOutServer != nil {
                 Button("Sign In") {
                     session.isSigningIn = true
                 }
-                .buttonStyle(.borderedProminent)
             } else {
                 Button("Try Again") {
                     Task { await session.open() }
                 }
-                .buttonStyle(.borderedProminent)
             }
+        } secondary: {
             Button("Close") {
                 router.closeReader()
             }

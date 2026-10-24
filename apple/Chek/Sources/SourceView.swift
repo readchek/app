@@ -15,7 +15,7 @@ struct SourceView: View {
     var body: some View {
         Group {
             if !source.usable {
-                ContentUnavailableView(
+                EmptyState(
                     "Not Allowed on This Server",
                     systemImage: "lock",
                     description: Text("This source comes from a repository the server's admin hasn't allowed.")

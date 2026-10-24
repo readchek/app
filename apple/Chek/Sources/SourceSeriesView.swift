@@ -20,17 +20,8 @@ struct SourceSeriesView: View {
                 ProgressView()
                     .controlSize(.large)
             case .failed(let error):
-                ContentUnavailableView {
-                    Label(error.title, systemImage: "wifi.exclamationmark")
-                } description: {
-                    if let message = error.message {
-                        Text(message)
-                    }
-                } actions: {
-                    Button("Try Again") {
-                        Task { await model?.load() }
-                    }
-                    .buttonStyle(.bordered)
+                FailureState(error: error) {
+                    await model?.load()
                 }
             case .loaded(let content):
                 SourceSeriesContent(account: account, source: source, content: content, staleError: model?.staleError) {
@@ -211,21 +202,12 @@ private struct SourceSeriesContent: View {
             Section {
                 if let failure = content.chaptersFailure {
                     // Under the header, not over it, so the series still reads.
-                    ContentUnavailableView {
-                        Label(failure.title, systemImage: "wifi.exclamationmark")
-                    } description: {
-                        if let message = failure.message {
-                            Text(message)
-                        }
-                    } actions: {
-                        Button("Try Again") {
-                            Task { await refresh() }
-                        }
-                        .buttonStyle(.bordered)
+                    FailureState(error: failure) {
+                        await refresh()
                     }
                     .listRowSeparator(.hidden)
                 } else if content.chapters.isEmpty {
-                    ContentUnavailableView(
+                    EmptyState(
                         "No Chapters to Read",
                         systemImage: "books.vertical",
                         description: Text("This source has no chapters it can show for this series. Licensed series are often only on the publisher's own site.")

@@ -133,9 +133,9 @@ private struct LibraryContent: View {
         Group {
             if books.isEmpty {
                 if filter == .finished {
-                    ContentUnavailableView("Nothing Finished Yet", systemImage: "checkmark.circle", description: Text("Books you finish, or mark as finished, collect here."))
+                    EmptyState("Nothing Finished Yet", systemImage: "checkmark.circle", description: Text("Books you finish, or mark as finished, collect here."))
                 } else if filter != .all {
-                    ContentUnavailableView(filter == .comics ? "No Comics" : "No Books", systemImage: "books.vertical")
+                    EmptyState(filter == .comics ? "No Comics" : "No Books", systemImage: "books.vertical")
                 } else {
                     EmptyLibraryView()
                 }
@@ -300,15 +300,14 @@ private struct EmptyLibraryView: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        ContentUnavailableView {
-            Label("No Books Yet", systemImage: "books.vertical")
-        } description: {
-            Text("Add EPUB, PDF, comics, MOBI, FictionBook, text and Markdown files from Files, or drop them here. They stay on this device.")
-        } actions: {
+        EmptyState(
+            "No Books Yet",
+            systemImage: "books.vertical",
+            description: Text("Add books and comics from Files, or drop them here. They stay on this device.")
+        ) {
             Button("Add Books") {
                 router.addBooks()
             }
-            .buttonStyle(.borderedProminent)
         }
     }
 }

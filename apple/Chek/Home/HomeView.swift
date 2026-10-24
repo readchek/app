@@ -233,25 +233,29 @@ nonisolated private struct HomeSnapshot: Codable {
     }
 }
 
-/// Shown before there's anything to read, with the two ways to start.
 /// Reading Now when every server is signed out and nothing else is here.
 private struct SignedOutHomeView: View {
     let accounts: [ServerAccount]
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        ContentUnavailableView {
-            Label("Signed Out", systemImage: "person.crop.circle.badge.exclamationmark")
-        } description: {
-            Text(accounts.count == 1
+        EmptyState(
+            "Signed Out",
+            systemImage: "person.crop.circle.badge.exclamationmark",
+            description: Text(accounts.count == 1
                 ? "Sign in to \(accounts[0].name) again to pick up where you left off."
                 : "Sign in to your servers again to pick up where you left off.")
-        } actions: {
-            ForEach(accounts) { account in
+        ) {
+            ForEach(accounts.prefix(1)) { account in
                 Button(accounts.count == 1 ? String(localized: "Sign In") : String(localized: "Sign In to \(account.name)")) {
                     router.sheet = .signIn(account.id)
                 }
-                .buttonStyle(.borderedProminent)
+            }
+        } secondary: {
+            ForEach(accounts.dropFirst()) { account in
+                Button("Sign In to \(account.name)") {
+                    router.sheet = .signIn(account.id)
+                }
             }
             Button("Add Books") {
                 router.addBooks()
@@ -260,37 +264,26 @@ private struct SignedOutHomeView: View {
     }
 }
 
+/// Shown before there's anything to read. Your own files are the one path
+/// that always works, so they come first; servers are for people who
+/// already run one, and the demo is a look around.
 private struct HomeEmptyView: View {
     @Environment(AppRouter.self) private var router
 
     var body: some View {
-        ContentUnavailableView {
-            Label("Nothing to Read Yet", systemImage: "books.vertical")
-        } description: {
-            Text("Add books and comics from Files to start reading. No account or server needed.")
-        } actions: {
-            // Your own files are the one path that always works, so it's
-            // the only prominent choice. Servers are for people who already
-            // run one, and the demo is a look around, so both stay quiet.
-            VStack(spacing: 20) {
-                Button {
-                    router.addBooks()
-                } label: {
-                    Text("Add Books")
-                        .frame(minWidth: 180)
-                }
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
-                VStack(spacing: 6) {
-                    Button("Connect a Server") {
-                        router.sheet = .addServer
-                    }
-                    TryDemoButton()
-                }
-                .buttonStyle(.borderless)
-                .labelStyle(.titleOnly)
-                .font(.subheadline)
+        EmptyState(
+            "Nothing to Read Yet",
+            systemImage: "books.vertical",
+            description: Text("Add books and comics from Files to start reading. No account or server needed.")
+        ) {
+            Button("Add Books") {
+                router.addBooks()
             }
+        } secondary: {
+            Button("Connect a Server") {
+                router.sheet = .addServer
+            }
+            TryDemoButton()
         }
     }
 }
