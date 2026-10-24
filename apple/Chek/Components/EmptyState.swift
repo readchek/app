@@ -42,12 +42,21 @@ struct EmptyState<Action: View, Secondary: View>: View {
         self.secondary = secondary()
     }
 
+    /// Symbols whose weight sits off their frame's center, nudged so the
+    /// heavy part lines up with the title under it. The magnifying glass's
+    /// handle trails down and to the right, so its lens, which the eye
+    /// reads as the symbol, sits up and to the left.
+    private static var opticalOffsets: [String: CGSize] {
+        ["magnifyingglass": CGSize(width: 3.5, height: 2)]
+    }
+
     var body: some View {
         ContentUnavailableView {
             Label {
                 title
             } icon: {
                 Image(systemName: systemImage)
+                    .offset(Self.opticalOffsets[systemImage] ?? .zero)
             }
         } description: {
             if let description {
