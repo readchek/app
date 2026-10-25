@@ -1,11 +1,12 @@
 import SwiftData
 import SwiftUI
 
-/// Looks through everything at once.
+/// Looks through everything at once, or through one place.
 struct SearchView: View {
     @Environment(AppRouter.self) private var router
     @Environment(ServerStore.self) private var servers
     @State private var text = ""
+    @State private var filters = SearchFilters()
     @State private var serverResults = ServerSearchModel()
     @State private var recents = RecentSearches()
 
@@ -18,14 +19,20 @@ struct SearchView: View {
                         text = query
                     }
                 } else {
-                    SearchResults(text: text, serverResults: serverResults, servers: servers)
+                    SearchResults(text: text, filters: $filters, serverResults: serverResults, servers: servers)
+                        .environment(\.searchSites, serverResults.sites)
                 }
             }
             .demoBanner()
             .navigationTitle("Search")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    SearchFilterMenu(filters: $filters, sites: serverResults.sites)
+                }
+            }
             .routeDestinations()
         }
-        .searchable(text: $text, prompt: Text("Books, Comics, and Authors"))
+        .searchable(text: $text, prompt: prompt)
         .onSubmit(of: .search) {
             recents.add(text)
         }
@@ -36,302 +43,265 @@ struct SearchView: View {
                 recents.add(text)
             }
         }
+        .task {
+            // The sites are listed early so the filter menu can offer them.
+            await serverResults.loadSites(servers: servers)
+        }
         // Searched again when the content ratings change, since they
         // decide which series the sites answer with.
-        .task(id: [text, String(servers.contentRatingsRevision)]) {
+        .task(id: SearchRequest(text: text, filters: filters, revision: servers.contentRatingsRevision)) {
             // Waiting for a pause in typing keeps servers from getting a
             // request per keystroke. A new keystroke cancels the wait.
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
-            await serverResults.search(text, servers: servers)
+            await serverResults.search(text, filters: filters, servers: servers)
+        }
+    }
+
+    /// Names the one place being searched, so it's plain where the
+    /// results come from.
+    private var prompt: Text {
+        switch filters.scope {
+        case .everywhere:
+            Text("Books, Comics, and Authors")
+        case .library:
+            Text("Search Your Library")
+        case .server(let id):
+            Text("Search \(servers.accounts().first { $0.id == id }?.name ?? "")")
+        case .source(let server, let id):
+            Text("Search \(serverResults.sites[server]?.first { $0.id == id }?.name ?? "")")
         }
     }
 }
 
-/// Search results from every signed-in server.
-@MainActor
-@Observable
-final class ServerSearchModel {
-    struct Results: Identifiable {
-        let account: UUID
-        let name: String
-        var state: LoadState<[RemotePublication]>
-
-        var id: UUID { account }
-    }
-
-    /// Series found by one of a server's sources, such as MangaDex.
-    struct SourceResults: Identifiable {
-        let account: UUID
-        let source: ChekAPI.InstalledExtension
-        let serverName: String
-        var state: LoadState<[ChekAPI.SourceSeriesItem]>
-
-        var id: String { "\(account.uuidString)/\(source.id)" }
-    }
-
-    private(set) var results: [Results] = []
-    private(set) var sourceResults: [SourceResults] = []
-    /// What the results are for.
-    @ObservationIgnored private var query = ""
-    /// The content ratings the results were found under.
-    @ObservationIgnored private var revision = 0
-    @ObservationIgnored private var generation = 0
-    /// Each server's installed sources, asked for once rather than with
-    /// every search.
-    /// Each server's installed sources, with when they were asked for.
-    /// Asked again after a while, so a source installed since shows up
-    /// in search without a relaunch.
-    @ObservationIgnored private var sources: [UUID: (at: Date, items: [ChekAPI.InstalledExtension])] = [:]
-
-    func search(_ text: String, servers: ServerStore) async {
-        generation += 1
-        let current = generation
-        let query = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        let accounts = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
-        // The same search again, as when coming back to the tab, keeps
-        // what each place found and asks only the ones that hadn't
-        // answered, so nothing found flashes back to loading.
-        let isRepeat = query == self.query && servers.contentRatingsRevision == revision
-        self.query = query
-        revision = servers.contentRatingsRevision
-        guard !query.isEmpty else {
-            results = []
-            sourceResults = []
-            return
-        }
-        let kept = isRepeat ? Dictionary(results.filter { $0.state.value != nil }.map { ($0.account, $0) }, uniquingKeysWith: { first, _ in first }) : [:]
-        let keptSources = isRepeat ? Dictionary(sourceResults.filter { $0.state.value != nil }.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first }) : [:]
-        results = accounts.map { kept[$0.id] ?? Results(account: $0.id, name: $0.name, state: .loading) }
-        for account in accounts where sources[account.id].map({ Date.now.timeIntervalSince($0.at) > 120 }) ?? true {
-            let id = account.id
-            let items = (try? await servers.request(id) { client throws(ChekError) in
-                try await client.installedExtensionsIfSupported()
-            }).flatMap(\.self)
-            // A server that didn't answer keeps what it said last time.
-            if let items {
-                sources[id] = (.now, items)
-            } else if sources[id] == nil {
-                sources[id] = (.distantPast, [])
-            }
-        }
-        guard current == generation else { return }
-        sourceResults = accounts.flatMap { account in
-            (sources[account.id]?.items ?? []).filter(\.usable).map {
-                let fresh = SourceResults(account: account.id, source: $0, serverName: account.name, state: .loading)
-                return keptSources[fresh.id] ?? fresh
-            }
-        }
-        // Sources look on their sites while you wait, so each answers on
-        // its own like the servers do.
-        let sourceTasks = sourceResults.filter { $0.state.value == nil }.map { results in
-            let id = results.id
-            let account = results.account
-            let source = results.source.id
-            return Task {
-                guard let state = await Self.searchSource(source, query: query, account: account, servers: servers) else { return }
-                guard current == generation, let index = sourceResults.firstIndex(where: { $0.id == id }) else { return }
-                sourceResults[index].state = state
-            }
-        }
-        // Each server answers on its own, so a slow one doesn't hold up the rest.
-        let tasks = accounts.filter { kept[$0.id] == nil }.map { account in
-            let id = account.id
-            return Task {
-                guard let state = await Self.searchServer(id, query: query, servers: servers) else { return }
-                guard current == generation, let index = results.firstIndex(where: { $0.account == id }) else { return }
-                results[index].state = state
-            }
-        }
-        await withTaskCancellationHandler {
-            for task in tasks {
-                await task.value
-            }
-            for task in sourceTasks {
-                await task.value
-            }
-        } onCancel: {
-            for task in tasks {
-                task.cancel()
-            }
-            for task in sourceTasks {
-                task.cancel()
-            }
-        }
-    }
+extension EnvironmentValues {
+    /// Each shared library's sites, for naming the one being searched.
+    @Entry fileprivate var searchSites: [UUID: [ChekAPI.InstalledExtension]] = [:]
 }
 
-extension ServerSearchModel {
-    /// Searches one shared library again, after it failed.
-    func retry(server account: UUID, servers: ServerStore) async {
-        guard let index = results.firstIndex(where: { $0.account == account }) else { return }
-        let current = generation
-        results[index].state = .loading
-        guard let state = await Self.searchServer(account, query: query, servers: servers),
-              current == generation, let index = results.firstIndex(where: { $0.account == account }) else { return }
-        results[index].state = state
-    }
-
-    /// Searches one site again, after it failed.
-    func retry(source id: String, servers: ServerStore) async {
-        guard let index = sourceResults.firstIndex(where: { $0.id == id }) else { return }
-        let current = generation
-        let target = sourceResults[index]
-        sourceResults[index].state = .loading
-        guard let state = await Self.searchSource(target.source.id, query: query, account: target.account, servers: servers),
-              current == generation, let index = sourceResults.firstIndex(where: { $0.id == id }) else { return }
-        sourceResults[index].state = state
-    }
-
-    /// One library's results, or nil when the search was given up because
-    /// a newer one replaced it, which isn't a failure to show.
-    static func searchServer(_ id: UUID, query: String, servers: ServerStore) async -> LoadState<[RemotePublication]>? {
-        do {
-            let page = try await servers.request(id) { client throws(ChekError) in
-                try await client.search(query, cursor: nil)
-            }
-            return .loaded(page.items.map { RemotePublication($0, server: id) })
-        } catch {
-            return Task.isCancelled || error.isCancellation ? nil : .failed(DisplayError(error))
-        }
-    }
-
-    /// One site's results, or nil when the search was given up.
-    static func searchSource(_ source: String, query: String, account: UUID, servers: ServerStore) async -> LoadState<[ChekAPI.SourceSeriesItem]>? {
-        do {
-            let page = try await servers.request(account) { client throws(ChekError) in
-                try await client.search(source: source, query: query, page: 1)
-            }
-            return .loaded(page.items)
-        } catch {
-            return Task.isCancelled || error.isCancellation ? nil : .failed(DisplayError(error))
-        }
-    }
-}
-
-extension ChekError {
-    /// A request stopped because nobody wants its answer any more, as when
-    /// typing on replaces a search.
-    var isCancellation: Bool {
-        if case .offline(let error) = self { error.code == .cancelled } else { false }
-    }
+/// What a search is for, so changing any of it searches again.
+private struct SearchRequest: Equatable {
+    var text: String
+    var filters: SearchFilters
+    var revision: Int
 }
 
 private struct SearchResults: View {
     let text: String
+    @Binding var filters: SearchFilters
     let serverResults: ServerSearchModel
     let servers: ServerStore
     @Query private var books: [Book]
-    /// One book at most, only to know whether the library has any, so
-    /// its section shows even when nothing in it matches.
-    @Query private var anyBook: [Book]
 
-    init(text: String, serverResults: ServerSearchModel, servers: ServerStore) {
+    init(text: String, filters: Binding<SearchFilters>, serverResults: ServerSearchModel, servers: ServerStore) {
         self.text = text
+        _filters = filters
         self.serverResults = serverResults
         self.servers = servers
         let trimmed = text.trimmingCharacters(in: .whitespaces)
         var descriptor = FetchDescriptor<Book>(
-            predicate: Book.predicate(kind: nil, search: trimmed),
+            predicate: Book.predicate(kind: filters.wrappedValue.kind, search: trimmed),
             sortBy: [SortDescriptor(\.title, comparator: .localizedStandard)]
         )
-        descriptor.fetchLimit = 50
+        descriptor.fetchLimit = filters.wrappedValue.scope == .library ? 500 : 50
         _books = Query(descriptor)
-        var any = FetchDescriptor<Book>()
-        any.fetchLimit = 1
-        _anyBook = Query(any)
     }
 
     var body: some View {
-        if anyBook.isEmpty && serverResults.results.isEmpty && serverResults.sourceResults.isEmpty {
-            // Nowhere else to look, so the library's answer is the answer.
-            ContentUnavailableView.search(text: text)
-        } else {
-            // Every place keeps its section, in the same order, whether
-            // it's still looking, found nothing or failed, so the page
-            // doesn't jump as answers arrive.
-            List {
-                if !anyBook.isEmpty {
-                    Section("Library") {
-                        if books.isEmpty {
-                            EmptyShelf {
-                                Text("No Matches")
-                                    .foregroundStyle(.secondary)
-                            }
-                            .searchShelfRow()
-                        } else {
-                            ResultsShelf(items: books.map(PublicationItem.init))
-                        }
-                    }
-                }
-                ForEach(serverResults.results) { results in
-                    ServerResultsSection(results: results) {
-                        await serverResults.retry(server: results.account, servers: servers)
-                    }
-                }
-                ForEach(serverResults.sourceResults) { results in
-                    SourceResultsSection(results: results) {
-                        await serverResults.retry(source: results.id, servers: servers)
-                    }
-                }
-            }
-            .listStyle(.plain)
-            .scrollDismissesKeyboard(.immediately)
+        switch filters.scope {
+        case .everywhere:
+            EverywhereResults(text: text, filters: $filters, books: books, serverResults: serverResults, servers: servers)
+        case .library:
+            ScopedGrid(filters: $filters, state: .loaded(books.map(PublicationItem.init)), text: text)
+        case .server(let id):
+            ServerGrid(account: id, text: text, filters: $filters, serverResults: serverResults, servers: servers)
+        case .source(let server, let id):
+            SourceGrid(id: "\(server.uuidString)/\(id)", text: text, filters: $filters, serverResults: serverResults, servers: servers)
         }
     }
 }
 
-/// A section whose search failed, with the way to try it again.
+/// Everywhere at once: a shelf for each place that found something, added
+/// as each answers, so places with nothing take no room.
+private struct EverywhereResults: View {
+    let text: String
+    @Binding var filters: SearchFilters
+    let books: [Book]
+    let serverResults: ServerSearchModel
+    let servers: ServerStore
+
+    var body: some View {
+        let found = serverResults.found
+        let searching = serverResults.searching
+        let failures = serverResults.failures
+        let isEmpty = books.isEmpty && found.isEmpty
+        List {
+            ActiveFilters(filters: $filters)
+            if !books.isEmpty {
+                Section {
+                    ResultsShelf(items: books.map(PublicationItem.init))
+                } header: {
+                    PlaceHeader(title: "Library") { filters.scope = .library }
+                }
+            }
+            ForEach(found) { place in
+                switch place {
+                case .server(let results):
+                    ServerResultsSection(results: results) { filters.scope = .server(results.account) }
+                case .source(let results):
+                    SourceResultsSection(results: results) { filters.scope = .source(results.account, results.source.id) }
+                }
+            }
+            if isEmpty && !searching.isEmpty {
+                // Room for the first answer while every place is looking.
+                PlaceholderShelf()
+                    .searchShelfRow()
+                    .listRowSeparator(.hidden)
+            }
+            if !searching.isEmpty {
+                StillSearchingRow(names: searching)
+            }
+            ForEach(failures) { place in
+                failureRow(place)
+            }
+        }
+        .listStyle(.plain)
+        .scrollDismissesKeyboard(.immediately)
+        .overlay {
+            if isEmpty && searching.isEmpty && failures.isEmpty {
+                // Below the filters, which stay usable.
+                ContentUnavailableView.search(text: text)
+                    .padding(.top, 56)
+            }
+        }
+        .animation(.default, value: found.map(\.id))
+    }
+
+    @ViewBuilder
+    private func failureRow(_ place: ServerSearchModel.Found) -> some View {
+        switch place {
+        case .server(let results):
+            if case .failed(let error) = results.state {
+                SectionFailureRow(place: results.name, error: error) {
+                    await serverResults.retry(server: results.account, servers: servers)
+                }
+            }
+        case .source(let results):
+            if case .failed(let error) = results.state {
+                SectionFailureRow(place: results.source.name, error: error) {
+                    await serverResults.retry(source: results.id, servers: servers)
+                }
+            }
+        }
+    }
+}
+
+/// A section's title, with the way to see everything it found.
+private struct PlaceHeader: View {
+    let title: String
+    let seeAll: () -> Void
+
+    var body: some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Button("See All", action: seeAll)
+                .font(.subheadline)
+                .buttonStyle(.borderless)
+        }
+        .textCase(nil)
+    }
+}
+
+/// The places still looking, below what's been found so far.
+private struct StillSearchingRow: View {
+    let names: [String]
+
+    var body: some View {
+        HStack(spacing: 10) {
+            ProgressView()
+            Text("Searching \(names.formatted(.list(type: .and)))…")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .lineLimit(2)
+        }
+        .listRowSeparator(.hidden)
+    }
+}
+
+/// A place whose search failed, with the way to try it again.
 private struct SectionFailureRow: View {
+    let place: String
     let error: DisplayError
     let retry: () async -> Void
 
     var body: some View {
         HStack {
-            Label(error.title, systemImage: "wifi.exclamationmark")
+            Label("Couldn't search \(place)", systemImage: "wifi.exclamationmark")
+                .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()
             Button("Try Again") {
                 Task { await retry() }
             }
+            .font(.subheadline)
             .buttonStyle(.borderless)
         }
+        .listRowSeparator(.hidden)
+        .accessibilityHint(Text(error.title))
     }
 }
 
 private struct ServerResultsSection: View {
     let results: ServerSearchModel.Results
-    let retry: () async -> Void
+    let seeAll: () -> Void
     @Query private var states: [RemoteReadingState]
     @Environment(ServerStore.self) private var servers
 
-    init(results: ServerSearchModel.Results, retry: @escaping () async -> Void) {
+    init(results: ServerSearchModel.Results, seeAll: @escaping () -> Void) {
         self.results = results
-        self.retry = retry
+        self.seeAll = seeAll
         _states = Query(filter: RemoteReadingState.onServer(results.account))
     }
 
     var body: some View {
-        Section(results.name) {
-            switch results.state {
-            case .idle, .loading:
-                PlaceholderShelf()
-                    .searchShelfRow()
-            case .failed(let error):
-                EmptyShelf {
-                    SectionFailureRow(error: error, retry: retry)
-                        .padding(.horizontal, Metrics.margin)
-                }
-                .searchShelfRow()
-            case .loaded(let publications) where publications.isEmpty:
-                EmptyShelf {
-                    Text("No Matches")
-                        .foregroundStyle(.secondary)
-                }
-                .searchShelfRow()
-            case .loaded(let publications):
+        if let publications = results.state.value {
+            Section {
                 let statuses = ReadingStatuses(states)
                 ResultsShelf(items: publications.map { servers.item($0, status: statuses[$0.id]) })
+            } header: {
+                PlaceHeader(title: results.name, seeAll: seeAll)
+            }
+        }
+    }
+}
+
+/// A source's series as a row of covers, as a store's search shows them,
+/// since there are often many and covers tell them apart fastest.
+private struct SourceResultsSection: View {
+    let results: ServerSearchModel.SourceResults
+    let seeAll: () -> Void
+
+    var body: some View {
+        if let series = results.state.value {
+            Section {
+                ScrollView(.horizontal) {
+                    LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
+                        ForEach(series) { item in
+                            SourceSeriesCell(account: results.account, source: results.source.id, series: item)
+                                .shelfCell()
+                        }
+                    }
+                    .scrollTargetLayout()
+                }
+                // The row spans the screen and the shelf keeps its own
+                // margins, so its cells are the size of a grid's.
+                .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
+                .scrollIndicators(.hidden)
+                .scrollTargetBehavior(.viewAligned)
+                .searchShelfRow()
+            } header: {
+                PlaceHeader(title: results.source.name, seeAll: seeAll)
             }
         }
     }
@@ -369,73 +339,268 @@ private struct ResultsShelf: View {
 
 extension View {
     /// A shelf as a row of the results list: edge to edge, with the same
-    /// room above and below in every section and state.
+    /// room above and below in every section.
     fileprivate func searchShelfRow() -> some View {
         padding(.vertical, 4)
             .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 8, trailing: 0))
     }
 }
 
-/// A source's series as a row of covers, as a store's search shows them,
-/// since there are often many and covers tell them apart fastest.
-private struct SourceResultsSection: View {
-    let results: ServerSearchModel.SourceResults
-    let retry: () async -> Void
+// MARK: - One place
+
+/// Above the results: the way to narrow them, since the toolbar is hidden
+/// while typing, then each filter in use with the way to take it off, so
+/// a narrowed search never looks like everything there is.
+private struct ActiveFilters: View {
+    @Binding var filters: SearchFilters
+    @Environment(ServerStore.self) private var servers
+    @Environment(\.searchSites) private var sites
 
     var body: some View {
-        Section(header) {
-            switch results.state {
-            case .idle, .loading:
-                PlaceholderShelf()
-                    .searchShelfRow()
-            case .failed(let error):
-                // The shelf's room is kept, with why it's empty.
-                EmptyShelf {
-                    SectionFailureRow(error: error, retry: retry)
-                        .padding(.horizontal, Metrics.margin)
+        ScrollView(.horizontal) {
+            HStack(spacing: 8) {
+                Menu {
+                    SearchFilterOptions(filters: $filters, sites: sites)
+                } label: {
+                    Label("Filters", systemImage: "line.3.horizontal.decrease")
+                        .font(.subheadline)
                 }
-                .searchShelfRow()
-            case .loaded(let series) where series.isEmpty:
-                EmptyShelf {
-                    Text("No Matches")
-                        .foregroundStyle(.secondary)
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+                if filters.scope != .everywhere {
+                    token(scopeName) { filters.scope = .everywhere }
                 }
-                .searchShelfRow()
-            case .loaded(let series):
-                ScrollView(.horizontal) {
-                    LazyHStack(alignment: .top, spacing: Metrics.coverSpacing) {
-                        ForEach(series) { item in
-                            SourceSeriesCell(account: results.account, source: results.source.id, series: item)
-                                .shelfCell()
-                        }
-                    }
-                    .scrollTargetLayout()
+                if let kind = filters.kind {
+                    token(kind == .book ? String(localized: "Books") : String(localized: "Comics")) { filters.kind = nil }
                 }
-                // The row spans the screen and the shelf keeps its own
-                // margins, so its cells are the size of a grid's.
-                .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
-                .scrollIndicators(.hidden)
-                .scrollTargetBehavior(.viewAligned)
-                .searchShelfRow()
             }
+            .padding(.horizontal, Metrics.margin)
         }
+        .scrollIndicators(.hidden)
+        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+        .listRowSeparator(.hidden)
     }
 
-    private var header: String {
-        "\(results.source.name) · \(results.serverName)"
+    private func token(_ title: String, remove: @escaping () -> Void) -> some View {
+        Button(action: remove) {
+            HStack(spacing: 6) {
+                Text(title)
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+            .font(.subheadline)
+        }
+        .buttonStyle(.bordered)
+        .buttonBorderShape(.capsule)
+        .accessibilityLabel(Text("Remove \(title) Filter"))
+    }
+
+    private var scopeName: String {
+        switch filters.scope {
+        case .everywhere: ""
+        case .library: String(localized: "Library")
+        case .server(let id): servers.accounts().first { $0.id == id }?.name ?? ""
+        case .source(let server, let id): sites[server]?.first { $0.id == id }?.name ?? id
+        }
     }
 }
 
-/// A shelf with nothing on it: faint cover outlines holding the shelf's
-/// height, so the page doesn't shift, with what to say over them.
-private struct EmptyShelf<Message: View>: View {
-    @ViewBuilder let message: Message
+/// One place's results as a grid of covers, with more as you scroll.
+private struct ScopedGrid: View {
+    @Binding var filters: SearchFilters
+    let state: LoadState<[PublicationItem]>
+    let text: String
+    var retry: (() async -> Void)?
+    var loadMore: (() async -> Void)?
+    var isLoadingMore = false
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     var body: some View {
-        PlaceholderShelf(isLoading: false)
-            .opacity(0.35)
-            .overlay {
-                message
+        ScrollView {
+            ActiveFilters(filters: $filters)
+                .padding(.vertical, 8)
+            switch state {
+            case .idle, .loading:
+                PlaceholderGrid()
+            case .loaded(let items):
+                LazyVGrid(columns: Metrics.gridColumns(regular: sizeClass == .regular), spacing: Metrics.gridRowSpacing) {
+                    ForEach(items) { item in
+                        PublicationCell(item: item)
+                            .task {
+                                if item.id == items.last?.id { await loadMore?() }
+                            }
+                    }
+                }
+                .padding(.horizontal, Metrics.margin)
+                .padding(.vertical, 8)
+                if isLoadingMore {
+                    ProgressView()
+                        .padding()
+                }
+            case .failed:
+                EmptyView()
             }
+        }
+        .scrollDismissesKeyboard(.immediately)
+        .overlay {
+            switch state {
+            case .failed(let error):
+                FailureState(error: error, retry: retry)
+                    .padding(.top, 56)
+            case .loaded(let items) where items.isEmpty:
+                ContentUnavailableView.search(text: text)
+                    .padding(.top, 56)
+            default:
+                EmptyView()
+            }
+        }
+    }
+}
+
+private struct ServerGrid: View {
+    let account: UUID
+    let text: String
+    @Binding var filters: SearchFilters
+    let serverResults: ServerSearchModel
+    let servers: ServerStore
+    @Query private var states: [RemoteReadingState]
+
+    init(account: UUID, text: String, filters: Binding<SearchFilters>, serverResults: ServerSearchModel, servers: ServerStore) {
+        self.account = account
+        self.text = text
+        _filters = filters
+        self.serverResults = serverResults
+        self.servers = servers
+        _states = Query(filter: RemoteReadingState.onServer(account))
+    }
+
+    var body: some View {
+        let results = serverResults.results.first { $0.account == account }
+        let statuses = ReadingStatuses(states)
+        let state: LoadState<[PublicationItem]> = switch results?.state ?? .loading {
+        case .idle, .loading: .loading
+        case .failed(let error): .failed(error)
+        case .loaded(let publications): .loaded(publications.map { servers.item($0, status: statuses[$0.id]) })
+        }
+        ScopedGrid(
+            filters: $filters,
+            state: state,
+            text: text,
+            retry: { await serverResults.retry(server: account, servers: servers) },
+            loadMore: { await serverResults.loadMore(server: account, servers: servers) },
+            isLoadingMore: serverResults.isLoadingMore
+        )
+    }
+}
+
+private struct SourceGrid: View {
+    let id: String
+    let text: String
+    @Binding var filters: SearchFilters
+    let serverResults: ServerSearchModel
+    let servers: ServerStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
+
+    var body: some View {
+        let results = serverResults.sourceResults.first { $0.id == id }
+        ScrollView {
+            ActiveFilters(filters: $filters)
+                .padding(.vertical, 8)
+            if let results, let series = results.state.value {
+                LazyVGrid(columns: Metrics.gridColumns(regular: sizeClass == .regular), spacing: Metrics.gridRowSpacing) {
+                    ForEach(series) { item in
+                        SourceSeriesCell(account: results.account, source: results.source.id, series: item)
+                            .task {
+                                if item.id == series.last?.id {
+                                    await serverResults.loadMore(source: id, servers: servers)
+                                }
+                            }
+                    }
+                }
+                .padding(.horizontal, Metrics.margin)
+                .padding(.vertical, 8)
+                if serverResults.isLoadingMore {
+                    ProgressView()
+                        .padding()
+                }
+            } else if results?.state.isFailed != true {
+                PlaceholderGrid()
+            }
+        }
+        .scrollDismissesKeyboard(.immediately)
+        .overlay {
+            switch results?.state {
+            case .failed(let error):
+                FailureState(error: error) { await serverResults.retry(source: id, servers: servers) }
+                    .padding(.top, 56)
+            case .loaded(let series) where series.isEmpty:
+                ContentUnavailableView.search(text: text)
+                    .padding(.top, 56)
+            default:
+                EmptyView()
+            }
+        }
+    }
+}
+
+/// Where to search and what to show, from the toolbar.
+private struct SearchFilterMenu: View {
+    @Binding var filters: SearchFilters
+    let sites: [UUID: [ChekAPI.InstalledExtension]]
+
+    var body: some View {
+        Menu {
+            SearchFilterOptions(filters: $filters, sites: sites)
+        } label: {
+            Label("Filters", systemImage: filters.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
+        }
+    }
+}
+
+/// The choices of where to search and what to show, for a menu.
+private struct SearchFilterOptions: View {
+    @Binding var filters: SearchFilters
+    let sites: [UUID: [ChekAPI.InstalledExtension]]
+    @Environment(ServerStore.self) private var servers
+
+    var body: some View {
+        let accounts = servers.accounts().filter { servers.state(of: $0.id) == .signedIn }
+        Section("Show") {
+            Picker("Show", selection: $filters.kind) {
+                Text("Books and Comics").tag(PublicationKind?.none)
+                Label("Books", systemImage: "book").tag(PublicationKind?.some(.book))
+                Label("Comics", systemImage: "book.pages").tag(PublicationKind?.some(.comic))
+            }
+            .pickerStyle(.inline)
+        }
+        Section("Search In") {
+            Picker("Search In", selection: $filters.scope) {
+                Label("Everywhere", systemImage: "magnifyingglass").tag(SearchScope.everywhere)
+                Label("Library", systemImage: "books.vertical").tag(SearchScope.library)
+                ForEach(accounts) { account in
+                    Label(account.name, systemImage: "person.2").tag(SearchScope.server(account.id))
+                }
+                ForEach(accounts) { account in
+                    // Only sites that have what's chosen to show.
+                    ForEach((sites[account.id] ?? []).filter { SearchFilters.source($0, matches: filters.kind) }) { site in
+                        // With more than one shared library, a site says
+                        // which it was added to.
+                        if accounts.count > 1 {
+                            Label {
+                                Text(site.name)
+                                Text(account.name)
+                            } icon: {
+                                Image(systemName: "globe")
+                            }
+                            .tag(SearchScope.source(account.id, site.id))
+                        } else {
+                            Label(site.name, systemImage: "globe").tag(SearchScope.source(account.id, site.id))
+                        }
+                    }
+                }
+            }
+            .pickerStyle(.inline)
+        }
     }
 }

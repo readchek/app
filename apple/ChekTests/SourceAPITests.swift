@@ -210,4 +210,16 @@ struct SourceAPITests {
         #expect(!SourceFormats.canDownload("b", on: server, defaults: defaults))
         #expect(SourceFormats.canDownload("unknown", on: server, defaults: defaults))
     }
+
+    /// A site is searched for books or comics only when its chapters can
+    /// be that kind, and sites from before formats read pages.
+    @Test func sitesMatchTheKindTheyServe() {
+        var comics = ChekAPI.InstalledExtension(id: "c", name: "C", version: "1", repositoryId: 1, sites: [], languages: [], usable: true)
+        #expect(SearchFilters.source(comics, matches: .comic))
+        #expect(!SearchFilters.source(comics, matches: .book))
+        #expect(SearchFilters.source(comics, matches: nil))
+        comics.formats = [.epub, .pdf]
+        #expect(SearchFilters.source(comics, matches: .book))
+        #expect(!SearchFilters.source(comics, matches: .comic))
+    }
 }

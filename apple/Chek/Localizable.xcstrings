@@ -47,6 +47,7 @@
     },
     "Automatic scrolls webtoons and other tall comics and turns pages for the rest.": {},
     "Books": {},
+    "Books and Comics": {},
     "Books you add appear here.": {},
     "Books you finish appear here.": {},
     "Books, Comics, and Authors": {},
@@ -107,6 +108,7 @@
     "Couldn't Open %@": {},
     "Couldn't Open Sample Library": {},
     "Couldn't Read Repository": {},
+    "Couldn't search %@": {},
     "Cover Images": {},
     "Curl": {
       "comment": "A page turn that curls over like paper"
@@ -135,6 +137,8 @@
     "Erotica": {},
     "Erotica and pornographic series are for adults only.": {},
     "Everyone": {},
+    "Everywhere": {},
+    "Filters": {},
     "Find books, comics, and authors in your library, shared libraries, and sites.": {},
     "Finished": {},
     "Follow": {},
@@ -255,6 +259,7 @@
     "Relaxed": {},
     "Releases": {},
     "Remove": {},
+    "Remove %@ Filter": {},
     "Remove All Downloads": {},
     "Remove All Downloads?": {},
     "Remove Download": {},
@@ -288,6 +293,10 @@
     "Search %@": {
       "comment": "Search field prompt naming the library or source searched"
     },
+    "Search In": {},
+    "Search Your Library": {},
+    "Searching %@…": {},
+    "See All": {},
     "Select": {},
     "Select All": {},
     "Sepia": {},
