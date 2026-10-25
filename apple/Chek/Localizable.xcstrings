@@ -1,419 +1,1128 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "%@": {},
-    "%@ [Try again](chek-action://retry) or [close](chek-action://close) this book.": {},
-    "%@ is further along, saved %@.": {},
-    "%@ is further along.": {},
-    "%@ was at %@, saved %@.": {},
-    "%@ was at %@.": {},
-    "%lld chapters": {},
-    "%lld new chapters are available.": {},
-    "%lld of %lld": {
-      "comment": "The reading position and the number of positions, like a page number: 12 of 300"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "[Add a library](chek-action://add) someone shares with you to read its books and comics here, or [open the sample library](chek-action://sample) to look around." : {
+
     },
-    "%lld+ books": {},
-    "%lld–%lld": {},
-    "1 chapter": {},
-    "18+": {},
-    "A new chapter is available.": {},
-    "Aa": {},
-    "About": {},
-    "About This Book": {},
-    "Add": {},
-    "Add Books": {},
-    "Add Header": {},
-    "Add Repository": {},
-    "Add Shared Library": {},
-    "Add Sites": {},
-    "Add a shared library of your own to add repositories.": {},
-    "Added": {},
-    "Adding ^[%lld book](inflect: true)": {},
-    "Address": {},
-    "Advanced": {},
-    "All": {},
-    "All Series": {},
-    "All Unread": {},
-    "Always Show": {},
-    "Another device": {},
-    "Anyone Can Add Repositories": {},
-    "Appearance": {},
-    "Applies to search and sites in this library, on all your devices. Mature series can be turned on from the web only when the server has an https address.": {},
-    "Applies to search and sites in this library, on all your devices. Mature series, for adults only, can be turned on from the web.": {},
-    "Applies to this series. Manga reads right to left. Automatic follows the file or site.": {},
-    "Ask them to turn on “Anyone Can Add Repositories”.": {},
-    "Author": {},
-    "Automatic": {
-      "comment": "Lets the file or source decide"
+    "[Add books](chek-action://add) and comics from Files or iCloud Drive, or [add a library](chek-action://library) someone shares with you. You can also [open the sample library](chek-action://sample) to look around." : {
+
     },
-    "Automatic scrolls webtoons and other tall comics and turns pages for the rest.": {},
-    "Books": {},
-    "Books and Comics": {},
-    "Books you add appear here.": {},
-    "Books you finish appear here.": {},
-    "Books, Comics, and Authors": {},
-    "Browse free books and comics to see what Chek can do. The sample library is removed when you close Chek.": {},
-    "Can't Open %@": {},
-    "Cancel": {},
-    "Cancel Download": {},
-    "Canceled": {},
-    "Chapter": {},
-    "Chapter %@": {},
-    "Chapters": {},
-    "Check for Next Chapter": {},
-    "Check its sign-in details under Advanced.": {},
-    "Check the Address": {},
-    "Check the Address and Sign-In Details": {},
-    "Check the address and that it contains an index.json file.": {},
-    "Check the address and your internet connection.": {},
-    "Check the details and that they still have access to the repository.": {},
-    "Check your internet connection and try again.": {},
-    "Checking for new chapters…": {},
-    "Checking for new sites and updates…": {},
-    "Checking for updates…": {},
-    "Chek checks for new chapters in series you follow a few times a day and notifies you.": {},
-    "Chek doesn't support this kind of file.": {},
-    "Chek looks for new versions of this library's sites a few times a day and installs them.": {},
-    "Chek looks for new versions of this library's sites a few times a day and shows how many are waiting on the Shared tab.": {},
-    "Chek replaces Chibi Manga.": {},
-    "Clear": {},
-    "Close": {},
-    "Close Sample Library": {},
-    "Collections": {},
-    "Comic Layout": {},
-    "Comics": {},
-    "Comics you add appear here.": {},
-    "Compact": {},
-    "Completed": {},
-    "Content": {},
-    "Content Settings on the Web": {},
-    "Contents": {},
-    "Continue": {
-      "comment": "Alert button that goes to the reading position from another device"
+    "[Add books](chek-action://add) and comics from Files or iCloud Drive. They're stored on this device." : {
+
     },
-    "Continue %@": {
-      "comment": "Button that opens a book at the chapter or page named"
+    "[Sign in](chek-action://signin) to %@ to keep reading, or [add books](chek-action://add) from Files." : {
+
     },
-    "Continue From %@?": {},
-    "Continue From Another Device?": {},
-    "Continue Reading": {},
-    "Continue reading %@": {},
-    "Couldn't Add Site": {},
-    "Couldn't Add Some Files": {},
-    "Couldn't Add This File": {},
-    "Couldn't Connect": {},
-    "Couldn't Download This Book": {},
-    "Couldn't Download “%@”": {},
-    "Couldn't Find a Library": {},
-    "Couldn't Load %@": {},
-    "Couldn't Load Content": {},
-    "Couldn't Open %@": {},
-    "Couldn't Open Sample Library": {},
-    "Couldn't Read Repository": {},
-    "Couldn't search %@": {},
-    "Cover Images": {},
-    "Curl": {
-      "comment": "A page turn that curls over like paper"
+    "[Sign in](chek-action://signin) to %@ to keep reading, or [close](chek-action://close) this book." : {
+
     },
-    "Current chapter": {},
-    "Custom": {},
-    "Dark": {},
-    "Date Added": {},
-    "Default Release": {},
-    "Delete": {},
-    "Delete Book": {},
-    "Delete ^[%lld Book](inflect: true)?": {},
-    "Delete “%@”?": {},
-    "Delete…": {},
-    "Deselect All": {},
-    "Done": {},
-    "Download": {},
-    "Download All": {},
-    "Download ^[%lld Chapter](inflect: true)?": {},
-    "Download ^[%lld Comic](inflect: true)?": {},
-    "Downloaded": {},
-    "Downloading": {},
-    "Downloads": {},
-    "Enter the address you were given, such as books.example.com.": {},
-    "Enter the address you were given. A name helps tell libraries apart and is only shown on this device.": {},
-    "Erotica": {},
-    "Everyone": {},
-    "Everywhere": {},
-    "Filters": {},
-    "Find books, comics, and authors in your library, shared libraries, and sites.": {},
-    "Finished": {},
-    "Follow": {},
-    "Following": {
-      "comment": "Series the reader follows for new chapters"
+    "[Sign in](chek-action://signin) to %@ to keep reading." : {
+
     },
-    "Font": {},
-    "For a private GitHub repository, use a fine-grained token that can only read its contents. For Cloudflare Access, add two headers: CF-Access-Client-Id and CF-Access-Client-Secret. The library keeps these and sends them only to the repository.": {},
-    "For adults": {},
-    "Free Up Space": {},
-    "Freeing up space clears copies of recently read books from shared libraries and cover images. They're fetched again as you read. Your library, downloads, and reading positions are kept.": {},
-    "Go to Chapters": {},
-    "Grid": {
-      "comment": "Library layout: covers in a grid"
+    "%@" : {
+
     },
-    "Header Name": {},
-    "Headers": {},
-    "Home": {},
-    "Incorrect User Name or Password": {},
-    "It may have been removed from this library.": {},
-    "It's copy-protected and can be opened only in the app it was bought from.": {},
-    "It's too large to open on this device.": {},
-    "Its downloads are deleted from this device. Your reading positions are kept on the library.": {},
-    "Its file and reading position are deleted from this device.": {},
-    "Its saved details aren't shown. Enter new ones to replace them, or choose None to remove them.": {},
-    "Larger Text": {},
-    "Left to Right": {},
-    "Less": {},
-    "Lets everyone with access to this library add repositories that only they can see.": {},
-    "Library": {
-      "comment": "Tab for the books on this device"
+    "%@ [Try again](chek-action://retry) or [close](chek-action://close) this book." : {
+
     },
-    "License": {},
-    "Light": {},
-    "Line Spacing": {},
-    "List": {
-      "comment": "Library layout: one row per book"
+    "%@ is further along, saved %@." : {
+
     },
-    "Loading": {},
-    "Manage Sites": {},
-    "Margins": {},
-    "Mark All as Seen": {},
-    "Mark Previous as Finished": {},
-    "Mark as Finished": {},
-    "Mark as Unread": {},
-    "Mature": {},
-    "Mature series are on, chosen on the web. Choose Everyone or Teen to turn them off. Applies to search and sites in this library, on all your devices.": {},
-    "More": {},
-    "Name": {
-      "comment": "A server's friendly name, or the account's user name"
+    "%@ is further along." : {
+
     },
-    "Name (Optional)": {},
-    "Narrow": {},
-    "New": {
-      "comment": "Badge on a book or chapter not read yet"
+    "%@ was at %@, saved %@." : {
+
     },
-    "New Chapter Notifications": {},
-    "New York": {},
-    "New chapters of series you follow appear here.": {},
-    "Newest First": {},
-    "Next %lld Unread": {
-      "comment": "Button that downloads the next unread chapters"
+    "%@ was at %@." : {
+
     },
-    "Next 5 Unread": {},
-    "Next Chapter": {},
-    "No Longer Available": {},
-    "No Longer Offered": {},
-    "No Longer Updated": {},
-    "No Matches": {},
-    "No More Chapters": {},
-    "No Pages in This Chapter": {},
-    "No Pages to Download": {},
-    "No collections are shared with you yet. Ask the library's administrator for access.": {},
-    "No new chapters. Chek checks a few times a day, or you can [check now](chek-action://check).": {},
-    "None": {},
-    "Not Now": {},
-    "Not checked yet. Pull down to refresh.": {},
-    "Nothing here matches your search.": {},
-    "OK": {},
-    "Off": {},
-    "Official": {},
-    "Oldest First": {},
-    "On": {},
-    "On Hiatus": {},
-    "Ongoing": {},
-    "Only the Administrator Can Add Repositories": {},
-    "Only the Administrator Can Change This Repository": {},
-    "Open Sample Library": {},
-    "Open Settings": {},
-    "Opening Stopped": {},
-    "Order": {},
-    "Original": {
-      "comment": "The publication's own font, colors, line spacing or reading direction"
+    "%lld chapters" : {
+
     },
-    "Page Turn": {},
-    "Pages": {
-      "comment": "Comic layout: one page at a time"
+    "%lld new chapters are available." : {
+
     },
-    "Password": {},
-    "Pornographic": {},
-    "Position": {},
-    "Position Saved on Another Device": {},
-    "Privacy Policy": {},
-    "Private": {},
-    "Private Repository": {},
-    "Read": {
-      "comment": "Button on a book that opens it"
+    "%lld of %lld" : {
+      "comment" : "The reading position and the number of positions, like a page number: 12 of 300"
     },
-    "Reading": {},
-    "Reading Direction": {},
-    "Reading tips. Double-tap to dismiss.": {},
-    "Recent": {
-      "comment": "Library order: last read first"
+    "%lld–%lld" : {
+
     },
-    "Recently Added": {},
-    "Recently Read": {},
-    "Regular": {},
-    "Relaxed": {},
-    "Releases": {},
-    "Remove": {},
-    "Remove %@ Filter": {},
-    "Remove All Downloads": {},
-    "Remove All Downloads?": {},
-    "Remove Download": {},
-    "Remove Downloads": {},
-    "Remove Last Header": {},
-    "Remove Library": {},
-    "Remove Repository": {},
-    "Remove ^[%lld Download](inflect: true)": {},
-    "Remove “%@”?": {},
-    "Remove…": {},
-    "Removing it deletes its downloads from this device. Your reading positions are kept on the library.": {},
-    "Rename": {},
-    "Rename Library": {},
-    "Report a Problem": {},
-    "Repositories": {},
-    "Repositories and settings for the library's administrator.": {},
-    "Repositories use HTTPS. A password goes in the sign-in details, not the address, and a token, user name, or header name can't be empty.": {},
-    "Repositories you add are available to everyone with access to this library.": {},
-    "Repositories you add are visible only to you.": {},
-    "Repository": {},
-    "Repository Already Added": {},
-    "Repository Refused the Download": {},
-    "Reset Appearance": {},
-    "Right to Left": {},
-    "Safe": {},
-    "Sample Library": {},
-    "Sample Library Can't Be Changed": {},
-    "San Francisco": {},
-    "Save": {},
-    "Search": {},
-    "Search %@": {
-      "comment": "Search field prompt naming the library or source searched"
+    "%lld+ books" : {
+
     },
-    "Search In": {},
-    "Search Your Library": {},
-    "Searching %@…": {},
-    "See All": {},
-    "Select": {},
-    "Select All": {},
-    "Sepia": {},
-    "Settings": {},
-    "Share": {},
-    "Shared": {},
-    "Shared Libraries": {},
-    "Show": {},
-    "Show Earlier Chapters": {},
-    "Show Newer Chapters": {},
-    "Shows less of the summary": {},
-    "Shows the whole summary": {},
-    "Sign In": {},
-    "Sign In With": {},
-    "Sign Out": {},
-    "Sign in to keep reading.": {},
-    "Sign in to your libraries in [Shared](chek-action://shared) to keep reading, or [add books](chek-action://add) from Files.": {},
-    "Sign in with a token. For a private GitHub repository, use a fine-grained token that can read its contents.": {},
-    "Sign in with its user name and password.": {},
-    "Sign in with the headers its host asks for, such as a Cloudflare Access service token's ID and secret.": {},
-    "Sign-In Details": {},
-    "Sign-In Details Refused": {},
-    "Signed Out": {},
-    "Signed Out of %@": {},
-    "Site Not Available": {},
-    "Site Not Responding": {},
-    "Site Turned Off": {},
-    "Sites": {},
-    "Sites Can't Be Added to the Sample Library": {},
-    "Sites Not Available": {},
-    "Sites from it are removed for everyone.": {},
-    "Sites from it are removed too.": {},
-    "Sites you add appear on Home and in Search on all your devices.": {},
-    "Slide": {
-      "comment": "A page turn where the next page slides in beside this one"
+    "^[%lld book](inflect: true)" : {
+
     },
-    "Smaller Text": {},
-    "Sort By": {},
-    "Start Reading": {},
-    "Started": {},
-    "Storage": {},
-    "Suggestive": {},
-    "Tap the edges or swipe to turn pages. Tap the middle to show the controls.": {},
-    "Teen": {},
-    "Text": {
-      "comment": "Plain text files, and the text settings section in the reader"
+    "^[%lld chapter](inflect: true)" : {
+
     },
-    "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Everyone with access to this library can add sites from it.": {},
-    "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Only you can see it.": {},
-    "The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it.": {},
-    "The file may be damaged.": {},
-    "The library's administrator hasn't added any sites yet.": {},
-    "The library's administrator turned this site off.": {},
-    "The sample library is removed when you close Chek.": {},
-    "The sample library shows safe and suggestive series.": {},
-    "The site hasn't published it yet.": {},
-    "Their files and reading positions are deleted from this device.": {},
-    "There are no books in this series yet.": {},
-    "There are no series here yet.": {},
-    "These sites still work but no longer receive updates.": {},
-    "They download one at a time while Chek is open and stay on this device until you remove them.": {},
-    "This Book": {},
-    "This Comic": {},
-    "This book doesn't have a table of contents.": {},
-    "This book is shared openly by the site it comes from, on these terms.": {},
-    "This book opens once it has finished downloading.": {},
-    "This library has been removed.": {},
-    "This library needs a newer version of Chek before sites can be added. Ask its administrator.": {},
-    "This name is only shown on this device.": {},
-    "This site doesn't have chapters for this series. Licensed series are often available only from their publisher.": {},
-    "This site has no series to show.": {},
-    "Title": {},
-    "Token": {},
-    "Too Many Attempts": {},
-    "Try Again": {},
-    "Try again later.": {},
-    "Try again later. If it keeps happening, look for an update in Sites.": {},
-    "Try again later. If this keeps happening, contact the library's administrator.": {},
-    "Turn On Notifications": {},
-    "Turned Off": {},
-    "Unfollow": {},
-    "Unknown Group": {},
-    "Update": {},
-    "Update Available": {},
-    "Update Sites Automatically": {},
-    "Update ^[%lld Site](inflect: true)": {},
-    "Updates": {},
-    "User Name": {},
-    "User Name and Password": {},
-    "Value": {},
-    "Version": {},
-    "Vertical Scroll": {},
-    "View": {},
-    "Visit the Book's Page": {},
-    "Wait a minute, then try again.": {},
-    "Waiting to Download": {},
-    "Wide": {},
-    "You can download them again any time.": {},
-    "Your password is sent only to this library.": {},
-    "[Add a library](chek-action://add) someone shares with you to read its books and comics here, or [open the sample library](chek-action://sample) to look around.": {},
-    "[Add books](chek-action://add) and comics from Files or iCloud Drive, or [add a library](chek-action://library) someone shares with you. You can also [open the sample library](chek-action://sample) to look around.": {},
-    "[Add books](chek-action://add) and comics from Files or iCloud Drive. They're stored on this device.": {},
-    "[Sign in](chek-action://signin) to %@ to keep reading, or [add books](chek-action://add) from Files.": {},
-    "[Sign in](chek-action://signin) to %@ to keep reading, or [close](chek-action://close) this book.": {},
-    "[Sign in](chek-action://signin) to %@ to keep reading.": {},
-    "^[%lld Selected](inflect: true)": {},
-    "^[%lld book](inflect: true)": {},
-    "^[%lld chapter](inflect: true)": {},
-    "^[%lld new chapter](inflect: true)": {},
-    "^[%lld page](inflect: true)": {},
-    "^[%lld release](inflect: true)": {},
-    "^[%lld site](inflect: true) · Added by the administrator": {},
-    "^[%lld site](inflect: true) · Added by you": {},
-    "^[%lld update](inflect: true)": {},
-    "chek.page": {},
-    "try again": {}
+    "^[%lld new chapter](inflect: true)" : {
+
+    },
+    "^[%lld page](inflect: true)" : {
+
+    },
+    "^[%lld release](inflect: true)" : {
+
+    },
+    "^[%lld Selected](inflect: true)" : {
+
+    },
+    "^[%lld site](inflect: true) · Added by the administrator" : {
+
+    },
+    "^[%lld site](inflect: true) · Added by you" : {
+
+    },
+    "^[%lld update](inflect: true)" : {
+
+    },
+    "1 chapter" : {
+
+    },
+    "18+" : {
+
+    },
+    "A new chapter is available." : {
+
+    },
+    "Aa" : {
+
+    },
+    "About" : {
+
+    },
+    "About This Book" : {
+
+    },
+    "Add" : {
+
+    },
+    "Add a shared library of your own to add repositories." : {
+
+    },
+    "Add Books" : {
+
+    },
+    "Add Header" : {
+
+    },
+    "Add Repository" : {
+
+    },
+    "Add Shared Library" : {
+
+    },
+    "Add Sites" : {
+
+    },
+    "Added" : {
+
+    },
+    "Adding ^[%lld book](inflect: true)" : {
+
+    },
+    "Address" : {
+
+    },
+    "Advanced" : {
+
+    },
+    "All" : {
+
+    },
+    "All Series" : {
+
+    },
+    "All Unread" : {
+
+    },
+    "Always Show" : {
+
+    },
+    "Another device" : {
+
+    },
+    "Anyone Can Add Repositories" : {
+
+    },
+    "Appearance" : {
+
+    },
+    "Applies to search and sites in this library, on all your devices. Mature series can be turned on from the web only when the server has an https address." : {
+
+    },
+    "Applies to search and sites in this library, on all your devices. Mature series, for adults only, can be turned on from the web." : {
+
+    },
+    "Applies to this series. Manga reads right to left. Automatic follows the file or site." : {
+
+    },
+    "Ask them to turn on “Anyone Can Add Repositories”." : {
+
+    },
+    "Author" : {
+
+    },
+    "Automatic" : {
+      "comment" : "Lets the file or source decide"
+    },
+    "Automatic scrolls webtoons and other tall comics and turns pages for the rest." : {
+
+    },
+    "Books" : {
+
+    },
+    "Books and Comics" : {
+
+    },
+    "Books you add appear here." : {
+
+    },
+    "Books you finish appear here." : {
+
+    },
+    "Books, Comics, and Authors" : {
+
+    },
+    "Browse free books and comics to see what Chek can do. The sample library is removed when you close Chek." : {
+
+    },
+    "Can't Open %@" : {
+
+    },
+    "Cancel" : {
+
+    },
+    "Cancel Download" : {
+
+    },
+    "Canceled" : {
+
+    },
+    "Chapter" : {
+
+    },
+    "Chapter %@" : {
+
+    },
+    "Chapters" : {
+
+    },
+    "Check for Next Chapter" : {
+
+    },
+    "Check its sign-in details under Advanced." : {
+
+    },
+    "Check the Address" : {
+
+    },
+    "Check the Address and Sign-In Details" : {
+
+    },
+    "Check the address and that it contains an index.json file." : {
+
+    },
+    "Check the address and your internet connection." : {
+
+    },
+    "Check the details and that they still have access to the repository." : {
+
+    },
+    "Check your internet connection and try again." : {
+
+    },
+    "Checking for new chapters…" : {
+
+    },
+    "Checking for new sites and updates…" : {
+
+    },
+    "Checking for updates…" : {
+
+    },
+    "Chek checks for new chapters in series you follow a few times a day and notifies you." : {
+
+    },
+    "Chek doesn't support this kind of file." : {
+
+    },
+    "Chek looks for new versions of this library's sites a few times a day and installs them." : {
+
+    },
+    "Chek looks for new versions of this library's sites a few times a day and shows how many are waiting on the Shared tab." : {
+
+    },
+    "Chek replaces Chibi Manga." : {
+
+    },
+    "chek.page" : {
+
+    },
+    "Clear" : {
+
+    },
+    "Close" : {
+
+    },
+    "Close Sample Library" : {
+
+    },
+    "Collections" : {
+
+    },
+    "Comic Layout" : {
+
+    },
+    "Comics" : {
+
+    },
+    "Comics you add appear here." : {
+
+    },
+    "Compact" : {
+
+    },
+    "Completed" : {
+
+    },
+    "Content" : {
+
+    },
+    "Content Settings on the Web" : {
+
+    },
+    "Contents" : {
+
+    },
+    "Continue" : {
+      "comment" : "Alert button that goes to the reading position from another device"
+    },
+    "Continue %@" : {
+      "comment" : "Button that opens a book at the chapter or page named"
+    },
+    "Continue From %@?" : {
+
+    },
+    "Continue From Another Device?" : {
+
+    },
+    "Continue Reading" : {
+
+    },
+    "Continue reading %@" : {
+
+    },
+    "Couldn't Add Site" : {
+
+    },
+    "Couldn't Add Some Files" : {
+
+    },
+    "Couldn't Add This File" : {
+
+    },
+    "Couldn't Connect" : {
+
+    },
+    "Couldn't Download “%@”" : {
+
+    },
+    "Couldn't Download This Book" : {
+
+    },
+    "Couldn't Find a Library" : {
+
+    },
+    "Couldn't Load %@" : {
+
+    },
+    "Couldn't Load Content" : {
+
+    },
+    "Couldn't Open %@" : {
+
+    },
+    "Couldn't Open Sample Library" : {
+
+    },
+    "Couldn't Read Repository" : {
+
+    },
+    "Couldn't search %@" : {
+
+    },
+    "Cover Images" : {
+
+    },
+    "Curl" : {
+      "comment" : "A page turn that curls over like paper"
+    },
+    "Current chapter" : {
+
+    },
+    "Custom" : {
+
+    },
+    "Dark" : {
+
+    },
+    "Date Added" : {
+
+    },
+    "Default Release" : {
+
+    },
+    "Delete" : {
+
+    },
+    "Delete “%@”?" : {
+
+    },
+    "Delete ^[%lld Book](inflect: true)?" : {
+
+    },
+    "Delete Book" : {
+
+    },
+    "Delete…" : {
+
+    },
+    "Deselect All" : {
+
+    },
+    "Done" : {
+
+    },
+    "Download" : {
+
+    },
+    "Download ^[%lld Chapter](inflect: true)?" : {
+
+    },
+    "Download ^[%lld Comic](inflect: true)?" : {
+
+    },
+    "Download All" : {
+
+    },
+    "Downloaded" : {
+
+    },
+    "Downloading" : {
+
+    },
+    "Downloads" : {
+
+    },
+    "Enter the address you were given, such as books.example.com." : {
+
+    },
+    "Enter the address you were given. A name helps tell libraries apart and is only shown on this device." : {
+
+    },
+    "Erotica" : {
+
+    },
+    "Everyone" : {
+
+    },
+    "Everywhere" : {
+
+    },
+    "Filters" : {
+
+    },
+    "Find books, comics, and authors in your library, shared libraries, and sites." : {
+
+    },
+    "Finished" : {
+
+    },
+    "Follow" : {
+
+    },
+    "Following" : {
+      "comment" : "Series the reader follows for new chapters"
+    },
+    "Font" : {
+
+    },
+    "For a private GitHub repository, use a fine-grained token that can only read its contents. For Cloudflare Access, add two headers: CF-Access-Client-Id and CF-Access-Client-Secret. The library keeps these and sends them only to the repository." : {
+
+    },
+    "For adults" : {
+
+    },
+    "Free Up Space" : {
+
+    },
+    "Freeing up space clears copies of recently read books from shared libraries and cover images. They're fetched again as you read. Your library, downloads, and reading positions are kept." : {
+
+    },
+    "Go to Chapters" : {
+
+    },
+    "Grid" : {
+      "comment" : "Library layout: covers in a grid"
+    },
+    "Header Name" : {
+
+    },
+    "Headers" : {
+
+    },
+    "Home" : {
+
+    },
+    "Incorrect User Name or Password" : {
+
+    },
+    "It may have been removed from this library." : {
+
+    },
+    "It's copy-protected and can be opened only in the app it was bought from." : {
+
+    },
+    "It's too large to open on this device." : {
+
+    },
+    "Its downloads are deleted from this device. Your reading positions are kept on the library." : {
+
+    },
+    "Its file and reading position are deleted from this device." : {
+
+    },
+    "Its saved details aren't shown. Enter new ones to replace them, or choose None to remove them." : {
+
+    },
+    "Larger Text" : {
+
+    },
+    "Left to Right" : {
+
+    },
+    "Less" : {
+
+    },
+    "Lets everyone with access to this library add repositories that only they can see." : {
+
+    },
+    "Library" : {
+      "comment" : "Tab for the books on this device"
+    },
+    "License" : {
+
+    },
+    "Light" : {
+
+    },
+    "Line Spacing" : {
+
+    },
+    "List" : {
+      "comment" : "Library layout: one row per book"
+    },
+    "Loading" : {
+
+    },
+    "Manage Sites" : {
+
+    },
+    "Margins" : {
+
+    },
+    "Mark All as Seen" : {
+
+    },
+    "Mark as Finished" : {
+
+    },
+    "Mark as Unread" : {
+
+    },
+    "Mark Previous as Finished" : {
+
+    },
+    "Mature" : {
+
+    },
+    "Mature series are on, chosen on the web. Choose Everyone or Teen to turn them off. Applies to search and sites in this library, on all your devices." : {
+
+    },
+    "More" : {
+
+    },
+    "Name" : {
+      "comment" : "A server's friendly name, or the account's user name"
+    },
+    "Name (Optional)" : {
+
+    },
+    "Narrow" : {
+
+    },
+    "New" : {
+      "comment" : "Badge on a book or chapter not read yet"
+    },
+    "New Chapter Notifications" : {
+
+    },
+    "New chapters of series you follow appear here." : {
+
+    },
+    "New York" : {
+
+    },
+    "Newest First" : {
+
+    },
+    "Next %lld Unread" : {
+      "comment" : "Button that downloads the next unread chapters"
+    },
+    "Next 5 Unread" : {
+
+    },
+    "Next Chapter" : {
+
+    },
+    "No collections are shared with you yet. Ask the library's administrator for access." : {
+
+    },
+    "No Longer Available" : {
+
+    },
+    "No Longer Offered" : {
+
+    },
+    "No Longer Updated" : {
+
+    },
+    "No More Chapters" : {
+
+    },
+    "No new chapters. Chek checks a few times a day, or you can [check now](chek-action://check)." : {
+
+    },
+    "No Pages in This Chapter" : {
+
+    },
+    "No Pages to Download" : {
+
+    },
+    "None" : {
+
+    },
+    "Not checked yet. Pull down to refresh." : {
+
+    },
+    "Not Now" : {
+
+    },
+    "Nothing here matches your search." : {
+
+    },
+    "Off" : {
+
+    },
+    "Official" : {
+
+    },
+    "OK" : {
+
+    },
+    "Oldest First" : {
+
+    },
+    "On" : {
+
+    },
+    "On Hiatus" : {
+
+    },
+    "Ongoing" : {
+
+    },
+    "Only the Administrator Can Add Repositories" : {
+
+    },
+    "Only the Administrator Can Change This Repository" : {
+
+    },
+    "Open Sample Library" : {
+
+    },
+    "Open Settings" : {
+
+    },
+    "Opening Stopped" : {
+
+    },
+    "Order" : {
+
+    },
+    "Original" : {
+      "comment" : "The publication's own font, colors, line spacing or reading direction"
+    },
+    "Page Turn" : {
+
+    },
+    "Pages" : {
+      "comment" : "Comic layout: one page at a time"
+    },
+    "Password" : {
+
+    },
+    "Pornographic" : {
+
+    },
+    "Position" : {
+
+    },
+    "Position Saved on Another Device" : {
+
+    },
+    "Privacy Policy" : {
+
+    },
+    "Private" : {
+
+    },
+    "Private Repository" : {
+
+    },
+    "Read" : {
+      "comment" : "Button on a book that opens it"
+    },
+    "Reading" : {
+
+    },
+    "Reading Direction" : {
+
+    },
+    "Reading tips. Double-tap to dismiss." : {
+
+    },
+    "Recent" : {
+      "comment" : "Library order: last read first"
+    },
+    "Recently Added" : {
+
+    },
+    "Recently Read" : {
+
+    },
+    "Regular" : {
+
+    },
+    "Relaxed" : {
+
+    },
+    "Releases" : {
+
+    },
+    "Remove" : {
+
+    },
+    "Remove “%@”?" : {
+
+    },
+    "Remove %@ Filter" : {
+
+    },
+    "Remove ^[%lld Download](inflect: true)" : {
+
+    },
+    "Remove All Downloads" : {
+
+    },
+    "Remove All Downloads?" : {
+
+    },
+    "Remove Download" : {
+
+    },
+    "Remove Downloads" : {
+
+    },
+    "Remove Last Header" : {
+
+    },
+    "Remove Library" : {
+
+    },
+    "Remove Repository" : {
+
+    },
+    "Remove…" : {
+
+    },
+    "Removing it deletes its downloads from this device. Your reading positions are kept on the library." : {
+
+    },
+    "Rename" : {
+
+    },
+    "Rename Library" : {
+
+    },
+    "Report a Problem" : {
+
+    },
+    "Repositories" : {
+
+    },
+    "Repositories and settings for the library's administrator." : {
+
+    },
+    "Repositories use HTTPS. A password goes in the sign-in details, not the address, and a token, user name, or header name can't be empty." : {
+
+    },
+    "Repositories you add are available to everyone with access to this library." : {
+
+    },
+    "Repositories you add are visible only to you." : {
+
+    },
+    "Repository" : {
+
+    },
+    "Repository Already Added" : {
+
+    },
+    "Repository Refused the Download" : {
+
+    },
+    "Reset Appearance" : {
+
+    },
+    "Right to Left" : {
+
+    },
+    "Safe" : {
+
+    },
+    "Sample Library" : {
+
+    },
+    "Sample Library Can't Be Changed" : {
+
+    },
+    "San Francisco" : {
+
+    },
+    "Save" : {
+
+    },
+    "Search" : {
+
+    },
+    "Search %@" : {
+      "comment" : "Search field prompt naming the library or source searched"
+    },
+    "Search In" : {
+
+    },
+    "Search Your Library" : {
+
+    },
+    "Searching %@…" : {
+
+    },
+    "See All" : {
+
+    },
+    "Select" : {
+
+    },
+    "Select All" : {
+
+    },
+    "Sepia" : {
+
+    },
+    "Settings" : {
+
+    },
+    "Share" : {
+
+    },
+    "Shared" : {
+
+    },
+    "Shared Libraries" : {
+
+    },
+    "Show" : {
+
+    },
+    "Show Earlier Chapters" : {
+
+    },
+    "Show Newer Chapters" : {
+
+    },
+    "Shows less of the summary" : {
+
+    },
+    "Shows the whole summary" : {
+
+    },
+    "Sign In" : {
+
+    },
+    "Sign in to keep reading." : {
+
+    },
+    "Sign in to your libraries in [Shared](chek-action://shared) to keep reading, or [add books](chek-action://add) from Files." : {
+
+    },
+    "Sign In With" : {
+
+    },
+    "Sign in with a token. For a private GitHub repository, use a fine-grained token that can read its contents." : {
+
+    },
+    "Sign in with its user name and password." : {
+
+    },
+    "Sign in with the headers its host asks for, such as a Cloudflare Access service token's ID and secret." : {
+
+    },
+    "Sign Out" : {
+
+    },
+    "Sign-In Details" : {
+
+    },
+    "Sign-In Details Refused" : {
+
+    },
+    "Signed Out" : {
+
+    },
+    "Signed Out of %@" : {
+
+    },
+    "Site Not Available" : {
+
+    },
+    "Site Not Responding" : {
+
+    },
+    "Site Turned Off" : {
+
+    },
+    "Sites" : {
+
+    },
+    "Sites Can't Be Added to the Sample Library" : {
+
+    },
+    "Sites from it are removed for everyone." : {
+
+    },
+    "Sites from it are removed too." : {
+
+    },
+    "Sites Not Available" : {
+
+    },
+    "Sites you add appear on Home and in Search on all your devices." : {
+
+    },
+    "Slide" : {
+      "comment" : "A page turn where the next page slides in beside this one"
+    },
+    "Smaller Text" : {
+
+    },
+    "Sort By" : {
+
+    },
+    "Start Reading" : {
+
+    },
+    "Started" : {
+
+    },
+    "Storage" : {
+
+    },
+    "Suggestive" : {
+
+    },
+    "Tap the edges or swipe to turn pages. Tap the middle to show the controls." : {
+
+    },
+    "Teen" : {
+
+    },
+    "Text" : {
+      "comment" : "Plain text files, and the text settings section in the reader"
+    },
+    "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Everyone with access to this library can add sites from it." : {
+
+    },
+    "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Only you can see it." : {
+
+    },
+    "The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it." : {
+
+    },
+    "The file may be damaged." : {
+
+    },
+    "The library's administrator hasn't added any sites yet." : {
+
+    },
+    "The library's administrator turned this site off." : {
+
+    },
+    "The sample library is removed when you close Chek." : {
+
+    },
+    "The sample library shows safe and suggestive series." : {
+
+    },
+    "The site hasn't published it yet." : {
+
+    },
+    "Their files and reading positions are deleted from this device." : {
+
+    },
+    "There are no books in this series yet." : {
+
+    },
+    "There are no series here yet." : {
+
+    },
+    "These sites still work but no longer receive updates." : {
+
+    },
+    "They download one at a time while Chek is open and stay on this device until you remove them." : {
+
+    },
+    "This Book" : {
+
+    },
+    "This book doesn't have a table of contents." : {
+
+    },
+    "This book is shared openly by the site it comes from, on these terms." : {
+
+    },
+    "This book opens once it has finished downloading." : {
+
+    },
+    "This Comic" : {
+
+    },
+    "This library has been removed." : {
+
+    },
+    "This library needs a newer version of Chek before sites can be added. Ask its administrator." : {
+
+    },
+    "This name is only shown on this device." : {
+
+    },
+    "This site doesn't have chapters for this series. Licensed series are often available only from their publisher." : {
+
+    },
+    "This site has no series to show." : {
+
+    },
+    "Title" : {
+
+    },
+    "Token" : {
+
+    },
+    "Too Many Attempts" : {
+
+    },
+    "try again" : {
+
+    },
+    "Try Again" : {
+
+    },
+    "Try again later." : {
+
+    },
+    "Try again later. If it keeps happening, look for an update in Sites." : {
+
+    },
+    "Try again later. If this keeps happening, contact the library's administrator." : {
+
+    },
+    "Turn On Notifications" : {
+
+    },
+    "Turned Off" : {
+
+    },
+    "Unfollow" : {
+
+    },
+    "Unknown Group" : {
+
+    },
+    "Update" : {
+
+    },
+    "Update ^[%lld Site](inflect: true)" : {
+
+    },
+    "Update Available" : {
+
+    },
+    "Update Sites Automatically" : {
+
+    },
+    "Updates" : {
+
+    },
+    "User Name" : {
+
+    },
+    "User Name and Password" : {
+
+    },
+    "Value" : {
+
+    },
+    "Version" : {
+
+    },
+    "Vertical Scroll" : {
+
+    },
+    "View" : {
+
+    },
+    "Visit the Book's Page" : {
+
+    },
+    "Wait a minute, then try again." : {
+
+    },
+    "Waiting to Download" : {
+
+    },
+    "Wide" : {
+
+    },
+    "You can download them again any time." : {
+
+    },
+    "Your password is sent only to this library." : {
+
+    }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

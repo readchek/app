@@ -1,18 +1,63 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "NSLocalNetworkUsageDescription": {
-      "comment": "Shown when iOS asks the reader to let Chek use the local network",
-      "extractionState": "extracted_with_value",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Chek connects to shared libraries on your home network."
+  "sourceLanguage" : "en",
+  "strings" : {
+    "AZW3 Book" : {
+
+    },
+    "CFBundleDisplayName" : {
+      "comment" : "Bundle display name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chek"
           }
         }
       }
+    },
+    "CFBundleName" : {
+      "comment" : "Bundle name",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chek"
+          }
+        }
+      }
+    },
+    "Comic Book TAR" : {
+
+    },
+    "Comic Book ZIP" : {
+
+    },
+    "FictionBook" : {
+
+    },
+    "Markdown" : {
+
+    },
+    "Mobipocket Book" : {
+
+    },
+    "NSLocalNetworkUsageDescription" : {
+      "comment" : "Shown when iOS asks the reader to let Chek use the local network",
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chek connects to the library servers you add on your home network."
+          }
+        }
+      }
+    },
+    "Zipped FictionBook" : {
+
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
