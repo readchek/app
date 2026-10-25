@@ -1,0 +1,30 @@
+{
+  "name": "chek-web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc",
+    "deploy": "vite build && bun scripts/cloudflare.ts && cf deploy --prebuilt",
+    "lint": "oxlint --deny-warnings .",
+    "format": "oxfmt --write .",
+    "format:check": "oxfmt --check ."
+  },
+  "dependencies": {
+    "@tanstack/solid-router": "1.170.43",
+    "solid-js": "1.9.17"
+  },
+  "devDependencies": {
+    "@cloudflare/build-output-utils": "0.9.3",
+    "@types/bun": "latest",
+    "cf": "^1.0.0-beta.13",
+    "oxfmt": "^0.73.0",
+    "oxlint": "^1.86.0",
+    "typescript": "7.0.2",
+    "vite": "8.3.5",
+    "vite-plugin-solid": "2.11.14"
+  },
+  "packageManager": "bun@1.4.3"
+}

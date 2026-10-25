@@ -1,0 +1,164 @@
+/* Chek's charcoal and blue, from chek.page's design guide, with a light
+   counterpart for people who use light mode. */
+:root {
+  color-scheme: light dark;
+  --background: #f7f7f3;
+  --text: #22221f;
+  --muted: #5f5f5a;
+  --surface: #ebebe5;
+  --accent: #275b9e;
+  --on-accent: #f7f7f3;
+  --error: #b3261e;
+  font:
+    17px/1.5 system-ui,
+    -apple-system,
+    sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #11110f;
+    --text: #a0a09c;
+    --muted: #858580;
+    --surface: #242424;
+    --accent: #4a8ce0;
+    --on-accent: #d6d6cf;
+    --error: #f2b8b5;
+  }
+  button.primary {
+    background: #275b9e;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--text);
+}
+
+main {
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 600;
+  margin-bottom: 32px;
+}
+
+h1 {
+  font-size: 1.75rem;
+  margin: 0 0 8px;
+}
+
+a {
+  color: var(--accent);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.error {
+  color: var(--error);
+}
+
+.stack {
+  display: grid;
+  gap: 16px;
+  margin: 24px 0;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+}
+
+input:not([type]),
+input[type="password"] {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--muted);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+}
+
+fieldset {
+  display: grid;
+  gap: 4px;
+  border: 0;
+  margin: 0;
+  padding: 0;
+}
+
+legend {
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.option:has(input:checked) {
+  background: var(--surface);
+}
+
+.option input {
+  margin-top: 5px;
+  accent-color: var(--accent);
+}
+
+.option span {
+  display: grid;
+}
+
+button {
+  font: inherit;
+  padding: 10px 18px;
+  border-radius: 999px;
+  border: 1px solid var(--muted);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  justify-self: start;
+}
+
+button.primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--on-accent);
+}
+
+button.link {
+  padding: 0;
+  border: 0;
+  color: var(--accent);
+  text-decoration: underline;
+}
+
+button:disabled,
+fieldset:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--surface);
+  margin: 32px 0 16px;
+}

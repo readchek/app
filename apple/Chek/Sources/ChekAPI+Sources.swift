@@ -147,8 +147,8 @@ nonisolated extension ChekAPI {
     enum ContentRating: String, Codable, CaseIterable, Comparable, Sendable {
         case safe, suggestive, erotica, pornographic
 
-        /// Old enough only for adults, which the app asks you to confirm
-        /// before showing and marks on covers.
+        /// Only for adults. They're turned on in the Chek web app, never
+        /// in this one, and marked on covers.
         var isMature: Bool {
             self == .erotica || self == .pornographic
         }
@@ -169,6 +169,10 @@ nonisolated extension ChekAPI {
 
     struct ContentRatings: Codable, Sendable {
         var contentRatings: [String]
+    }
+
+    struct WebLink: Decodable, Sendable {
+        var code: String
     }
 
     struct SourceSeriesItem: Codable, Identifiable, Hashable, Sendable {
