@@ -42,6 +42,29 @@ export const ArrowUpRight = () => (
   </svg>
 )
 
+export const ChevronRight = () => (
+  <svg
+    viewBox="0 0 24 24"
+    aria-hidden="true"
+    class="size-4 shrink-0 text-muted-foreground"
+    {...stroke}
+  >
+    <path d="m9 6 6 6-6 6" />
+  </svg>
+)
+
+export const Folder = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2.5h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2Z" />
+  </svg>
+)
+
+export const ArrowUp = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M12 19V5M6 11l6-6 6 6" />
+  </svg>
+)
+
 export const Spinner = (props: { class?: string }) => (
   <svg
     viewBox="0 0 24 24"

@@ -80,9 +80,17 @@ Chek Reader comes through Swift Package Manager, pinned to a release
 ## The web app
 
 `web/` is Chek on the web, served at [app.chek.page](https://app.chek.page).
-For now it has one screen, content settings, where adults turn on mature
-series. The iOS app doesn't offer that, so it opens this page in Safari,
-signed in with a one-time code from the server.
+It has two parts so far:
+
+- **Content settings**, where adults turn on mature series. The iOS app
+  doesn't offer that, so it opens this page in Safari, signed in with a
+  one-time code from the server.
+- **The admin panel** at `/admin`, where a server's admins set it up with
+  its setup token, then manage libraries and their scans, people and the
+  libraries each one reads, extension repositories and settings. The server
+  image bundles the same screens at `http://<server>:8080/admin`, built with
+  `bun run build:server`, since an https page can't reach a server on plain
+  http. app.chek.page/admin manages servers with https addresses.
 
 - **Stack.** SolidJS with TanStack Router, built with Vite and run with
   [Bun](https://bun.sh).
@@ -95,6 +103,7 @@ cd web
 bun install
 bun run dev        # http://localhost:18358
 bun run typecheck && bun run lint && bun run format:check && bun run build
+bun run build:server   # the admin panel the server serves, in dist-server/
 ```
 
 - **Deploy.** `bun run deploy` builds it and publishes it to Cloudflare as

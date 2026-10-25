@@ -43,6 +43,7 @@
   --butter-foreground: #171820;
   --success: #1f7a4d;
   --destructive: #c4321f;
+  --destructive-foreground: #fafaf7;
   --ring: #2448e8;
 }
 
@@ -63,6 +64,7 @@
     --butter-foreground: #171820;
     --success: #6fd3a0;
     --destructive: #ff9a8a;
+    --destructive-foreground: #171820;
     --ring: #5b78ff;
   }
 }
@@ -85,6 +87,7 @@
   --color-butter-foreground: var(--butter-foreground);
   --color-success: var(--success);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
   --color-ring: var(--ring);
 }
 

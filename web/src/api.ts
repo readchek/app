@@ -6,7 +6,16 @@ export type Rating = "safe" | "suggestive" | "erotica" | "pornographic"
 
 export const ratings: readonly Rating[] = ["safe", "suggestive", "erotica", "pornographic"]
 
-export type User = { id: number; name: string; demo?: boolean }
+export type Role = "admin" | "reader"
+
+export type User = {
+  id: number
+  name: string
+  role: Role
+  libraryIds: number[]
+  createdAt: string
+  demo?: boolean
+}
 
 export type Session = { server: string; token: string; user: User }
 
@@ -39,7 +48,10 @@ export function serverAddress(typed: string): string {
   return url.origin + url.pathname.replace(/\/+$/, "")
 }
 
-async function request<T>(
+/** Whether this build is the admin panel the Chek server serves itself, at its own address. */
+export const bundled = import.meta.env.MODE === "server"
+
+export async function request<T>(
   server: string,
   path: string,
   init: { method?: string; token?: string; body?: unknown; signal?: AbortSignal } = {},

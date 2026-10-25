@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:server": "vite build --mode server --base /admin/ --outDir dist-server",
     "preview": "vite preview",
     "typecheck": "tsc",
     "deploy": "vite build && bun scripts/cloudflare.ts && cf deploy --prebuilt",
