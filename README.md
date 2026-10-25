@@ -65,7 +65,11 @@ which overrides the pinned one until you remove it.
 For now it has one screen, content settings, where adults turn on mature
 series, which the iOS app doesn't offer. The iOS app opens it in Safari,
 signed in with a one-time code from the server. It's SolidJS with TanStack
-Router, built with Vite and run with [Bun](https://bun.sh):
+Router, built with Vite and run with [Bun](https://bun.sh). Its look follows
+the app and chek.page: Tailwind CSS with the brand's colors and fonts in
+`src/styles.css`, and shadcn-style components from
+[solid-ui](https://www.solid-ui.com), built on Kobalte, in
+`src/components/ui`:
 
 ```sh
 cd web
