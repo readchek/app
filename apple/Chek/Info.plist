@@ -119,7 +119,7 @@
 				<string>public.data</string>
 			</array>
 			<key>UTTypeDescription</key>
-			<string>Kindle Book</string>
+			<string>AZW3 Book</string>
 			<key>UTTypeIdentifier</key>
 			<string>com.readchek.azw3</string>
 			<key>UTTypeTagSpecification</key>
