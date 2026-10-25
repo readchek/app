@@ -9,7 +9,6 @@ import {
 } from "@tanstack/solid-router"
 import { Page } from "./components/Page.tsx"
 import { buttonVariants } from "./components/ui/button.tsx"
-import { Card, CardContent } from "./components/ui/card.tsx"
 import { ContentSettings } from "./routes/ContentSettings.tsx"
 import "./styles.css"
 
@@ -17,13 +16,9 @@ const root = createRootRoute({
   component: Outlet,
   notFoundComponent: () => (
     <Page title="Page not found" lead="There's nothing at this address.">
-      <Card>
-        <CardContent>
-          <a href="/settings/content" class={buttonVariants()}>
-            Go to content settings
-          </a>
-        </CardContent>
-      </Card>
+      <a href="/settings/content" class={buttonVariants()}>
+        Go to content settings
+      </a>
     </Page>
   ),
 })

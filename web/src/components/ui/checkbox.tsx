@@ -15,7 +15,7 @@ export function Checkbox(props: {
       class={cn("group flex cursor-pointer items-start gap-3", props.class)}
     >
       <CheckboxPrimitive.Input class="peer" />
-      <CheckboxPrimitive.Control class="mt-px flex size-[22px] shrink-0 items-center justify-center rounded-md border-2 border-butter-foreground/40 bg-card text-primary-foreground transition-colors peer-focus-visible:ring-3 peer-focus-visible:ring-ring/40 data-[checked]:border-primary data-[checked]:bg-primary">
+      <CheckboxPrimitive.Control class="mt-px flex size-[22px] shrink-0 items-center justify-center rounded-md border-2 border-input bg-background text-primary-foreground transition-colors peer-focus-visible:ring-3 peer-focus-visible:ring-ring/40 data-[checked]:border-primary data-[checked]:bg-primary">
         <CheckboxPrimitive.Indicator>
           <svg viewBox="0 0 16 16" class="size-3.5" aria-hidden="true">
             <path

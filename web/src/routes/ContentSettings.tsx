@@ -14,38 +14,27 @@ import {
 } from "../api.ts"
 import { forget, remember, session } from "../session.ts"
 import { Page } from "../components/Page.tsx"
-import { AlertCircle, CheckCircle, Lock, Phone, Spinner } from "../components/icons.tsx"
+import { AlertCircle, CheckCircle, Lock, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Badge } from "../components/ui/badge.tsx"
 import { Button } from "../components/ui/button.tsx"
-import { Card, CardContent, CardFooter } from "../components/ui/card.tsx"
 import { Checkbox } from "../components/ui/checkbox.tsx"
 import { Input, Label } from "../components/ui/input.tsx"
-import { RadioCard, RadioGroup, RadioGroupLabel } from "../components/ui/radio-group.tsx"
-import { Separator } from "../components/ui/separator.tsx"
+import { RadioGroup, RadioGroupLabel, RadioRow } from "../components/ui/radio-group.tsx"
 
 type Level = "everyone" | "teen" | "mature"
 
-// `mark` is the level's badge, in the style of an age rating.
-const levels: {
-  id: Level
-  title: string
-  mark: string
-  detail: string
-  ratings: readonly Rating[]
-}[] = [
-  { id: "everyone", title: "Everyone", mark: "E", detail: "Safe series only.", ratings: ["safe"] },
+const levels: { id: Level; title: string; detail: string; ratings: readonly Rating[] }[] = [
+  { id: "everyone", title: "Everyone", detail: "Safe series only.", ratings: ["safe"] },
   {
     id: "teen",
     title: "Teen",
-    mark: "T",
     detail: "Adds suggestive series, such as fan service.",
     ratings: ["safe", "suggestive"],
   },
   {
     id: "mature",
     title: "Mature",
-    mark: "18+",
     detail: "Adds erotica and pornographic series. For adults only.",
     ratings,
   },
@@ -94,25 +83,19 @@ export function ContentSettings() {
   })
 
   return (
-    <Page
-      title="Content"
-      lead="Choose which series sources show you."
-      bubble="Your shelf, your rules."
-    >
-      <Card>
-        <Switch>
-          <Match when={phase() === "opening"}>
-            <CardContent class="flex items-center gap-3 py-10 text-muted-foreground sm:py-12">
-              <Spinner class="size-5 text-link" />
-              <p role="status">Signing in…</p>
-            </CardContent>
-          </Match>
-          <Match when={session()}>{(current) => <Editor session={current()} />}</Match>
-          <Match when={true}>
-            <SignIn server={search().server} notice={notice()} />
-          </Match>
-        </Switch>
-      </Card>
+    <Page title="Content" lead="Choose which series sources show you.">
+      <Switch>
+        <Match when={phase() === "opening"}>
+          <p role="status" class="flex items-center gap-2.5 text-muted-foreground">
+            <Spinner class="size-[18px] text-link" />
+            Signing in…
+          </p>
+        </Match>
+        <Match when={session()}>{(current) => <Editor session={current()} />}</Match>
+        <Match when={true}>
+          <SignIn server={search().server} notice={notice()} />
+        </Match>
+      </Switch>
     </Page>
   )
 }
@@ -120,8 +103,6 @@ export function ContentSettings() {
 function SignIn(props: { server?: string; notice: string }) {
   const [error, setError] = createSignal(props.notice)
   const [busy, setBusy] = createSignal(false)
-  // The expired-link notice leads the card; later errors sit by the button.
-  const opening = () => error() !== "" && error() === props.notice
 
   const run = async (signingIn: () => Promise<Session>) => {
     setBusy(true)
@@ -148,77 +129,61 @@ function SignIn(props: { server?: string; notice: string }) {
   }
 
   return (
-    <>
-      <CardContent class="grid gap-5">
-        <Show when={opening()}>
+    <div class="grid gap-8">
+      <p class="text-[15px] leading-relaxed text-muted-foreground">
+        The quickest way here is from the Chek app: open Settings, then Content, and tap Open in
+        Safari.
+      </p>
+      <form class="grid gap-4" onSubmit={submit}>
+        <Label>
+          Server address
+          <Input
+            name="server"
+            value={props.server ?? ""}
+            placeholder="chek.example.com"
+            autocomplete="url"
+            inputmode="url"
+            autocapitalize="off"
+            spellcheck={false}
+            required
+          />
+        </Label>
+        <Label>
+          Name
+          <Input name="name" autocomplete="username" autocapitalize="off" required />
+        </Label>
+        <Label>
+          Password
+          <Input name="password" type="password" autocomplete="current-password" required />
+        </Label>
+        <Show when={error()}>
           <Alert variant="destructive">
             <AlertCircle />
             <p>{error()}</p>
           </Alert>
         </Show>
-        <div class="flex items-start gap-3 rounded-2xl bg-muted px-4 py-3.5 text-[15px] leading-snug">
-          <span class="mt-px text-link [&>svg]:size-5">
-            <Phone />
-          </span>
-          <p>
-            The quickest way here is from the Chek app: open <strong>Settings</strong>, then{" "}
-            <strong>Content</strong>, and tap <strong>Open in Safari</strong>.
-          </p>
-        </div>
-        <h2 class="mt-1 text-2xl tracking-[-0.03em]">Or sign in to your server</h2>
-        <form class="grid gap-4" onSubmit={submit}>
-          <Label>
-            Server address
-            <Input
-              name="server"
-              value={props.server ?? ""}
-              placeholder="chek.example.com"
-              autocomplete="url"
-              inputmode="url"
-              autocapitalize="off"
-              spellcheck={false}
-              required
-            />
-          </Label>
-          <div class="grid gap-4 sm:grid-cols-2">
-            <Label>
-              Name
-              <Input name="name" autocomplete="username" autocapitalize="off" required />
-            </Label>
-            <Label>
-              Password
-              <Input name="password" type="password" autocomplete="current-password" required />
-            </Label>
-          </div>
-          <Show when={error() && !opening()}>
-            <Alert variant="destructive">
-              <AlertCircle />
-              <p>{error()}</p>
-            </Alert>
+        <Button type="submit" class="mt-2 w-full sm:w-auto sm:justify-self-start" disabled={busy()}>
+          <Show when={busy()}>
+            <Spinner />
           </Show>
-          <Button type="submit" size="lg" class="mt-1 w-full" disabled={busy()}>
-            <Show when={busy()}>
-              <Spinner />
-            </Show>
-            Sign in
-          </Button>
-          <p class="text-sm text-muted-foreground">
-            If you sign in to Chek with another service, open this page from the Chek app instead.
-          </p>
-        </form>
-      </CardContent>
-      <CardFooter class="flex flex-wrap items-center justify-between gap-3">
-        <span>No server of your own?</span>
+          Sign in
+        </Button>
+        <p class="text-sm text-muted-foreground">
+          If you sign in to Chek with another service, open this page from the Chek app instead.
+        </p>
+      </form>
+      <p class="border-t pt-6 text-[15px] text-muted-foreground">
+        No server of your own?{" "}
         <Button
-          variant="outline"
-          size="sm"
+          variant="link"
+          size="inline"
           disabled={busy()}
           onClick={() => void run(signInToDemo)}
         >
           Try the demo
         </Button>
-      </CardFooter>
-    </>
+      </p>
+    </div>
   )
 }
 
@@ -263,124 +228,124 @@ function Editor(props: { session: Session }) {
   }
 
   return (
-    <>
-      <CardContent class="flex items-center gap-3 pb-0 sm:pb-0">
-        <span
-          aria-hidden="true"
-          class="flex size-11 shrink-0 items-center justify-center rounded-full bg-link/10 font-display text-lg text-link uppercase"
-        >
-          {props.session.user.name.charAt(0)}
+    <div class="grid gap-8">
+      <p class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[15px] text-muted-foreground">
+        <span>
+          Signed in as{" "}
+          <strong class="font-semibold text-foreground">{props.session.user.name}</strong> on{" "}
+          {new URL(props.session.server).host}.
         </span>
-        <p class="min-w-0 flex-1 leading-tight">
-          <span class="sr-only">Signed in as </span>
-          <span class="flex items-center gap-2 font-semibold">
-            <span class="truncate">{props.session.user.name}</span>
-            <Show when={demo()}>
-              <Badge variant="butter">Demo</Badge>
-            </Show>
-          </span>
-          <span class="sr-only"> on </span>
-          <span class="block truncate text-sm text-muted-foreground">
-            {new URL(props.session.server).host}
-          </span>
-        </p>
-        <Button variant="ghost" size="sm" onClick={() => void forget()}>
+        <Show when={demo()}>
+          <Badge variant="butter">Demo</Badge>
+        </Show>
+        <Button variant="link" size="inline" onClick={() => void forget()}>
           Sign out
         </Button>
-      </CardContent>
-      <Separator class="mx-5 mt-5 sm:mx-7 sm:mt-6" />
-      <CardContent>
-        <Switch>
-          <Match when={saved.error}>
-            <Alert variant="destructive">
-              <AlertCircle />
-              <p>{message(saved.error)}</p>
-            </Alert>
-          </Match>
-          <Match when={saved()}>
-            {(chosen) => (
-              <form class="grid gap-5" onSubmit={save}>
-                <RadioGroup
-                  value={current() ?? ""}
-                  disabled={demo() || busy()}
-                  onChange={(value) => {
-                    setChoice(value as Level)
-                    setStatus(undefined)
-                  }}
-                >
-                  <RadioGroupLabel class="mb-1">Series that sources show you</RadioGroupLabel>
+      </p>
+      <Switch>
+        <Match when={saved.error}>
+          <Alert variant="destructive">
+            <AlertCircle />
+            <p>{message(saved.error)}</p>
+          </Alert>
+        </Match>
+        <Match when={saved()}>
+          {(chosen) => (
+            <form class="grid gap-6" onSubmit={save}>
+              <RadioGroup
+                value={current() ?? ""}
+                disabled={demo() || busy()}
+                onChange={(value) => {
+                  setChoice(value as Level)
+                  setStatus(undefined)
+                }}
+              >
+                <RadioGroupLabel class="mb-1">Series that sources show you</RadioGroupLabel>
+                <div class="divide-y border-y">
                   <For each={levels}>
                     {(level) => (
-                      <RadioCard
+                      <RadioRow
                         value={level.id}
-                        title={level.title}
-                        description={level.detail}
-                        leading={
-                          <span
-                            aria-hidden="true"
-                            class={`flex size-11 shrink-0 items-center justify-center rounded-xl font-display tracking-[-0.03em] transition-colors group-data-[checked]:bg-link group-data-[checked]:text-primary-foreground ${level.id === "mature" ? "bg-butter text-[15px] text-butter-foreground" : "bg-muted text-lg"}`}
-                          >
-                            {level.mark}
-                          </span>
+                        title={
+                          <>
+                            {level.title}
+                            <Show when={level.id === "mature"}>
+                              <Badge variant="butter">18+</Badge>
+                            </Show>
+                          </>
                         }
+                        description={level.detail}
                       />
                     )}
                   </For>
-                </RadioGroup>
-                <Show when={!current()}>
-                  <p class="text-[15px] text-muted-foreground">
-                    You see {chosen().join(", ")} series, chosen in an earlier version of Chek.
-                  </p>
-                </Show>
-                <Show when={choice() === "mature" && changed()}>
-                  <div class="rounded-2xl bg-butter px-4 py-3.5 text-butter-foreground">
-                    <Checkbox checked={adult()} onChange={setAdult}>
-                      I'm 18 or older, and I want to see adult content.
-                    </Checkbox>
-                  </div>
-                </Show>
-                <Show
-                  when={!demo()}
-                  fallback={
-                    <Alert variant="note" role="note">
-                      <Lock />
-                      <p>
-                        The demo always shows safe and suggestive series. Sign in to your own Chek
-                        server to change this.
-                      </p>
-                    </Alert>
-                  }
+                </div>
+              </RadioGroup>
+              <Show when={!current()}>
+                <p class="text-[15px] text-muted-foreground">
+                  You see {chosen().join(", ")} series, chosen in an earlier version of Chek.
+                </p>
+              </Show>
+              <Show when={choice() === "mature" && changed()}>
+                <Checkbox checked={adult()} onChange={setAdult}>
+                  I'm 18 or older, and I want to see adult content.
+                </Checkbox>
+              </Show>
+              <Show
+                when={!demo()}
+                fallback={
+                  <Alert role="note">
+                    <Lock />
+                    <p>
+                      The demo always shows safe and suggestive series. Sign in to your own Chek
+                      server to change this.
+                    </p>
+                  </Alert>
+                }
+              >
+                <Button
+                  type="submit"
+                  class="w-full sm:w-auto sm:justify-self-start sm:px-8"
+                  disabled={!canSave()}
                 >
-                  <Button type="submit" size="lg" class="w-full" disabled={!canSave()}>
-                    <Show when={busy()}>
-                      <Spinner />
-                    </Show>
-                    Save
-                  </Button>
-                </Show>
-                <Show when={status()}>
-                  {(shown) => (
-                    <Alert variant={shown().saved ? "success" : "destructive"} role="status">
-                      {shown().saved ? <CheckCircle /> : <AlertCircle />}
-                      <p>{shown().text}</p>
-                    </Alert>
-                  )}
-                </Show>
-              </form>
-            )}
-          </Match>
-          <Match when={true}>
-            <div class="grid gap-2.5" aria-busy="true">
-              <p class="sr-only" role="status">
-                Loading…
-              </p>
+                  <Show when={busy()}>
+                    <Spinner />
+                  </Show>
+                  Save
+                </Button>
+              </Show>
+              <Show when={status()}>
+                {(shown) => (
+                  <Alert variant={shown().saved ? "success" : "destructive"} role="status">
+                    {shown().saved ? <CheckCircle /> : <AlertCircle />}
+                    <p>{shown().text}</p>
+                  </Alert>
+                )}
+              </Show>
+            </form>
+          )}
+        </Match>
+        <Match when={true}>
+          <div aria-busy="true">
+            <p class="sr-only" role="status">
+              Loading…
+            </p>
+            <div class="h-5 w-48 animate-pulse rounded bg-muted" />
+            <div class="mt-3 divide-y border-y">
               <For each={levels}>
-                {() => <div class="h-[74px] animate-pulse rounded-2xl bg-muted sm:h-[78px]" />}
+                {() => (
+                  <div class="flex gap-3.5 py-4">
+                    <div class="size-5 animate-pulse rounded-full bg-muted" />
+                    <div class="grid flex-1 gap-2">
+                      <div class="h-4 w-24 animate-pulse rounded bg-muted" />
+                      <div class="h-4 w-56 animate-pulse rounded bg-muted" />
+                    </div>
+                  </div>
+                )}
               </For>
             </div>
-          </Match>
-        </Switch>
-      </CardContent>
-    </>
+          </div>
+        </Match>
+      </Switch>
+    </div>
   )
 }

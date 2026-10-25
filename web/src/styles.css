@@ -39,8 +39,6 @@
   /* Text, rings and selection in blue; the same blue as buttons in light
      mode, and the app's lighter dark-mode accent otherwise. */
   --link: #2448e8;
-  --hero: #2448e8;
-  --hero-foreground: #fafaf7;
   --butter: #eff3ad;
   --butter-foreground: #171820;
   --success: #1f7a4d;
@@ -61,8 +59,6 @@
     --primary: #2448e8;
     --primary-foreground: #fafaf7;
     --link: #7d93ff;
-    --hero: #1a36c4;
-    --hero-foreground: #fafaf7;
     --butter: #e4e99a;
     --butter-foreground: #171820;
     --success: #6fd3a0;
@@ -85,8 +81,6 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-link: var(--link);
-  --color-hero: var(--hero);
-  --color-hero-foreground: var(--hero-foreground);
   --color-butter: var(--butter);
   --color-butter-foreground: var(--butter-foreground);
   --color-success: var(--success);
