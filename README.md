@@ -128,3 +128,8 @@ docs/               Architecture notes
 ```
 
 See [AGENTS.md](AGENTS.md) for the conventions contributors and coding agents follow.
+
+## License
+
+The Chek apps are licensed under the [GNU Affero General Public License v3.0](LICENSE).
+The fonts in `web/src/fonts` keep their own SIL Open Font License, next to each font.
