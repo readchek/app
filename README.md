@@ -4,25 +4,39 @@
 
 <h1 align="center">Chek</h1>
 
-<p align="center">Your books and comics. Your choice of source.</p>
+<p align="center"><strong>Just one more chapter.</strong><br />A reader for your books and comics, on iPhone and iPad.</p>
 
 <p align="center">
-  <a href="https://chek.page">Chek</a>
+  <a href="https://apps.apple.com/us/app/chek-books-comics/id6761271144"><strong>Get it on the App Store</strong></a>
+  ·
+  <a href="https://chek.page">Website</a>
   ·
   <a href="AGENTS.md">Contributor guide</a>
   ·
   <a href="https://github.com/readchek/app/issues">Issues</a>
 </p>
 
-> In development. The iOS app keeps a library of books on the device: add EPUB, PDF, CBZ and CBT comics, MOBI, AZW3, FictionBook, plain text and Markdown files from Files, and each one opens where you left it. Connect a Chek server to read its libraries and the sources its extensions add, follow series to hear about new chapters, and download chapters to read offline. Try the Demo, from Settings or an empty screen, connects to demo.chek.page until the app is closed. Komga and Kavita come next.
+<p align="center">
+  <a href="https://assets.chek.page/chek-promo-16x9.mp4"><img src="https://raw.githubusercontent.com/readchek/chek.page/main/public/assets/video/promo-16x9-poster.webp" alt="Watch the Chek film" width="560" /></a>
+</p>
 
-## Overview
+This repository holds the native Chek apps, starting with iPhone and iPad,
+and Chek on the web. Chek 2.0 is live on the App Store.
 
-This repository holds the native Chek apps, starting with iPhone and iPad.
-Books are read with [Chek Reader](https://github.com/readchek/chek-reader), the
-reading engine Chek maintains as a standalone Swift package. The
-[Chek server](https://github.com/readchek/chek) is a separate project, and the
-app never needs it: local files work offline without an account.
+## What the app does
+
+- **Your own files.** Add EPUB, PDF, CBZ and CBT comics, MOBI, AZW3,
+  FictionBook, plain text and Markdown from Files. Each one opens where you
+  left it, offline and without an account.
+- **Your own server.** Connect a [Chek server](https://github.com/readchek/chek)
+  to read its libraries and the sources its extensions add. Follow a series
+  to hear about new chapters, and download chapters to read offline.
+- **A demo to try.** Try the Demo, from Settings or an empty screen,
+  connects to demo.chek.page until the app is closed.
+
+Books are read with [Chek Reader](https://github.com/readchek/chek-reader),
+the reading engine Chek maintains as a standalone Swift package. The server
+is a separate project, and the app never needs it.
 
 ## Requirements
 
@@ -51,25 +65,30 @@ xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
 ```
 
+### Chek Reader
+
 Chek Reader comes through Swift Package Manager, pinned to a release
 (`0.1.0` up to the next minor), so a build is the same today and next month.
-To take a new reader release, raise the version in the project's package
-dependency and let **File → Packages → Update to Latest Package Versions**
-rewrite `Package.resolved`. To work against unreleased reader changes, add
-the package locally with **File → Add Package Dependencies → Add Local**,
-which overrides the pinned one until you remove it.
+
+- **Take a new release.** Raise the version in the project's package
+  dependency, then let **File → Packages → Update to Latest Package Versions**
+  rewrite `Package.resolved`.
+- **Try unreleased changes.** Add the package locally with
+  **File → Add Package Dependencies → Add Local**. It overrides the pinned one
+  until you remove it.
 
 ## The web app
 
 `web/` is Chek on the web, served at [app.chek.page](https://app.chek.page).
 For now it has one screen, content settings, where adults turn on mature
-series, which the iOS app doesn't offer. The iOS app opens it in Safari,
-signed in with a one-time code from the server. It's SolidJS with TanStack
-Router, built with Vite and run with [Bun](https://bun.sh). Its look follows
-the app and chek.page: Tailwind CSS with the brand's colors and fonts in
-`src/styles.css`, and shadcn-style components from
-[solid-ui](https://www.solid-ui.com), built on Kobalte, in
-`src/components/ui`:
+series. The iOS app doesn't offer that, so it opens this page in Safari,
+signed in with a one-time code from the server.
+
+- **Stack.** SolidJS with TanStack Router, built with Vite and run with
+  [Bun](https://bun.sh).
+- **Look.** It follows the app and chek.page: Tailwind CSS with the brand's
+  colors and fonts in `src/styles.css`, and shadcn-style components from
+  [solid-ui](https://www.solid-ui.com), built on Kobalte, in `src/components/ui`.
 
 ```sh
 cd web
@@ -78,12 +97,13 @@ bun run dev        # http://localhost:18358
 bun run typecheck && bun run lint && bun run format:check && bun run build
 ```
 
-`bun run deploy` builds it and publishes it to Cloudflare as static files,
-after `cf auth login`. A server lets the web app call it from
-`CHEK_WEB_ORIGINS` (`https://app.chek.page` by default); to try a local
-server with the dev page, start the server with
-`CHEK_WEB_ORIGINS=http://localhost:18358`. The page reaches only https
-servers once it's served over https.
+- **Deploy.** `bun run deploy` builds it and publishes it to Cloudflare as
+  static files, after `cf auth login`.
+- **Local server.** A server accepts calls from the origins in
+  `CHEK_WEB_ORIGINS` (`https://app.chek.page` by default). To use a local
+  server with the dev page, start it with
+  `CHEK_WEB_ORIGINS=http://localhost:18358`. Once the page is served over
+  https, it reaches only https servers.
 
 ## Repository layout
 
