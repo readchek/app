@@ -19,6 +19,7 @@
     "A new chapter is available.": {},
     "Aa": {},
     "About": {},
+    "About This Book": {},
     "Add": {},
     "Add Books": {},
     "Add Header": {},
@@ -167,6 +168,7 @@
     "Library": {
       "comment": "Tab for the books on this device"
     },
+    "License": {},
     "Light": {},
     "Line Spacing": {},
     "List": {
@@ -351,6 +353,7 @@
     "This Book": {},
     "This Comic": {},
     "This book doesn't have a table of contents.": {},
+    "This book is shared openly by the site it comes from, on these terms.": {},
     "This book opens once it has finished downloading.": {},
     "This library has been removed.": {},
     "This library needs a newer version of Chek before sites can be added. Ask its administrator.": {},
@@ -379,6 +382,7 @@
     "Version": {},
     "Vertical Scroll": {},
     "View": {},
+    "Visit the Book's Page": {},
     "Wait a minute, then try again.": {},
     "Waiting to Download": {},
     "Wide": {},

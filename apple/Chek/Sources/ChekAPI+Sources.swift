@@ -18,6 +18,47 @@ nonisolated extension ChekAPI {
         var usable: Bool
         /// The version the repository lists, when it's newer.
         var update: String?
+        /// What its chapters come in. Older servers leave it out, and
+        /// their sources only read pages.
+        var formats: [ContentFormat]?
+    }
+
+    /// How a source's chapter is read: pages like a comic, or one file.
+    enum ContentFormat: String, Codable, Hashable, Sendable {
+        case images, epub, pdf
+    }
+
+    /// How to read one chapter from a source: its pages, or a file to
+    /// download, with any license the source gave.
+    struct ChapterContent: Decodable, Sendable {
+        var format: ContentFormat
+        var pages: [SourcePage]?
+        var file: RemoteFile?
+        var rights: Rights?
+    }
+
+    /// A chapter that's one file, such as a book.
+    struct RemoteFile: Decodable, Sendable {
+        /// The source's id for the file. A changed file gets a new id, so a
+        /// download can be kept under it.
+        var id: String
+        var mediaType: String
+        /// A path on the server that serves the file.
+        var url: String
+        var size: Int64?
+        var fileName: String?
+    }
+
+    /// The terms an openly licensed publication comes with.
+    struct Rights: Codable, Hashable, Sendable {
+        var license: String?
+        var licenseUrl: String?
+        var attribution: String?
+        var sourceUrl: String?
+
+        var isEmpty: Bool {
+            license == nil && attribution == nil && sourceUrl == nil
+        }
     }
 
     /// An extension a repository offers.

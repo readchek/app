@@ -277,8 +277,10 @@ private struct SourceSeriesContent: View {
                 prefer: { group in Task { await chapters.prefer(group: group) } }
             )
                 .contextMenu {
-                    DownloadAction(item: .chapter(ref), state: download)
-                    Divider()
+                    if SourceFormats.canDownload(source, on: account) {
+                        DownloadAction(item: .chapter(ref), state: download)
+                        Divider()
+                    }
                     if status == .finished {
                         Button("Mark as Unread", systemImage: "circle") {
                             progress.markUnread(ref)
@@ -295,8 +297,10 @@ private struct SourceSeriesContent: View {
                     }
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
-                    DownloadAction(item: .chapter(ref), state: download)
-                        .tint(download == .downloaded ? .secondary : .accentColor)
+                    if SourceFormats.canDownload(source, on: account) {
+                        DownloadAction(item: .chapter(ref), state: download)
+                            .tint(download == .downloaded ? .secondary : .accentColor)
+                    }
                 }
                 .onAppear {
                     // The next page starts loading a little before the end.
@@ -414,7 +418,9 @@ private struct ChaptersHeader: View {
                     .labelStyle(.titleAndIcon)
             }
             .font(.subheadline)
-            SeriesDownloadsMenu(series: series, account: account, source: source, statuses: statuses)
+            if SourceFormats.canDownload(source, on: account) {
+                SeriesDownloadsMenu(series: series, account: account, source: source, statuses: statuses)
+            }
         }
         .textCase(nil)
     }

@@ -54,9 +54,19 @@ final class SiteUpdates {
     /// Has the server read `account`'s repositories again, then installs
     /// the new versions or counts them, as the library's setting says.
     func check(_ account: UUID, force: Bool) async {
-        // The sample library can't change its sites.
-        guard account != DemoMode.accountID, !checking.contains(account) else { return }
+        guard !checking.contains(account) else { return }
         if !force, let last = lastCheck[account], Date.now.timeIntervalSince(last) < Self.interval { return }
+        // The sample library can't change its sites, so it's only asked
+        // what they are.
+        if account == DemoMode.accountID {
+            lastCheck[account] = .now
+            if let installed = try? await servers.request(account, { client throws(ChekError) in
+                try await client.installedExtensions()
+            }) {
+                SourceFormats.remember(installed, on: account)
+            }
+            return
+        }
         checking.insert(account)
         defer { checking.remove(account) }
         lastCheck[account] = .now
@@ -73,6 +83,7 @@ final class SiteUpdates {
         guard let installed = try? await servers.request(account, { client throws(ChekError) in
             try await client.installedExtensions()
         }) else { return }
+        SourceFormats.remember(installed, on: account)
         let outdated = installed.filter { $0.update != nil && $0.usable }
         guard isAutomatic(account) else {
             pending[account] = outdated.count
@@ -113,6 +124,7 @@ final class SiteUpdates {
 
     /// Notes what Sites just showed, so the count elsewhere agrees with it.
     func noteInstalled(_ installed: [ChekAPI.InstalledExtension], on account: UUID) {
+        SourceFormats.remember(installed, on: account)
         pending[account] = isAutomatic(account) ? 0 : installed.filter { $0.update != nil && $0.usable }.count
     }
 

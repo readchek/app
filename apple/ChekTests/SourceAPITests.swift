@@ -177,4 +177,37 @@ struct SourceAPITests {
         #expect(Preset(Set(ChekAPI.ContentRating.allCases)) == .mature)
         #expect(Preset([.safe, .erotica]) == .custom)
     }
+
+    /// A book chapter decodes its file and rights, with the reader picked
+    /// by the format the server names.
+    @Test func bookContentDecodes() throws {
+        let json = Data("""
+        {"format":"epub","pages":null,"file":{"id":"pg84","mediaType":"application/epub+zip","url":"/api/v1/me/extensions/x/file?ref=a","size":null,"fileName":null},
+        "rights":{"license":"Public domain in the USA","licenseUrl":null,"attribution":null,"sourceUrl":"https://www.gutenberg.org/ebooks/84"}}
+        """.utf8)
+        let content = try JSONDecoder().decode(ChekAPI.ChapterContent.self, from: json)
+        #expect(content.format == .epub)
+        #expect(content.file?.id == "pg84")
+        #expect(content.rights?.isEmpty == false)
+        #expect(RightsSection.link(content.rights?.sourceUrl) != nil)
+        #expect(RightsSection.link("http://example.org") == nil)
+    }
+
+    /// Sources from before formats existed read pages, so their chapters
+    /// open without asking the server what they are.
+    @Test func sourceFormatsAreRemembered() throws {
+        let defaults = try #require(UserDefaults(suiteName: "SourceFormatsTests"))
+        defaults.removePersistentDomain(forName: "SourceFormatsTests")
+        let server = UUID()
+        let comics = ChekAPI.InstalledExtension(id: "c", name: "C", version: "1", repositoryId: 1, sites: [], languages: [], usable: true)
+        var books = comics
+        books.id = "b"
+        books.formats = [.epub]
+        #expect(!SourceFormats.readsOnlyPages("c", on: server, defaults: defaults))
+        SourceFormats.remember([comics, books], on: server, defaults: defaults)
+        #expect(SourceFormats.readsOnlyPages("c", on: server, defaults: defaults))
+        #expect(!SourceFormats.readsOnlyPages("b", on: server, defaults: defaults))
+        #expect(!SourceFormats.canDownload("b", on: server, defaults: defaults))
+        #expect(SourceFormats.canDownload("unknown", on: server, defaults: defaults))
+    }
 }

@@ -29,6 +29,8 @@ struct ReadingItem: Identifiable {
     /// Whether every page is on the device, so reading it needs nothing
     /// from its server, such as a session.
     var isOnDevice = false
+    /// The license an openly licensed book came with, to show with it.
+    var rights: ChekAPI.Rights?
 
     var id: PublicationRef { ref }
 

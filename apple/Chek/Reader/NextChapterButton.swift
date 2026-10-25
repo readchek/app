@@ -16,8 +16,10 @@ struct NextChapterButton: View {
             Spacer()
             if isOnLastPage, case .loaded(.next(let next)) = lookup {
                 Button {
-                    if let item = try? sync.readingItem(for: next) {
-                        open(item)
+                    Task {
+                        if let item = try? await sync.readingItem(for: next) {
+                            open(item)
+                        }
                     }
                 } label: {
                     Label {

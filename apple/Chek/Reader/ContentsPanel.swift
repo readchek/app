@@ -12,13 +12,15 @@ struct ContentsPanel: View {
     var body: some View {
         NavigationStack {
             ScrollViewReader { proxy in
-                List(entries) { entry in
-                    Button {
-                        Task { await session.go(to: entry.link) }
-                    } label: {
-                        ContentsRow(title: entry.title, depth: entry.depth, isCurrent: entry.id == currentEntry)
+                List {
+                    ForEach(entries) { entry in
+                        Button {
+                            Task { await session.go(to: entry.link) }
+                        } label: {
+                            ContentsRow(title: entry.title, depth: entry.depth, isCurrent: entry.id == currentEntry)
+                        }
+                        .id(entry.id)
                     }
-                    .id(entry.id)
                 }
                 .listStyle(.plain)
                 .overlay {
@@ -41,6 +43,19 @@ struct ContentsPanel: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close", systemImage: "xmark") {
                         dismiss()
+                    }
+                }
+                if let rights = session.item.rights {
+                    ToolbarItem(placement: .primaryAction) {
+                        NavigationLink {
+                            List {
+                                RightsSection(rights: rights)
+                            }
+                            .navigationTitle("About This Book")
+                            .navigationBarTitleDisplayMode(.inline)
+                        } label: {
+                            Label("About This Book", systemImage: "info.circle")
+                        }
                     }
                 }
             }

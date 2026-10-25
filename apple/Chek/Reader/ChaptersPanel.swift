@@ -96,12 +96,16 @@ struct ChaptersPanel: View {
     private func row(_ item: ChekAPI.SourceChapter) -> some View {
         let isCurrent = item.id == chapter.chapterID
         return Button {
-            guard !isCurrent, let next = try? sync.readingItem(for: ref(item)) else {
+            guard !isCurrent else {
                 dismiss()
                 return
             }
-            dismiss()
-            open(next)
+            let next = ref(item)
+            Task {
+                let item = try? await sync.readingItem(for: next)
+                dismiss()
+                if let item { open(item) }
+            }
         } label: {
             HStack {
                 Text(item.displayTitle)

@@ -91,11 +91,60 @@ final class ServerSync {
     }
 
     /// What the reader needs to open a chapter straight from a source,
-    /// starting where you left it on this device.
-    func readingItem(for chapter: SourceChapterRef) throws(DisplayError) -> ReadingItem {
-        guard servers.client(for: chapter.server) != nil || ChapterFiles.downloadedPageCount(of: chapter) != nil else {
+    /// starting where you left it on this device. A source of comics opens
+    /// at once and fetches pages as they're read; anything else is asked
+    /// what the chapter is first, since it may be a book.
+    func readingItem(for chapter: SourceChapterRef) async throws(DisplayError) -> ReadingItem {
+        let client = servers.client(for: chapter.server)
+        if ChapterFiles.downloadedPageCount(of: chapter) != nil || SourceFormats.readsOnlyPages(chapter.source, on: chapter.server) {
+            guard client != nil || ChapterFiles.downloadedPageCount(of: chapter) != nil else {
+                throw DisplayError(ChekError.unauthorized)
+            }
+            return pagesItem(for: chapter)
+        }
+        guard client != nil else {
+            if let kept = ChapterBooks.kept(for: chapter) {
+                return bookItem(for: chapter, content: .source(.file(kept.url)), rights: ChapterBooks.rights(of: chapter), isOnDevice: true)
+            }
             throw DisplayError(ChekError.unauthorized)
         }
+        let content: ChekAPI.ChapterContent
+        do {
+            content = try await servers.request(chapter.server) { client throws(ChekError) in
+                try await client.chapterContent(chapter.chapterID, inSource: chapter.source)
+            }
+        } catch {
+            // The book fetched last time still reads without the server.
+            if !error.isCancellation, let kept = ChapterBooks.kept(for: chapter) {
+                return bookItem(for: chapter, content: .source(.file(kept.url)), rights: ChapterBooks.rights(of: chapter), isOnDevice: true)
+            }
+            // An older server has no content route, and reads only pages.
+            if case .notFound = error {
+                return pagesItem(for: chapter)
+            }
+            throw DisplayError(error)
+        }
+        ChapterBooks.saveRights(content.rights, of: chapter)
+        // The reader is chosen by the format the server names, never by
+        // the file's address.
+        guard content.format != .images, let file = content.file else {
+            return pagesItem(for: chapter)
+        }
+        let destination = ChapterBooks.file(file, format: content.format, of: chapter)
+        if FileManager.default.fileExists(atPath: destination.path(percentEncoded: false)) {
+            ChapterBooks.removeOthers(of: chapter, keeping: destination)
+            return bookItem(for: chapter, content: .source(.file(destination)), rights: content.rights, isOnDevice: true)
+        }
+        guard let client = servers.client(for: chapter.server), var request = client.imageRequest(file.url) else {
+            throw DisplayError(ChekError.invalidResponse)
+        }
+        // Books can be large, and the server fetches them from the site
+        // before sending any.
+        request.timeoutInterval = 300
+        return bookItem(for: chapter, content: .download(Download(request: request, destination: destination)), rights: content.rights, isOnDevice: false)
+    }
+
+    private func pagesItem(for chapter: SourceChapterRef) -> ReadingItem {
         let state = progress.sourceState(for: chapter)
         var item = ReadingItem(
             ref: chapter.ref,
@@ -112,6 +161,23 @@ final class ServerSync {
         item.sourceChapter = chapter
         item.seriesKey = "source/\(chapter.server.uuidString)/\(chapter.source)/\(chapter.seriesID)"
         item.isOnDevice = ChapterFiles.downloadedPageCount(of: chapter) != nil
+        return item
+    }
+
+    private func bookItem(for chapter: SourceChapterRef, content: ReadingItem.Content, rights: ChekAPI.Rights?, isOnDevice: Bool) -> ReadingItem {
+        let state = progress.sourceState(for: chapter)
+        var item = ReadingItem(
+            ref: chapter.ref,
+            title: chapter.chapterTitle,
+            subtitle: chapter.seriesTitle,
+            kind: .book,
+            content: content,
+            startLocation: state.savedLocation
+        )
+        item.sourceChapter = chapter
+        item.seriesKey = "source/\(chapter.server.uuidString)/\(chapter.source)/\(chapter.seriesID)"
+        item.isOnDevice = isOnDevice
+        item.rights = rights.flatMap { $0.isEmpty ? nil : $0 }
         return item
     }
 

@@ -71,6 +71,7 @@ final class AppDependencies {
         servers.onRemove = { [downloads] account in
             downloads.removeAll(for: account)
             SeriesCache.removeAll(for: account)
+            ChapterBooks.removeAll(for: account)
         }
     }
 }

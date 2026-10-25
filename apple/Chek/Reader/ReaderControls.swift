@@ -61,7 +61,9 @@ private struct ReaderToolbars: ViewModifier {
             .sheet(item: Bindable(session).panel) { panel in
                 switch panel {
                 case .contents:
-                    if let chapter = session.item.sourceChapter {
+                    // A book from a source has its own contents, which say
+                    // more than the source's one chapter for it.
+                    if let chapter = session.item.sourceChapter, session.item.kind == .comic {
                         ChaptersPanel(session: session, chapter: chapter, open: openChapter)
                     } else {
                         ContentsPanel(session: session)

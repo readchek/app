@@ -113,17 +113,21 @@ final class AppRouter {
         }
     }
 
-    /// Opens a chapter from one of a server's sources once its pages are
-    /// listed. A second tap while one is opening is ignored.
-    /// Opens a chapter from one of a server's sources. The reader fetches
-    /// its pages itself, so it opens at once.
+    /// Opens a chapter from one of a server's sources. A comic opens at
+    /// once and the reader fetches its pages; a book is looked up first. A
+    /// second tap while one is opening is ignored.
     func open(_ chapter: SourceChapterRef, using sync: ServerSync) {
-        do {
-            open(try sync.readingItem(for: chapter))
-        } catch {
-            let needsSignIn = sync.isSignedOut(of: chapter.server)
-            openingFailure = OpeningFailure(error: error, signIn: needsSignIn ? chapter.server : nil)
-            if needsSignIn { pendingAfterSignIn = .chapter(chapter) }
+        guard opening == nil else { return }
+        opening = chapter.ref
+        Task {
+            defer { opening = nil }
+            do {
+                open(try await sync.readingItem(for: chapter))
+            } catch {
+                let needsSignIn = sync.isSignedOut(of: chapter.server)
+                openingFailure = OpeningFailure(error: DisplayError(error), signIn: needsSignIn ? chapter.server : nil)
+                if needsSignIn { pendingAfterSignIn = .chapter(chapter) }
+            }
         }
     }
 

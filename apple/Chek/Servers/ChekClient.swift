@@ -301,6 +301,15 @@ nonisolated struct ChekClient: Sendable {
         return page.items.sorted { $0.index < $1.index }
     }
 
+    /// How to read a chapter: its pages, or the file it is.
+    func chapterContent(_ chapter: String, inSource source: String) async throws(ChekError) -> ChekAPI.ChapterContent {
+        var request = authorized("api/v1/me/extensions/\(source)/content", query: [URLQueryItem(name: "chapterId", value: chapter)])
+        request.timeoutInterval = 60
+        var content: ChekAPI.ChapterContent = try await Self.send(request, session: session)
+        content.pages?.sort { $0.index < $1.index }
+        return content
+    }
+
     /// A request for an image a source route returned, which is a path on
     /// this server rather than on the source's site.
     ///
