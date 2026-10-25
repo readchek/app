@@ -7,26 +7,24 @@ import {
   createRouter,
   redirect,
 } from "@tanstack/solid-router"
+import { Page } from "./components/Page.tsx"
+import { buttonVariants } from "./components/ui/button.tsx"
+import { Card, CardContent } from "./components/ui/card.tsx"
 import { ContentSettings } from "./routes/ContentSettings.tsx"
 import "./styles.css"
 
 const root = createRootRoute({
-  component: () => (
-    <main>
-      <header class="brand">
-        <img src="/mark.svg" alt="" width="28" height="28" />
-        <span>Chek</span>
-      </header>
-      <Outlet />
-    </main>
-  ),
+  component: Outlet,
   notFoundComponent: () => (
-    <section>
-      <h1>Page not found</h1>
-      <p>
-        <a href="/settings/content">Go to content settings</a>
-      </p>
-    </section>
+    <Page title="Page not found" lead="There's nothing at this address.">
+      <Card>
+        <CardContent>
+          <a href="/settings/content" class={buttonVariants()}>
+            Go to content settings
+          </a>
+        </CardContent>
+      </Card>
+    </Page>
   ),
 })
 

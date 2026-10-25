@@ -1,164 +1,114 @@
-/* Chek's charcoal and blue, from chek.page's design guide, with a light
-   counterpart for people who use light mode. */
+@import "tailwindcss";
+
+/* Chek's brand, shared with the iOS app and chek.page: electric blue, paper
+   and mist, butter for the odd aside, Bricolage headlines and DM Sans text.
+   The fonts are chek.page's subsets, served from this site because the
+   content security policy allows nothing else. */
+@font-face {
+  font-family: Bricolage;
+  src: url("./fonts/bricolage-700.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Sans";
+  src: url("./fonts/dm-sans-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "DM Sans";
+  src: url("./fonts/dm-sans-600.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+
+/* Names follow shadcn's, so components from solid-ui drop in unchanged. */
 :root {
   color-scheme: light dark;
-  --background: #f7f7f3;
-  --text: #22221f;
-  --muted: #5f5f5a;
-  --surface: #ebebe5;
-  --accent: #275b9e;
-  --on-accent: #f7f7f3;
-  --error: #b3261e;
-  font:
-    17px/1.5 system-ui,
-    -apple-system,
-    sans-serif;
+  --background: #fafaf7;
+  --foreground: #171820;
+  --card: #ffffff;
+  --card-foreground: #171820;
+  --muted: #eef0f8;
+  --muted-foreground: #60616d;
+  --border: #e3e5ee;
+  --input: #d5d8e4;
+  --primary: #2448e8;
+  --primary-foreground: #fafaf7;
+  /* Text, rings and selection in blue; the same blue as buttons in light
+     mode, and the app's lighter dark-mode accent otherwise. */
+  --link: #2448e8;
+  --hero: #2448e8;
+  --hero-foreground: #fafaf7;
+  --butter: #eff3ad;
+  --butter-foreground: #171820;
+  --success: #1f7a4d;
+  --destructive: #c4321f;
+  --ring: #2448e8;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #11110f;
-    --text: #a0a09c;
-    --muted: #858580;
-    --surface: #242424;
-    --accent: #4a8ce0;
-    --on-accent: #d6d6cf;
-    --error: #f2b8b5;
+    --background: #0e0f15;
+    --foreground: #ecedf3;
+    --card: #171922;
+    --card-foreground: #ecedf3;
+    --muted: #20232f;
+    --muted-foreground: #9c9eac;
+    --border: #262937;
+    --input: #343848;
+    --primary: #2448e8;
+    --primary-foreground: #fafaf7;
+    --link: #7d93ff;
+    --hero: #1a36c4;
+    --hero-foreground: #fafaf7;
+    --butter: #e4e99a;
+    --butter-foreground: #171820;
+    --success: #6fd3a0;
+    --destructive: #ff9a8a;
+    --ring: #5b78ff;
   }
-  button.primary {
-    background: #275b9e;
+}
+
+@theme inline {
+  --font-sans: "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-display: Bricolage, "DM Sans", system-ui, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-link: var(--link);
+  --color-hero: var(--hero);
+  --color-hero-foreground: var(--hero-foreground);
+  --color-butter: var(--butter);
+  --color-butter-foreground: var(--butter-foreground);
+  --color-success: var(--success);
+  --color-destructive: var(--destructive);
+  --color-ring: var(--ring);
+}
+
+@layer base {
+  * {
+    @apply border-border;
   }
-}
-
-* {
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-  background: var(--background);
-  color: var(--text);
-}
-
-main {
-  max-width: 34rem;
-  margin: 0 auto;
-  padding: 24px 16px 48px;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  margin-bottom: 32px;
-}
-
-h1 {
-  font-size: 1.75rem;
-  margin: 0 0 8px;
-}
-
-a {
-  color: var(--accent);
-}
-
-.muted {
-  color: var(--muted);
-}
-
-.error {
-  color: var(--error);
-}
-
-.stack {
-  display: grid;
-  gap: 16px;
-  margin: 24px 0;
-}
-
-label {
-  display: grid;
-  gap: 6px;
-}
-
-input:not([type]),
-input[type="password"] {
-  font: inherit;
-  padding: 10px 12px;
-  border: 1px solid var(--muted);
-  border-radius: 10px;
-  background: transparent;
-  color: inherit;
-}
-
-fieldset {
-  display: grid;
-  gap: 4px;
-  border: 0;
-  margin: 0;
-  padding: 0;
-}
-
-legend {
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-
-.option {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px;
-  border-radius: 12px;
-  cursor: pointer;
-}
-
-.option:has(input:checked) {
-  background: var(--surface);
-}
-
-.option input {
-  margin-top: 5px;
-  accent-color: var(--accent);
-}
-
-.option span {
-  display: grid;
-}
-
-button {
-  font: inherit;
-  padding: 10px 18px;
-  border-radius: 999px;
-  border: 1px solid var(--muted);
-  background: transparent;
-  color: inherit;
-  cursor: pointer;
-  justify-self: start;
-}
-
-button.primary {
-  background: var(--accent);
-  border-color: transparent;
-  color: var(--on-accent);
-}
-
-button.link {
-  padding: 0;
-  border: 0;
-  color: var(--accent);
-  text-decoration: underline;
-}
-
-button:disabled,
-fieldset:disabled {
-  opacity: 0.55;
-  cursor: default;
-}
-
-hr {
-  border: 0;
-  border-top: 1px solid var(--surface);
-  margin: 32px 0 16px;
+  html {
+    -webkit-text-size-adjust: 100%;
+    font-synthesis: none;
+  }
+  body {
+    @apply bg-background font-sans text-foreground antialiased;
+    -webkit-tap-highlight-color: transparent;
+  }
+  h1,
+  h2,
+  h3 {
+    @apply font-display;
+  }
 }
