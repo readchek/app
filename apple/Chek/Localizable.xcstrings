@@ -38,7 +38,8 @@
     "Another device": {},
     "Anyone Can Add Repositories": {},
     "Appearance": {},
-    "Applies to search and sites in this library, on all your devices.": {},
+    "Applies to search and sites in this library, on all your devices. Mature series can be turned on from the web only when the server has an https address.": {},
+    "Applies to search and sites in this library, on all your devices. Mature series, for adults only, can be turned on from the web.": {},
     "Applies to this series. Manga reads right to left. Automatic follows the file or site.": {},
     "Ask them to turn on “Anyone Can Add Repositories”.": {},
     "Author": {},
@@ -85,6 +86,7 @@
     "Compact": {},
     "Completed": {},
     "Content": {},
+    "Content Settings on the Web": {},
     "Contents": {},
     "Continue": {
       "comment": "Alert button that goes to the reading position from another device"
@@ -135,7 +137,6 @@
     "Enter the address you were given, such as books.example.com.": {},
     "Enter the address you were given. A name helps tell libraries apart and is only shown on this device.": {},
     "Erotica": {},
-    "Erotica and pornographic series are for adults only.": {},
     "Everyone": {},
     "Everywhere": {},
     "Filters": {},
@@ -157,7 +158,6 @@
     "Header Name": {},
     "Headers": {},
     "Home": {},
-    "I'm 18 or Older": {},
     "Incorrect User Name or Password": {},
     "It may have been removed from this library.": {},
     "It's copy-protected and can be opened only in the app it was bought from.": {},
@@ -186,6 +186,7 @@
     "Mark as Finished": {},
     "Mark as Unread": {},
     "Mature": {},
+    "Mature series are on, chosen on the web. Choose Everyone or Teen to turn them off. Applies to search and sites in this library, on all your devices.": {},
     "More": {},
     "Name": {
       "comment": "A server's friendly name, or the account's user name"
@@ -306,7 +307,6 @@
     "Shared Libraries": {},
     "Show": {},
     "Show Earlier Chapters": {},
-    "Show Mature Series?": {},
     "Show Newer Chapters": {},
     "Shows less of the summary": {},
     "Shows the whole summary": {},

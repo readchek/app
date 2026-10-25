@@ -13,6 +13,8 @@ The native Chek apps, starting with iPhone and iPad. Chek is a reader for books 
 - **App identity.** Chek replaces Chibi Manga on the App Store, so it keeps Chibi Manga's bundle id `run.chibi.manga` and team `KZX5HZ32P9`, and its version and build stay above Chibi Manga's last release (1.5, build 11). Chek's SwiftData store is named `Chek` so it never opens the default store Chibi Manga left on updated devices. The books Chibi Manga imported (`Documents/imports`, listed in `.library.json`) move into Chek's library on first launch, keeping each one's page.
 - **Platforms.** Build with Xcode 27 and Swift 6.4, and deploy to iOS and iPadOS 26 or later. Put 27-only APIs behind `if #available`.
 - **SwiftUI and SwiftData.** Books are `Book` models; each book's file and cover live in their own folder under Application Support, found by the book's id, because the app container's path changes between installs.
+- **Mature content is turned on only on the web.** Under App Review Guideline 1.2, adult content from a web service must be off by default and turned on through a website. The iOS app offers Everyone and Teen and links to the web app in `web/` (app.chek.page), where adults turn on Mature after confirming their age. Don't add a way to turn it on in the app.
+- **The web app** in `web/` is SolidJS with TanStack Router, built with Vite and run with Bun, and deployed to Cloudflare as static files. It talks to each person's server from the browser with a bearer token, never cookies.
 - **Positions** are Chek Reader `Locator` values, stored as their Readium-compatible JSON.
 - **State.** Every value has one owner allowed to change it: a store, a screen model or a view's own `@State`. Phases are enums, not booleans, and stored data is versioned in `ChekSchema`. [docs/architecture.md](docs/architecture.md) has the layers and rules; read it before adding a screen, store or model.
 
@@ -29,6 +31,8 @@ CI runs this on every pull request, then the unit tests in `apple/ChekTests` on 
 xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
 ```
+
+For `web/`, run `bun run typecheck`, `bun run lint`, `bun run format:check` and `bun run build` there; CI runs them too.
 
 Before you push, build what you changed and run the tests. Tests cover logic that doesn't need a screen: address parsing, titles, statuses, settings, decoding. Add one when you fix a bug in such code. If your environment can't build the app, say so in the PR rather than guessing.
 

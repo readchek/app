@@ -59,6 +59,28 @@ rewrite `Package.resolved`. To work against unreleased reader changes, add
 the package locally with **File → Add Package Dependencies → Add Local**,
 which overrides the pinned one until you remove it.
 
+## The web app
+
+`web/` is Chek on the web, served at [app.chek.page](https://app.chek.page).
+For now it has one screen, content settings, where adults turn on mature
+series, which the iOS app doesn't offer. The iOS app opens it in Safari,
+signed in with a one-time code from the server. It's SolidJS with TanStack
+Router, built with Vite and run with [Bun](https://bun.sh):
+
+```sh
+cd web
+bun install
+bun run dev        # http://localhost:18358
+bun run typecheck && bun run lint && bun run format:check && bun run build
+```
+
+`bun run deploy` builds it and publishes it to Cloudflare as static files,
+after `cf auth login`. A server lets the web app call it from
+`CHEK_WEB_ORIGINS` (`https://app.chek.page` by default); to try a local
+server with the dev page, start the server with
+`CHEK_WEB_ORIGINS=http://localhost:18358`. The page reaches only https
+servers once it's served over https.
+
 ## Repository layout
 
 ```text
@@ -76,6 +98,7 @@ apple/
     Model/          SwiftData models and their schema versions
     Components/     Views and image loading shared across screens
   ChekTests/        Unit tests
+web/                Chek on the web, at app.chek.page
 docs/               Architecture notes
 .github/workflows/  CI
 ```

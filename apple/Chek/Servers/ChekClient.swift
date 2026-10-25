@@ -252,6 +252,15 @@ nonisolated struct ChekClient: Sendable {
         return answer.contentRatings.compactMap(ChekAPI.ContentRating.init(rawValue:))
     }
 
+    /// A code that opens the Chek web app signed in as you, once, within a
+    /// minute, so the session token never goes into a link.
+    func webLink() async throws(ChekError) -> String {
+        var request = authorized("api/v1/me/web-link")
+        request.httpMethod = "POST"
+        let answer: ChekAPI.WebLink = try await Self.send(request, session: session)
+        return answer.code
+    }
+
     /// Makes `group`'s release of each chapter in a series the one picked,
     /// for you on every device, or goes back to the default for nil.
     func setReleaseGroup(_ group: String?, forSeries series: String, inSource source: String) async throws(ChekError) {

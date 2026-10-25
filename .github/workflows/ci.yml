@@ -11,7 +11,7 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
-# The job runs on the maintainers' Mac mini when the SELF_HOSTED_MAC
+# The iOS job runs on the maintainers' Mac mini when the SELF_HOSTED_MAC
 # repository variable is "true", and on GitHub's runners otherwise. Pull
 # requests from forks always use GitHub's runners, so code from outside the
 # repository never runs on our machines.
@@ -69,3 +69,20 @@ jobs:
             -disablePackageRepositoryCache \
             -clonedSourcePackagesDirPath .build/SourcePackages \
             CODE_SIGNING_ALLOWED=NO
+
+  web:
+    name: Web app
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: web/package.json
+      - run: bun install --frozen-lockfile
+      - run: bun run typecheck
+      - run: bun run lint
+      - run: bun run format:check
+      - run: bun run build
