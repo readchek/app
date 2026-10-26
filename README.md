@@ -80,17 +80,24 @@ Chek Reader comes through Swift Package Manager, pinned to a release
 ## The web app
 
 `web/` is Chek on the web, served at [app.chek.page](https://app.chek.page).
-It has two parts so far:
+It has three parts so far:
 
+- **The reading app**, on par with the iOS app. You sign in to one or more
+  Chek servers, and stay signed in until you sign out. It reads comics,
+  EPUB, PDF, plain text and Markdown with Chek Reader, browses shared libraries
+  and sites, and installs as an app that opens offline. The code is in
+  `src/app`.
 - **Content settings**, where adults turn on mature series. The iOS app
   doesn't offer that, so it opens this page in Safari, signed in with a
   one-time code from the server.
 - **The admin panel** at `/admin`, where a server's admins set it up with
   its setup token, then manage libraries and their scans, people and the
-  libraries each one reads, extension repositories and settings. The server
-  image bundles the same screens at `http://<server>:8080/admin`, built with
-  `bun run build:server`, since an https page can't reach a server on plain
-  http. app.chek.page/admin manages servers with https addresses.
+  libraries each one reads, extension repositories and settings.
+
+The server image bundles the whole app, built with `bun run build:server`,
+at `http://<server>:8080/`, with the admin panel at `/admin`, since an https
+page can't reach a server on plain http. app.chek.page reaches servers with
+https addresses.
 
 - **Stack.** SolidJS with TanStack Router, built with Vite and run with
   [Bun](https://bun.sh).
@@ -103,7 +110,7 @@ cd web
 bun install
 bun run dev        # http://localhost:18358
 bun run typecheck && bun run lint && bun run format:check && bun run build
-bun run build:server   # the admin panel the server serves, in dist-server/
+bun run build:server   # the app the server serves, in dist-server/
 ```
 
 - **Deploy.** Every push to `main` that changes `web/` publishes it to

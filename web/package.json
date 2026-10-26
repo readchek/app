@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:server": "vite build --mode server --base /admin/ --outDir dist-server",
+    "build:server": "vite build --mode server --outDir dist-server",
     "preview": "vite preview",
     "typecheck": "tsc",
     "deploy": "vite build && bun scripts/cloudflare.ts && cf deploy --prebuilt",
@@ -16,9 +16,11 @@
   },
   "dependencies": {
     "@kobalte/core": "0.13.14",
+    "@readchek/reader": "github:readchek/chek-reader#56991febc501c74ed1b49ebd061f7865c46ed026",
     "@tanstack/solid-router": "1.170.43",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "pdfjs-dist": "6.4.299",
     "solid-js": "1.9.17",
     "tailwind-merge": "3.7.0"
   },

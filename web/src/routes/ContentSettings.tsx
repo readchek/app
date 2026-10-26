@@ -91,7 +91,30 @@ export function ContentSettings() {
             Signing in…
           </p>
         </Match>
-        <Match when={session()}>{(current) => <Editor session={current()} />}</Match>
+        <Match when={session()}>
+          {(current) => (
+            <div class="grid gap-8">
+              <p class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[15px] text-muted-foreground">
+                <span>
+                  Signed in as{" "}
+                  <strong class="font-semibold text-foreground">{current().user.name}</strong> on{" "}
+                  {new URL(current().server).host}.
+                </span>
+                <Show when={current().user.demo}>
+                  <Badge variant="butter">Demo</Badge>
+                </Show>
+                <Button variant="link" size="inline" onClick={() => void forget()}>
+                  Sign out
+                </Button>
+              </p>
+              <ContentRatingsForm
+                session={current()}
+                savedText="Saved. Switch back to Chek, and it shows the change when you return."
+                onUnauthorized={() => void forget()}
+              />
+            </div>
+          )}
+        </Match>
         <Match when={true}>
           <SignIn server={search().server} notice={notice()} />
         </Match>
@@ -187,12 +210,22 @@ function SignIn(props: { server?: string; notice: string }) {
   )
 }
 
-function Editor(props: { session: Session }) {
+/**
+ * Chooses which series sources show: Everyone, Teen, or Mature after
+ * confirming an adult's age. Mature can be turned on only on the web,
+ * under App Review Guideline 1.2.
+ */
+export function ContentRatingsForm(props: {
+  session: Session
+  /** What to say once saved. */
+  savedText: string
+  onUnauthorized: () => void
+}) {
   const [saved, { mutate }] = createResource(async () => {
     try {
       return await contentRatings(props.session)
     } catch (error) {
-      if (error instanceof ApiError && error.status === 401) await forget()
+      if (error instanceof ApiError && error.status === 401) props.onUnauthorized()
       throw error
     }
   })
@@ -216,10 +249,7 @@ function Editor(props: { session: Session }) {
       mutate(await setContentRatings(props.session, [...level.ratings]))
       setChoice(undefined)
       setAdult(false)
-      setStatus({
-        text: "Saved. Switch back to Chek, and it shows the change when you return.",
-        saved: true,
-      })
+      setStatus({ text: props.savedText, saved: true })
     } catch (error) {
       setStatus({ text: message(error), saved: false })
     } finally {
@@ -228,20 +258,7 @@ function Editor(props: { session: Session }) {
   }
 
   return (
-    <div class="grid gap-8">
-      <p class="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[15px] text-muted-foreground">
-        <span>
-          Signed in as{" "}
-          <strong class="font-semibold text-foreground">{props.session.user.name}</strong> on{" "}
-          {new URL(props.session.server).host}.
-        </span>
-        <Show when={demo()}>
-          <Badge variant="butter">Demo</Badge>
-        </Show>
-        <Button variant="link" size="inline" onClick={() => void forget()}>
-          Sign out
-        </Button>
-      </p>
+    <div>
       <Switch>
         <Match when={saved.error}>
           <Alert variant="destructive">
