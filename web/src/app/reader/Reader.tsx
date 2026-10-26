@@ -1,5 +1,5 @@
 import { Match, Switch, createResource } from "solid-js"
-import { DrmError, Epub } from "@readchek/reader"
+import { DrmError, Epub, type Publication, TextBook } from "@readchek/reader"
 import { Link, useNavigate, useParams } from "@tanstack/solid-router"
 import { AlertCircle, Spinner } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
@@ -39,12 +39,19 @@ export function Reader() {
     },
     async ({ account, id }) => {
       const detail = await publication(account, id)
-      const [pageList, saved, epub] = await Promise.all([
+      const [pageList, saved, book] = await Promise.all([
         comicFormats.includes(detail.format) ? pages(account, id) : Promise.resolve([]),
         progress(account, id),
-        detail.format === "epub" ? openEpub(account, `/api/v1/publications/${id}/file`) : undefined,
+        // Named as the iOS app names its download, since a text file's
+        // name can become its title, and so the size of its pages.
+        openBook(
+          account,
+          `/api/v1/publications/${id}/file`,
+          detail.format,
+          `${id}.${detail.format}`,
+        ),
       ])
-      return { account, detail, pages: pageList, progress: saved, epub }
+      return { account, detail, pages: pageList, progress: saved, book }
     },
   )
 
@@ -75,11 +82,11 @@ export function Reader() {
               <Match when={comicFormats.includes(book.detail.format)}>
                 <ComicReader book={publicationComic(book, openNext)} />
               </Match>
-              <Match when={book.epub}>
-                {(epub) => <BookReader book={publicationBook(book, epub(), openNext)} />}
+              <Match when={book.book}>
+                {(opened) => <BookReader book={publicationBook(book, opened(), openNext)} />}
               </Match>
               <Match when={true}>
-                <Message text="This kind of book opens on the web in a later version. Comics and EPUB books open now." />
+                <Message text={laterFormat} />
               </Match>
             </Switch>
           )}
@@ -149,28 +156,53 @@ function publicationComic(opened: Opened, open: (id: number) => void): ComicBook
 }
 
 /** A publication's book, read with its place kept on the server. */
-function publicationBook(opened: Opened, epub: Epub, open: (id: number) => void): BookSource {
+function publicationBook(
+  opened: Opened,
+  book: Publication,
+  open: (id: number) => void,
+): BookSource {
   const { account, detail } = opened
   return {
     account,
     title: publicationTitle(detail),
     subtitle: seriesTitle(detail),
-    epub,
+    publication: book,
     start: opened.progress.locator,
     positions: serverPositions(account, detail.id, opened.progress),
     next: nextInSeries(account, detail, open),
   }
 }
 
-/** Downloads an EPUB, or the one kept from before, and opens it. */
-export async function openEpub(account: Account, path: string): Promise<Epub> {
+/** What formats that don't open yet say. */
+export const laterFormat =
+  "This kind of book opens on the web in a later version. Comics, EPUB, plain text and Markdown open now."
+
+/**
+ * Downloads a book, or the one kept from before, and opens it, when its
+ * format reads in the book reader. Other formats give undefined.
+ */
+export async function openBook(
+  account: Account,
+  path: string,
+  format: string,
+  fileName: string,
+): Promise<Publication | undefined> {
+  const open =
+    format === "epub"
+      ? (file: Blob) => Epub.open(file)
+      : format === "txt"
+        ? (file: Blob) => TextBook.plainText(file, fileName)
+        : format === "markdown"
+          ? (file: Blob) => TextBook.markdown(file, fileName)
+          : undefined
+  if (!open) return undefined
   const file = await loadFile(account, path)
   try {
-    return await Epub.open(file)
+    return await open(file)
   } catch (error) {
     if (error instanceof DrmError) throw error
     throw new Error(
-      `This book couldn't be opened: ${error instanceof Error ? error.message : "it isn't an EPUB the reader can read."}`,
+      `This book couldn't be opened: ${error instanceof Error ? error.message : "the reader can't read its file."}`,
       { cause: error },
     )
   }

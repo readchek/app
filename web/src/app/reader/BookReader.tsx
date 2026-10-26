@@ -13,8 +13,8 @@ import {
   type BookLocation,
   type BookPreferences,
   BookView,
-  type Epub,
   type Locator,
+  type Publication,
   type TocItem,
 } from "@readchek/reader"
 import { ListBullet, Minus, Plus, Sliders } from "../../components/icons.tsx"
@@ -46,7 +46,7 @@ export type BookSource = {
   account: Account
   title: string
   subtitle?: string
-  epub: Epub
+  publication: Publication
   start: Locator | null
   positions: Positions
   next: () => Promise<UpNext | undefined>
@@ -97,7 +97,7 @@ export function BookReader(props: { book: BookSource }) {
     if (!element) return
     view = new BookView(
       element,
-      book.epub,
+      book.publication,
       {
         location: (place) => {
           setLocation(place)
@@ -137,7 +137,7 @@ export function BookReader(props: { book: BookSource }) {
     ),
   )
 
-  const total = () => location()?.positionCount ?? book.epub.positionCount
+  const total = () => location()?.positionCount ?? book.publication.positionCount
   const shownPosition = () => scrub() ?? location()?.position ?? 1
   const label = () => {
     const place = location()
@@ -167,7 +167,7 @@ export function BookReader(props: { book: BookSource }) {
         title={book.title}
         subtitle={location()?.chapter?.title ?? book.subtitle}
       >
-        <Show when={book.epub.toc.length > 0}>
+        <Show when={book.publication.toc.length > 0}>
           <Button
             variant="ghost"
             size="sm"
@@ -278,7 +278,7 @@ export function BookReader(props: { book: BookSource }) {
           value={shownPosition()}
           minValue={1}
           maxValue={Math.max(total(), 2)}
-          inverted={book.epub.metadata.readingProgression === "rtl"}
+          inverted={book.publication.metadata.readingProgression === "rtl"}
           getValueLabel={(value) => `Position ${value} of ${total()}`}
           onChange={setScrub}
           onChangeEnd={(value) => void view?.goToProgression((value - 1) / total())}
@@ -299,7 +299,7 @@ export function BookReader(props: { book: BookSource }) {
           </DialogHeader>
           <nav aria-label="Contents" class="-mx-2">
             <TocList
-              items={book.epub.toc}
+              items={book.publication.toc}
               current={location()?.chapter}
               depth={0}
               choose={(item) => {

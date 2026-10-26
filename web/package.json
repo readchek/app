@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@kobalte/core": "0.13.14",
-    "@readchek/reader": "github:readchek/chek-reader#00544b339449d1b43d32db3d95828fa8f7921af6",
+    "@readchek/reader": "github:readchek/chek-reader#198ca018c3b0dfe276743adc6de4e502d7ca6037",
     "@tanstack/solid-router": "1.170.43",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

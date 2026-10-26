@@ -1,5 +1,5 @@
 import { Match, Switch, createResource } from "solid-js"
-import type { Epub, ReadingDirection } from "@readchek/reader"
+import type { Publication, ReadingDirection } from "@readchek/reader"
 import { useNavigate, useParams, useSearch } from "@tanstack/solid-router"
 import { Spinner } from "../../components/icons.tsx"
 import { type Account, accountByKey, accountKey } from "../accounts.ts"
@@ -16,7 +16,7 @@ import { chapterTitle } from "../sites/titles.ts"
 import { type BookSource, BookReader } from "./BookReader.tsx"
 import type { Positions } from "./shared.tsx"
 import { type ComicBook, ComicReader } from "./ComicReader.tsx"
-import { Message, openEpub } from "./Reader.tsx"
+import { Message, laterFormat, openBook } from "./Reader.tsx"
 
 /** A chapter read straight from a site, full screen. */
 export function SiteReader() {
@@ -44,13 +44,17 @@ export function SiteReader() {
         siteSeries(account, extensionId, seriesId),
         chapterContent(account, extensionId, chapterId),
       ])
-      const epub =
-        content.format === "epub" && content.file
-          ? await openEpub(account, content.file.url)
-          : undefined
+      const book = content.file
+        ? await openBook(
+            account,
+            content.file.url,
+            content.format,
+            content.file.fileName ?? `${chapterId}.${content.format}`,
+          )
+        : undefined
       // Chapters can't be read one at a time, so the link that opens one
       // brings its title along.
-      return { account, extensionId, series, content, epub, chapterId, title }
+      return { account, extensionId, series, content, book, chapterId, title }
     },
   )
 
@@ -83,11 +87,11 @@ export function SiteReader() {
                 <Match when={chapter.content.pages}>
                   <ComicReader book={siteComic(chapter, open)} />
                 </Match>
-                <Match when={chapter.epub}>
-                  {(epub) => <BookReader book={siteBook(chapter, epub(), open)} />}
+                <Match when={chapter.book}>
+                  {(book) => <BookReader book={siteBook(chapter, book(), open)} />}
                 </Match>
                 <Match when={true}>
-                  <Message text="This kind of book opens on the web in a later version. Comics and EPUB books open now." />
+                  <Message text={laterFormat} />
                 </Match>
               </Switch>
             )
@@ -179,17 +183,17 @@ function siteComic(opened: OpenedChapter, open: (chapter: RemoteChapter) => void
 
 function siteBook(
   opened: OpenedChapter,
-  epub: Epub,
+  book: Publication,
   open: (chapter: RemoteChapter) => void,
 ): BookSource {
   const place = sitePlace(opened, open)
   // A site's book is often the whole series, so it goes by the book's own title.
-  const title = epub.metadata.title || place.title
+  const title = book.metadata.title || place.title
   return {
     account: place.account,
     title,
     subtitle: title === opened.series.title ? undefined : opened.series.title,
-    epub,
+    publication: book,
     start: place.start,
     positions: place.positions,
     next: place.next,
