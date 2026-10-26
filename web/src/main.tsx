@@ -13,7 +13,8 @@ import { buttonVariants } from "./components/ui/button.tsx"
 import { ContentSettings } from "./routes/ContentSettings.tsx"
 import { AppShell } from "./app/AppShell.tsx"
 import { Home } from "./app/Home.tsx"
-import { Settings as AppSettings } from "./app/Settings.tsx"
+import { AccountSettings } from "./app/settings/AccountSettings.tsx"
+import { Settings as AppSettings } from "./app/settings/Settings.tsx"
 import { AddServer } from "./app/SignIn.tsx"
 import { Reader } from "./app/reader/Reader.tsx"
 import { SiteReader } from "./app/reader/SiteReader.tsx"
@@ -113,6 +114,12 @@ const settings = createRoute({
   getParentRoute: () => app,
   path: "/settings",
   component: AppSettings,
+})
+
+const accountSettings = createRoute({
+  getParentRoute: () => app,
+  path: "/settings/$server",
+  component: AccountSettings,
 })
 
 // `server` fills in the address, such as when a session ended. The iOS
@@ -244,6 +251,7 @@ const router = createRouter({
       siteSeries,
       searchRoute,
       settings,
+      accountSettings,
       signInRoute,
     ]),
     read,
