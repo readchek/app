@@ -7,7 +7,6 @@ import {
   createRouter,
   redirect,
 } from "@tanstack/solid-router"
-import { bundled } from "./api.ts"
 import { Page } from "./components/Page.tsx"
 import { buttonVariants } from "./components/ui/button.tsx"
 import { ContentSettings } from "./routes/ContentSettings.tsx"
@@ -41,8 +40,8 @@ const root = createRootRoute({
   component: Outlet,
   notFoundComponent: () => (
     <Page title="Page not found" lead="There's nothing at this address.">
-      <a href={bundled ? "/admin/" : "/"} class={buttonVariants()}>
-        {bundled ? "Go to the admin panel" : "Go to Reading Now"}
+      <a href="/" class={buttonVariants()}>
+        Go to Reading Now
       </a>
     </Page>
   ),
