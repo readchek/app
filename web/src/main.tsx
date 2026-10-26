@@ -15,6 +15,7 @@ import { AppShell } from "./app/AppShell.tsx"
 import { Home } from "./app/Home.tsx"
 import { Settings as AppSettings } from "./app/Settings.tsx"
 import { AddServer } from "./app/SignIn.tsx"
+import { Reader } from "./app/reader/Reader.tsx"
 import { AddLibrary } from "./admin/AddLibrary.tsx"
 import { AdminShell } from "./admin/AdminShell.tsx"
 import { Extensions } from "./admin/Extensions.tsx"
@@ -58,6 +59,14 @@ const signInRoute = createRoute({
     return typeof server === "string" && server ? { server } : {}
   },
   component: AddServer,
+})
+
+// A publication open full screen, outside the shell. `server` is the
+// account's host, as accountKey makes it.
+const read = createRoute({
+  getParentRoute: () => root,
+  path: "/read/$server/$publicationId",
+  component: Reader,
 })
 
 export const contentSettings = createRoute({
@@ -143,6 +152,7 @@ const adminSettings = createRoute({
 const router = createRouter({
   routeTree: root.addChildren([
     app.addChildren([home, settings, signInRoute]),
+    read,
     contentSettings,
     admin.addChildren([
       adminHome,

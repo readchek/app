@@ -101,3 +101,17 @@ export const Plus = () => (
     <path d="M12 5v14M5 12h14" />
   </svg>
 )
+
+export const ChevronLeft = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="m15 6-6 6 6 6" />
+  </svg>
+)
+
+export const Sliders = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M4 7h10M18 7h2M4 17h4M12 17h8" />
+    <circle cx="16" cy="7" r="2" />
+    <circle cx="10" cy="17" r="2" />
+  </svg>
+)

@@ -66,3 +66,12 @@ export function host(server: string): string {
   const url = new URL(server)
   return url.host + url.pathname.replace(/\/$/, "")
 }
+
+/** How an account is named in addresses, such as `/read/chek.example.com/12`. */
+export function accountKey(account: Account): string {
+  return host(account.server)
+}
+
+export function accountByKey(key: string): Account | undefined {
+  return accounts().find((a) => accountKey(a) === key)
+}

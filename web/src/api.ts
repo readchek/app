@@ -28,6 +28,8 @@ export class ApiError extends Error {
     message: string,
     readonly status: number,
     readonly code?: string,
+    /** The whole error body, for errors that carry more, such as a progress conflict's position. */
+    readonly body?: unknown,
   ) {
     super(message)
   }
@@ -81,6 +83,7 @@ export async function request<T>(
       body.message ? sentence(body.message) : `The server answered ${response.status}.`,
       response.status,
       body.code,
+      body,
     )
   }
   return (response.status === 204 ? undefined : await response.json()) as T

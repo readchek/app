@@ -3,7 +3,7 @@ import { Link } from "@tanstack/solid-router"
 import { AlertCircle } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { buttonVariants } from "../components/ui/button.tsx"
-import { type Account, accounts, host } from "./accounts.ts"
+import { type Account, accountKey, accounts, host } from "./accounts.ts"
 import { type Continued, continueReading, coverPath, recentlyAdded } from "./client.ts"
 import { Cover } from "./Cover.tsx"
 import { Screen } from "./AppShell.tsx"
@@ -78,6 +78,7 @@ function ContinueReading(props: { accounts: Account[] }) {
             {(item) => (
               <ShelfItem
                 featured
+                open={{ server: accountKey(item.account), publicationId: item.publication.id }}
                 cover={
                   <Cover
                     account={item.account}
@@ -138,6 +139,7 @@ function RecentlyAdded(props: { account: Account; showHost: boolean }) {
               <For each={page().items}>
                 {(publication) => (
                   <ShelfItem
+                    open={{ server: accountKey(props.account), publicationId: publication.id }}
                     cover={
                       <Cover
                         account={props.account}

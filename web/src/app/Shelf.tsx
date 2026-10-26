@@ -1,4 +1,5 @@
 import { For, type JSX, Show } from "solid-js"
+import { Link } from "@tanstack/solid-router"
 import { cn } from "../lib/cn.ts"
 import { Skeleton } from "../components/ui/skeleton.tsx"
 
@@ -21,20 +22,30 @@ export function Shelf(props: { title: string; detail?: string; children: JSX.Ele
   )
 }
 
-/** One cover on a shelf with its caption. `featured` ones are larger, as Continue Reading's. */
+/** One cover on a shelf with its caption, opening the publication in the reader. `featured` ones are larger, as Continue Reading's. */
 export function ShelfItem(props: {
   cover: JSX.Element
   title: string
   detail?: string
   featured?: boolean
+  /** The account's key and the publication to open. */
+  open: { server: string; publicationId: number }
 }) {
   return (
     <li class={cn("shrink-0 snap-start", props.featured ? "w-40 sm:w-48" : "w-32 sm:w-36")}>
-      {props.cover}
-      <p class="mt-2 line-clamp-2 text-[15px] leading-snug">{props.title}</p>
-      <Show when={props.detail}>
-        <p class="mt-0.5 truncate text-[13px] text-muted-foreground">{props.detail}</p>
-      </Show>
+      <Link
+        to="/read/$server/$publicationId"
+        params={{ server: props.open.server, publicationId: String(props.open.publicationId) }}
+        class="group block rounded-md focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+      >
+        <div class="transition-transform duration-200 group-hover:-translate-y-0.5 group-active:scale-[0.98]">
+          {props.cover}
+        </div>
+        <p class="mt-2 line-clamp-2 text-[15px] leading-snug">{props.title}</p>
+        <Show when={props.detail}>
+          <p class="mt-0.5 truncate text-[13px] text-muted-foreground">{props.detail}</p>
+        </Show>
+      </Link>
     </li>
   )
 }
