@@ -156,3 +156,15 @@ export const ArrowUpDown = () => (
     <path d="M8 19V5m0 0L4.5 8.5M8 5l3.5 3.5M16 5v14m0 0 3.5-3.5M16 19l-3.5-3.5" />
   </svg>
 )
+
+export const ListBullet = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M9 6.5h11M9 12h11M9 17.5h11M4.5 6.5h.01M4.5 12h.01M4.5 17.5h.01" />
+  </svg>
+)
+
+export const Minus = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M5 12h14" />
+  </svg>
+)

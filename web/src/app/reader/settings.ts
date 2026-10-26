@@ -1,5 +1,11 @@
 import { createSignal } from "solid-js"
-import type { ComicFlow, ReadingDirection, Spreads } from "@readchek/reader"
+import {
+  type BookPreferences,
+  type ComicFlow,
+  type ReadingDirection,
+  type Spreads,
+  defaultBookPreferences,
+} from "@readchek/reader"
 
 // Reading settings are this browser's, as they're each device's in the iOS
 // app: a phone and a desktop want different layouts.
@@ -53,4 +59,23 @@ export function setSeriesDirection(series: string, direction: ReadingDirection) 
   const next = { ...directions(), [series]: direction }
   write(directionKey, next)
   setDirections(next)
+}
+
+/** Book settings: the reader's own, with `automatic` following the app's light or dark look. */
+export type BookSettings = Omit<BookPreferences, "theme"> & {
+  theme: BookPreferences["theme"] | "automatic"
+}
+
+const bookKey = "chek.reader.book"
+
+const [book, setBook] = createSignal<BookSettings>(
+  read(bookKey, { ...defaultBookPreferences, theme: "automatic" }),
+)
+
+export { book as bookSettings }
+
+export function changeBookSettings(change: Partial<BookSettings>) {
+  const next = { ...book(), ...change }
+  write(bookKey, next)
+  setBook(next)
 }

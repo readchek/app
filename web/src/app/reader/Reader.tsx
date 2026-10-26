@@ -1,4 +1,5 @@
 import { Match, Switch, createResource } from "solid-js"
+import { DrmError, Epub } from "@readchek/reader"
 import { Link, useNavigate, useParams } from "@tanstack/solid-router"
 import { AlertCircle, Spinner } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
@@ -16,8 +17,11 @@ import {
   saveProgress,
   seriesPublications,
 } from "../client.ts"
+import { loadFile } from "../files.ts"
 import { publicationTitle, seriesTitle } from "../titles.ts"
+import { type BookSource, BookReader } from "./BookReader.tsx"
 import { type ComicBook, ComicReader } from "./ComicReader.tsx"
+import type { Positions, UpNext } from "./shared.tsx"
 
 /** A publication open full screen, in the reader its format needs. */
 export function Reader() {
@@ -35,13 +39,21 @@ export function Reader() {
     },
     async ({ account, id }) => {
       const detail = await publication(account, id)
-      const [pageList, saved] = await Promise.all([
+      const [pageList, saved, epub] = await Promise.all([
         comicFormats.includes(detail.format) ? pages(account, id) : Promise.resolve([]),
         progress(account, id),
+        detail.format === "epub" ? openEpub(account, `/api/v1/publications/${id}/file`) : undefined,
       ])
-      return { account, detail, pages: pageList, progress: saved }
+      return { account, detail, pages: pageList, progress: saved, epub }
     },
   )
+
+  const openNext = (id: number) =>
+    navigate({
+      to: "/read/$server/$publicationId",
+      params: { server: params().server, publicationId: String(id) },
+      replace: true,
+    })
 
   return (
     <div class="fixed inset-0 bg-background text-foreground">
@@ -61,18 +73,13 @@ export function Reader() {
           {(book) => (
             <Switch>
               <Match when={comicFormats.includes(book.detail.format)}>
-                <ComicReader
-                  book={publicationComic(book, (id) =>
-                    navigate({
-                      to: "/read/$server/$publicationId",
-                      params: { server: params().server, publicationId: String(id) },
-                      replace: true,
-                    }),
-                  )}
-                />
+                <ComicReader book={publicationComic(book, openNext)} />
+              </Match>
+              <Match when={book.epub}>
+                {(epub) => <BookReader book={publicationBook(book, epub(), openNext)} />}
               </Match>
               <Match when={true}>
-                <Message text="Books open on the web in a later version. Comics open now." />
+                <Message text="This kind of book opens on the web in a later version. Comics and EPUB books open now." />
               </Match>
             </Switch>
           )}
@@ -91,13 +98,43 @@ export function Reader() {
   )
 }
 
-/** A publication's pages, read with its place kept on the server. */
-function publicationComic(
-  opened: { account: Account; detail: PublicationDetail; pages: PageInfo[]; progress: Progress },
+type Opened = {
+  account: Account
+  detail: PublicationDetail
+  pages: PageInfo[]
+  progress: Progress
+}
+
+/** A publication's place, kept on the server. */
+function serverPositions(account: Account, id: number, saved: Progress): Positions {
+  let revision = saved.revision
+  return {
+    save: async (locator) => {
+      revision = (await saveProgress(account, id, revision, locator)).revision
+    },
+    prefer: (other) => {
+      revision = other.revision
+    },
+  }
+}
+
+/** The book after this one in its series, for the end of the book. */
+function nextInSeries(
+  account: Account,
+  detail: PublicationDetail,
   open: (id: number) => void,
-): ComicBook {
+): () => Promise<UpNext | undefined> {
+  return async () => {
+    const list = await seriesPublications(account, detail.series.id, { limit: 200 })
+    const index = list.items.findIndex((item) => item.id === detail.id)
+    const after = index >= 0 ? list.items[index + 1] : undefined
+    return after && { title: publicationTitle(after), open: () => open(after.id) }
+  }
+}
+
+/** A publication's pages, read with its place kept on the server. */
+function publicationComic(opened: Opened, open: (id: number) => void): ComicBook {
   const { account, detail } = opened
-  let revision = opened.progress.revision
   return {
     account,
     title: publicationTitle(detail),
@@ -106,21 +143,36 @@ function publicationComic(
     start: opened.progress.locator,
     seriesKey: `${accountKey(account)}/${detail.series.id}`,
     direction: detail.readingDirection,
-    positions: {
-      save: async (locator) => {
-        revision = (await saveProgress(account, detail.id, revision, locator)).revision
-      },
-      prefer: (other) => {
-        revision = other.revision
-      },
-    },
-    next: async () => {
-      // The book after this one in its series, for the end of the book.
-      const list = await seriesPublications(account, detail.series.id, { limit: 500 })
-      const index = list.items.findIndex((item) => item.id === detail.id)
-      const after = index >= 0 ? list.items[index + 1] : undefined
-      return after && { title: publicationTitle(after), open: () => open(after.id) }
-    },
+    positions: serverPositions(account, detail.id, opened.progress),
+    next: nextInSeries(account, detail, open),
+  }
+}
+
+/** A publication's book, read with its place kept on the server. */
+function publicationBook(opened: Opened, epub: Epub, open: (id: number) => void): BookSource {
+  const { account, detail } = opened
+  return {
+    account,
+    title: publicationTitle(detail),
+    subtitle: seriesTitle(detail),
+    epub,
+    start: opened.progress.locator,
+    positions: serverPositions(account, detail.id, opened.progress),
+    next: nextInSeries(account, detail, open),
+  }
+}
+
+/** Downloads an EPUB, or the one kept from before, and opens it. */
+export async function openEpub(account: Account, path: string): Promise<Epub> {
+  const file = await loadFile(account, path)
+  try {
+    return await Epub.open(file)
+  } catch (error) {
+    if (error instanceof DrmError) throw error
+    throw new Error(
+      `This book couldn't be opened: ${error instanceof Error ? error.message : "it isn't an EPUB the reader can read."}`,
+      { cause: error },
+    )
   }
 }
 

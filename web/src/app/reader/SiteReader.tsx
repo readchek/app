@@ -1,4 +1,5 @@
 import { Match, Switch, createResource } from "solid-js"
+import type { Epub, ReadingDirection } from "@readchek/reader"
 import { useNavigate, useParams, useSearch } from "@tanstack/solid-router"
 import { Spinner } from "../../components/icons.tsx"
 import { type Account, accountByKey, accountKey } from "../accounts.ts"
@@ -12,8 +13,10 @@ import {
 } from "../sites/api.ts"
 import { chapterPosition, savePosition } from "../sites/positions.ts"
 import { chapterTitle } from "../sites/titles.ts"
+import { type BookSource, BookReader } from "./BookReader.tsx"
+import type { Positions } from "./shared.tsx"
 import { type ComicBook, ComicReader } from "./ComicReader.tsx"
-import { Message } from "./Reader.tsx"
+import { Message, openEpub } from "./Reader.tsx"
 
 /** A chapter read straight from a site, full screen. */
 export function SiteReader() {
@@ -41,9 +44,13 @@ export function SiteReader() {
         siteSeries(account, extensionId, seriesId),
         chapterContent(account, extensionId, chapterId),
       ])
+      const epub =
+        content.format === "epub" && content.file
+          ? await openEpub(account, content.file.url)
+          : undefined
       // Chapters can't be read one at a time, so the link that opens one
       // brings its title along.
-      return { account, extensionId, series, content, chapterId, title }
+      return { account, extensionId, series, content, epub, chapterId, title }
     },
   )
 
@@ -63,29 +70,28 @@ export function SiteReader() {
           />
         </Match>
         <Match when={opened()} keyed>
-          {(chapter) => (
-            <Switch>
-              <Match when={chapter.content.pages}>
-                <ComicReader
-                  book={siteComic(chapter, (next) =>
-                    navigate({
-                      to: "/chapter/$server/$extensionId",
-                      params: { server: params().server, extensionId: chapter.extensionId },
-                      search: {
-                        series: chapter.series.id,
-                        chapter: next.id,
-                        title: chapterTitle(next),
-                      },
-                      replace: true,
-                    }),
-                  )}
-                />
-              </Match>
-              <Match when={true}>
-                <Message text="Books from sites open on the web in a later version. Comics open now." />
-              </Match>
-            </Switch>
-          )}
+          {(chapter) => {
+            const open = (next: RemoteChapter) =>
+              navigate({
+                to: "/chapter/$server/$extensionId",
+                params: { server: params().server, extensionId: chapter.extensionId },
+                search: { series: chapter.series.id, chapter: next.id, title: chapterTitle(next) },
+                replace: true,
+              })
+            return (
+              <Switch>
+                <Match when={chapter.content.pages}>
+                  <ComicReader book={siteComic(chapter, open)} />
+                </Match>
+                <Match when={chapter.epub}>
+                  {(epub) => <BookReader book={siteBook(chapter, epub(), open)} />}
+                </Match>
+                <Match when={true}>
+                  <Message text="This kind of book opens on the web in a later version. Comics and EPUB books open now." />
+                </Match>
+              </Switch>
+            )
+          }}
         </Match>
         <Match when={true}>
           <p
@@ -101,31 +107,28 @@ export function SiteReader() {
   )
 }
 
-function siteComic(
-  opened: {
-    account: Account
-    extensionId: string
-    series: RemoteSeries
-    content: ChapterContent
-    chapterId: string
-    title: string | undefined
-  },
-  open: (chapter: RemoteChapter) => void,
-): ComicBook {
+type OpenedChapter = {
+  account: Account
+  extensionId: string
+  series: RemoteSeries
+  content: ChapterContent
+  chapterId: string
+  title: string | undefined
+}
+
+// Where a site chapter keeps its place, in this browser, and what comes after it.
+function sitePlace(opened: OpenedChapter, open: (chapter: RemoteChapter) => void) {
   const { account, extensionId, series, chapterId } = opened
   const server = accountKey(account)
-  const pages = [...(opened.content.pages ?? [])].sort((a, b) => a.index - b.index)
   const title = opened.title ?? series.title
-  const direction =
+  const direction: ReadingDirection | null =
     series.readingDirection === "rtl" ? "rtl" : series.readingDirection === "ltr" ? "ltr" : null
   return {
     account,
     title,
-    subtitle: series.title,
-    pages: pages.map((page) => page.url),
-    start: chapterPosition(server, extensionId, chapterId)?.locator ?? null,
-    seriesKey: `${server}/${extensionId}/${series.id}`,
+    server,
     direction,
+    start: chapterPosition(server, extensionId, chapterId)?.locator ?? null,
     positions: {
       save: async (locator) => {
         savePosition({
@@ -144,7 +147,7 @@ function siteComic(
       },
       // Only the server's positions can be overtaken by another device.
       prefer: () => {},
-    },
+    } satisfies Positions,
     next: async () => {
       const page = await siteChapters(account, extensionId, {
         seriesId: series.id,
@@ -155,5 +158,40 @@ function siteComic(
       const after = page.items[0]
       return after && { title: chapterTitle(after), open: () => open(after) }
     },
+  }
+}
+
+function siteComic(opened: OpenedChapter, open: (chapter: RemoteChapter) => void): ComicBook {
+  const place = sitePlace(opened, open)
+  const pages = [...(opened.content.pages ?? [])].sort((a, b) => a.index - b.index)
+  return {
+    account: place.account,
+    title: place.title,
+    subtitle: opened.series.title,
+    pages: pages.map((page) => page.url),
+    start: place.start,
+    seriesKey: `${place.server}/${opened.extensionId}/${opened.series.id}`,
+    direction: place.direction,
+    positions: place.positions,
+    next: place.next,
+  }
+}
+
+function siteBook(
+  opened: OpenedChapter,
+  epub: Epub,
+  open: (chapter: RemoteChapter) => void,
+): BookSource {
+  const place = sitePlace(opened, open)
+  // A site's book is often the whole series, so it goes by the book's own title.
+  const title = epub.metadata.title || place.title
+  return {
+    account: place.account,
+    title,
+    subtitle: title === opened.series.title ? undefined : opened.series.title,
+    epub,
+    start: place.start,
+    positions: place.positions,
+    next: place.next,
   }
 }

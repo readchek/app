@@ -6,7 +6,7 @@
       "name": "chek-web",
       "dependencies": {
         "@kobalte/core": "0.13.14",
-        "@readchek/reader": "github:readchek/chek-reader#d173064f3335f390b417c455f1856632e630370b",
+        "@readchek/reader": "github:readchek/chek-reader#00544b339449d1b43d32db3d95828fa8f7921af6",
         "@tanstack/solid-router": "1.170.43",
         "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
@@ -246,7 +246,7 @@
 
     "@poppinss/exception": ["@poppinss/exception@1.2.3", "", {}, "sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw=="],
 
-    "@readchek/reader": ["@readchek/reader@github:readchek/chek-reader#d173064", {}, "readchek-chek-reader-d173064", "sha512-Z5febCh0XHBIAGJwJhwvTFudUL2P7W+T8il4tb3lIxMOSeDLbtXzc3M2GCLvgWd6MR1svpEarO+qqj4k/D37zg=="],
+    "@readchek/reader": ["@readchek/reader@github:readchek/chek-reader#00544b3", {}, "readchek-chek-reader-00544b3", "sha512-4Kt61J6n0IeW3OrWH5mAlWgYPvHaRh8h88FT3th0AGghuFloll8wFWT8Eo1YJ52GQ0oSW3EYvCpNXlQXUkzxuw=="],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.15", "", { "os": "android", "cpu": "arm" }, "sha512-aLcgK9gIJ3YRvrrtfSBbRa27F5WrpiTaPulnFpsHPxpUHgFlSgnU4854MHwoRGEBhfRJDWCS2WQ7lIjskE9Olw=="],
 

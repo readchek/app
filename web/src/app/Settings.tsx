@@ -5,6 +5,7 @@ import { Badge } from "../components/ui/badge.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"
 import { accounts, host, removeAccount } from "./accounts.ts"
 import { Screen } from "./AppShell.tsx"
+import { clearFiles } from "./files.ts"
 import { clearImages } from "./images.ts"
 
 /** The servers you're signed in to, and signing in to more. */
@@ -12,7 +13,7 @@ export function Settings() {
   const signOut = async (server: string) => {
     await removeAccount(server)
     // Nothing of a server's is kept once no one is signed in to any.
-    if (accounts().length === 0) await clearImages()
+    if (accounts().length === 0) await Promise.all([clearImages(), clearFiles()])
   }
 
   return (
