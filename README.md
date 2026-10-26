@@ -13,7 +13,7 @@
   ·
   <a href="AGENTS.md">Contributor guide</a>
   ·
-  <a href="https://github.com/readchek/app/issues">Issues</a>
+  <a href="https://github.com/readchek/chek/issues/new/choose">Report a problem</a>
 </p>
 
 <p align="center">
