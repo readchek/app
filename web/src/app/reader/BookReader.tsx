@@ -326,7 +326,8 @@ export function BookReader(props: { book: BookSource }) {
   )
 }
 
-function TocList(props: {
+/** A table of contents, nested as the book nests it. */
+export function TocList(props: {
   items: TocItem[]
   current: TocItem | undefined
   depth: number

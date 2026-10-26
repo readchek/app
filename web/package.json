@@ -16,10 +16,11 @@
   },
   "dependencies": {
     "@kobalte/core": "0.13.14",
-    "@readchek/reader": "github:readchek/chek-reader#198ca018c3b0dfe276743adc6de4e502d7ca6037",
+    "@readchek/reader": "github:readchek/chek-reader#ac0ac49f6512b771bc2c358b1a8f5e4aaade762a",
     "@tanstack/solid-router": "1.170.43",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "pdfjs-dist": "6.4.299",
     "solid-js": "1.9.17",
     "tailwind-merge": "3.7.0"
   },

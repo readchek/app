@@ -84,7 +84,7 @@ It has three parts so far:
 
 - **The reading app**, on par with the iOS app. You sign in to one or more
   Chek servers, and stay signed in until you sign out. It reads comics,
-  EPUB, plain text and Markdown with Chek Reader, browses shared libraries
+  EPUB, PDF, plain text and Markdown with Chek Reader, browses shared libraries
   and sites, and installs as an app that opens offline. The code is in
   `src/app`.
 - **Content settings**, where adults turn on mature series. The iOS app

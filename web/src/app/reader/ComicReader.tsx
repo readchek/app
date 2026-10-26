@@ -3,11 +3,14 @@ import {
   type ComicLocation,
   ComicView,
   type Locator,
+  type PageSource,
   type ReadingDirection,
+  type TocItem,
   comicPageIndex,
 } from "@readchek/reader"
-import { Sliders } from "../../components/icons.tsx"
-import { buttonVariants } from "../../components/ui/button.tsx"
+import { ListBullet, Sliders } from "../../components/icons.tsx"
+import { Button, buttonVariants } from "../../components/ui/button.tsx"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog.tsx"
 import {
   Popover,
   PopoverContent,
@@ -19,6 +22,7 @@ import { ToggleGroup } from "../../components/ui/toggle-group.tsx"
 import { cn } from "../../lib/cn.ts"
 import type { Account } from "../accounts.ts"
 import { loadImage } from "../images.ts"
+import { TocList } from "./BookReader.tsx"
 import {
   changeComicSettings,
   comicSettings,
@@ -35,18 +39,27 @@ import {
   createKeeper,
 } from "./shared.tsx"
 
-/** A comic to read: its pages as paths on the account's server, and where to start and keep its place. */
+/** A comic or PDF to read: its pages, and where to start and keep its place. */
 export type ComicBook = {
   account: Account
   title: string
   subtitle?: string
-  pages: string[]
+  pages: PageSource
+  /** A PDF's outline. */
+  toc?: TocItem[]
+  /** Frees what the pages hold once the reader closes, such as an open PDF. */
+  release?: () => void
   start: Locator | null
   /** Names the series for its chosen reading direction, with its server. */
   seriesKey: string
   direction: ReadingDirection | null
   positions: Positions
   next: () => Promise<UpNext | undefined>
+}
+
+/** Pages from paths on the account's server, such as a comic's. */
+export function serverPages(account: Account, paths: string[]): PageSource {
+  return { count: paths.length, load: (index) => loadImage(account, paths[index]!) }
 }
 
 /** A comic open full screen: the pages, and controls that appear on a tap in the middle. */
@@ -58,6 +71,12 @@ export function ComicReader(props: { book: ComicBook }) {
   const direction = (): ReadingDirection =>
     seriesDirection(book.seriesKey) ?? book.direction ?? "ltr"
 
+  const count = () => book.pages.count
+  const pageOf = (locator: Locator | null) =>
+    locator && book.pages.pageIndex
+      ? book.pages.pageIndex(locator)
+      : comicPageIndex(locator, count())
+  const [contents, setContents] = createSignal(false)
   const [location, setLocation] = createSignal<ComicLocation>()
   const [scrub, setScrub] = createSignal<number>()
   const [controls, setControls] = createSignal(true)
@@ -69,10 +88,7 @@ export function ComicReader(props: { book: ComicBook }) {
     if (!element) return
     view = new ComicView(
       element,
-      {
-        count: book.pages.length,
-        load: (index) => loadImage(book.account, book.pages[index]!),
-      },
+      book.pages,
       {
         location: (place) => {
           setLocation(place)
@@ -95,7 +111,10 @@ export function ComicReader(props: { book: ComicBook }) {
       book.start,
     )
     element.focus({ preventScroll: true })
-    onCleanup(() => view?.destroy())
+    onCleanup(() => {
+      view?.destroy()
+      book.release?.()
+    })
   })
 
   const shownPage = () => scrub() ?? location()?.page ?? 0
@@ -113,6 +132,17 @@ export function ComicReader(props: { book: ComicBook }) {
       <div ref={(node) => (element = node)} class="absolute inset-0" aria-label="Pages" />
 
       <TopBar shown={controls()} title={book.title} subtitle={book.subtitle}>
+        <Show when={(book.toc?.length ?? 0) > 0}>
+          <Button
+            variant="ghost"
+            size="sm"
+            class="size-10 px-0 [&_svg]:size-5"
+            aria-label="Contents"
+            onClick={() => setContents(true)}
+          >
+            <ListBullet />
+          </Button>
+        </Show>
         <Popover placement="bottom-end" gutter={8}>
           <PopoverTrigger
             class={cn(
@@ -178,26 +208,47 @@ export function ComicReader(props: { book: ComicBook }) {
           label="Page"
           value={shownPage()}
           minValue={0}
-          maxValue={Math.max(book.pages.length - 1, 1)}
+          maxValue={Math.max(count() - 1, 1)}
           inverted={direction() === "rtl"}
-          getValueLabel={(value) => `Page ${value + 1} of ${book.pages.length}`}
+          getValueLabel={(value) => `Page ${value + 1} of ${count()}`}
           onChange={setScrub}
           onChangeEnd={(value) => view?.goTo(value)}
-          disabled={book.pages.length < 2}
+          disabled={count() < 2}
         />
         <p class="text-center text-[13px] text-muted-foreground tabular-nums" aria-live="polite">
           {pageLabel()}
         </p>
       </BottomBar>
 
+      <Dialog open={contents()} onOpenChange={setContents}>
+        <DialogContent class="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Contents</DialogTitle>
+          </DialogHeader>
+          <nav aria-label="Contents" class="-mx-2">
+            <TocList
+              items={book.toc ?? []}
+              current={undefined}
+              depth={0}
+              choose={(item) => {
+                setContents(false)
+                const index = pageOf({ href: item.href, type: "application/pdf" })
+                if (index !== undefined) view?.goTo(index)
+                setControls(false)
+              }}
+            />
+          </nav>
+        </DialogContent>
+      </Dialog>
+
       <ConflictDialog
         keeper={keeper}
         place={(other) => {
-          const index = comicPageIndex(other.locator, book.pages.length)
+          const index = pageOf(other.locator)
           return index === undefined ? "another place" : `page ${index + 1}`
         }}
         onTake={(other) => {
-          const index = comicPageIndex(other.locator, book.pages.length)
+          const index = pageOf(other.locator)
           if (index !== undefined) view?.goTo(index)
         }}
       />

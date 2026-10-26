@@ -1,5 +1,6 @@
 import { Match, Switch, createResource } from "solid-js"
 import { DrmError, Epub, type Publication, TextBook } from "@readchek/reader"
+import type { PdfDocument } from "@readchek/reader/pdf"
 import { Link, useNavigate, useParams } from "@tanstack/solid-router"
 import { AlertCircle, Spinner } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
@@ -20,7 +21,7 @@ import {
 import { loadFile } from "../files.ts"
 import { publicationTitle, seriesTitle } from "../titles.ts"
 import { type BookSource, BookReader } from "./BookReader.tsx"
-import { type ComicBook, ComicReader } from "./ComicReader.tsx"
+import { type ComicBook, ComicReader, serverPages } from "./ComicReader.tsx"
 import type { Positions, UpNext } from "./shared.tsx"
 
 /** A publication open full screen, in the reader its format needs. */
@@ -82,8 +83,13 @@ export function Reader() {
               <Match when={comicFormats.includes(book.detail.format)}>
                 <ComicReader book={publicationComic(book, openNext)} />
               </Match>
-              <Match when={book.book}>
-                {(opened) => <BookReader book={publicationBook(book, opened(), openNext)} />}
+              <Match when={book.book?.kind === "book" && book.book.publication} keyed>
+                {(publication) => (
+                  <BookReader book={publicationBook(book, publication, openNext)} />
+                )}
+              </Match>
+              <Match when={book.book?.kind === "pdf" && book.book.pdf} keyed>
+                {(pdf) => <ComicReader book={publicationPdf(book, pdf, openNext)} />}
               </Match>
               <Match when={true}>
                 <Message text={laterFormat} />
@@ -146,12 +152,25 @@ function publicationComic(opened: Opened, open: (id: number) => void): ComicBook
     account,
     title: publicationTitle(detail),
     subtitle: seriesTitle(detail),
-    pages: opened.pages.map((page) => pagePath(detail.id, page.index)),
+    pages: serverPages(
+      account,
+      opened.pages.map((page) => pagePath(detail.id, page.index)),
+    ),
     start: opened.progress.locator,
     seriesKey: `${accountKey(account)}/${detail.series.id}`,
     direction: detail.readingDirection,
     positions: serverPositions(account, detail.id, opened.progress),
     next: nextInSeries(account, detail, open),
+  }
+}
+
+/** A publication's PDF, read page by page with its place kept on the server. */
+function publicationPdf(opened: Opened, pdf: PdfDocument, open: (id: number) => void): ComicBook {
+  return {
+    ...publicationComic(opened, open),
+    pages: pdf,
+    toc: pdf.toc,
+    release: () => void pdf.destroy(),
   }
 }
 
@@ -175,26 +194,43 @@ function publicationBook(
 
 /** What formats that don't open yet say. */
 export const laterFormat =
-  "This kind of book opens on the web in a later version. Comics, EPUB, plain text and Markdown open now."
+  "This kind of book opens on the web in a later version. Comics, EPUB, PDF, plain text and Markdown open now."
+
+/** A book file, opened in the reader its format needs. */
+export type OpenedFile =
+  | { kind: "book"; publication: Publication }
+  | { kind: "pdf"; pdf: PdfDocument }
+
+const pdfFiles = {
+  worker: `${import.meta.env.BASE_URL}pdfjs/pdf.worker.min.mjs`,
+  cMaps: `${import.meta.env.BASE_URL}pdfjs/cmaps/`,
+  standardFonts: `${import.meta.env.BASE_URL}pdfjs/standard_fonts/`,
+}
 
 /**
  * Downloads a book, or the one kept from before, and opens it, when its
- * format reads in the book reader. Other formats give undefined.
+ * format reads on the web. Other formats give undefined.
  */
 export async function openBook(
   account: Account,
   path: string,
   format: string,
   fileName: string,
-): Promise<Publication | undefined> {
-  const open =
+): Promise<OpenedFile | undefined> {
+  const open: ((file: Blob) => Promise<OpenedFile>) | undefined =
     format === "epub"
-      ? (file: Blob) => Epub.open(file)
+      ? async (file) => ({ kind: "book", publication: await Epub.open(file) })
       : format === "txt"
-        ? (file: Blob) => TextBook.plainText(file, fileName)
+        ? async (file) => ({ kind: "book", publication: await TextBook.plainText(file, fileName) })
         : format === "markdown"
-          ? (file: Blob) => TextBook.markdown(file, fileName)
-          : undefined
+          ? async (file) => ({ kind: "book", publication: await TextBook.markdown(file, fileName) })
+          : format === "pdf"
+            ? async (file) => {
+                // pdf.js loads only when a PDF opens.
+                const { PdfDocument } = await import("@readchek/reader/pdf")
+                return { kind: "pdf", pdf: await PdfDocument.open(file, pdfFiles) }
+              }
+            : undefined
   if (!open) return undefined
   const file = await loadFile(account, path)
   try {

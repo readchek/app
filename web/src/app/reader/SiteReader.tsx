@@ -15,7 +15,7 @@ import { chapterPosition, savePosition } from "../sites/positions.ts"
 import { chapterTitle } from "../sites/titles.ts"
 import { type BookSource, BookReader } from "./BookReader.tsx"
 import type { Positions } from "./shared.tsx"
-import { type ComicBook, ComicReader } from "./ComicReader.tsx"
+import { type ComicBook, ComicReader, serverPages } from "./ComicReader.tsx"
 import { Message, laterFormat, openBook } from "./Reader.tsx"
 
 /** A chapter read straight from a site, full screen. */
@@ -87,8 +87,20 @@ export function SiteReader() {
                 <Match when={chapter.content.pages}>
                   <ComicReader book={siteComic(chapter, open)} />
                 </Match>
-                <Match when={chapter.book}>
-                  {(book) => <BookReader book={siteBook(chapter, book(), open)} />}
+                <Match when={chapter.book?.kind === "book" && chapter.book.publication} keyed>
+                  {(publication) => <BookReader book={siteBook(chapter, publication, open)} />}
+                </Match>
+                <Match when={chapter.book?.kind === "pdf" && chapter.book.pdf} keyed>
+                  {(pdf) => (
+                    <ComicReader
+                      book={{
+                        ...siteComic(chapter, open),
+                        pages: pdf,
+                        toc: pdf.toc,
+                        release: () => void pdf.destroy(),
+                      }}
+                    />
+                  )}
                 </Match>
                 <Match when={true}>
                   <Message text={laterFormat} />
@@ -172,7 +184,10 @@ function siteComic(opened: OpenedChapter, open: (chapter: RemoteChapter) => void
     account: place.account,
     title: place.title,
     subtitle: opened.series.title,
-    pages: pages.map((page) => page.url),
+    pages: serverPages(
+      place.account,
+      pages.map((page) => page.url),
+    ),
     start: place.start,
     seriesKey: `${place.server}/${opened.extensionId}/${opened.series.id}`,
     direction: place.direction,
