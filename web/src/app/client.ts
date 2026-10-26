@@ -55,6 +55,8 @@ export type Library = {
   id: number
   name: string
   kind: "folder" | "source"
+  /** Where a source library reads from; an extension library names its extension. */
+  source?: { type: "komga" | "kavita" | "extension"; extensionId?: string }
 }
 
 export type Page<T> = { items: T[]; nextCursor?: string }
@@ -75,7 +77,7 @@ export type PageInfo = { index: number; mediaType: string; size: number | null }
 /** Formats read as pages, in the comic reader. */
 export const comicFormats: readonly Format[] = ["cbz", "cbt", "cbr", "cb7", "remote"]
 
-async function call<T>(
+export async function call<T>(
   account: Account,
   path: string,
   init: { method?: string; body?: unknown; signal?: AbortSignal } = {},
@@ -92,7 +94,7 @@ function get<T>(account: Account, path: string, signal?: AbortSignal): Promise<T
   return call<T>(account, path, { signal })
 }
 
-function query(params: Record<string, string | number | undefined>): string {
+export function query(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams()
   for (const [name, value] of Object.entries(params)) {
     if (value !== undefined) search.set(name, String(value))

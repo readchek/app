@@ -1,5 +1,5 @@
 import { Show, createResource, createSignal, onCleanup, onMount } from "solid-js"
-import { Link, useNavigate, useRouter } from "@tanstack/solid-router"
+import { useNavigate, useRouter } from "@tanstack/solid-router"
 import {
   type ComicLocation,
   ComicView,
@@ -26,18 +26,9 @@ import {
 import { Slider } from "../../components/ui/slider.tsx"
 import { ToggleGroup } from "../../components/ui/toggle-group.tsx"
 import { cn } from "../../lib/cn.ts"
-import { type Account, accountKey } from "../accounts.ts"
-import {
-  type PageInfo,
-  type Progress,
-  ProgressConflict,
-  type PublicationDetail,
-  pagePath,
-  saveProgress,
-  seriesPublications,
-} from "../client.ts"
+import type { Account } from "../accounts.ts"
+import { type Progress, ProgressConflict } from "../client.ts"
 import { loadImage } from "../images.ts"
-import { publicationTitle, seriesTitle } from "../titles.ts"
 import {
   changeComicSettings,
   comicSettings,
@@ -49,21 +40,41 @@ import {
 // through a book saves once rather than for every page passed.
 const saveDelay = 800
 
-/** A comic open full screen: the pages, and controls that appear on a tap in the middle. */
-export function ComicReader(props: {
+/** Where a reader keeps its place: the server for a publication, this browser for a site chapter. */
+export type Positions = {
+  /** Keeps a place. Throws `ProgressConflict` when another device saved since. */
+  save(locator: Locator): Promise<void>
+  /** Takes another device's saved place as the one to save over next. */
+  prefer(other: Progress): void
+}
+
+/** What comes after the comic, offered at its end. */
+export type UpNext = { title: string; open: () => void }
+
+/** A comic to read: its pages as paths on the account's server, and where to start and keep its place. */
+export type ComicBook = {
   account: Account
-  publication: PublicationDetail
-  pages: PageInfo[]
-  progress: Progress
-}) {
+  title: string
+  subtitle?: string
+  pages: string[]
+  start: Locator | null
+  /** Names the series for its chosen reading direction, with its server. */
+  seriesKey: string
+  direction: ReadingDirection | null
+  positions: Positions
+  next: () => Promise<UpNext | undefined>
+}
+
+/** A comic open full screen: the pages, and controls that appear on a tap in the middle. */
+export function ComicReader(props: { book: ComicBook }) {
   const navigate = useNavigate()
   const router = useRouter()
   let element: HTMLDivElement | undefined
   let view: ComicView | undefined
 
-  const seriesKey = `${accountKey(props.account)}/${props.publication.series.id}`
+  const book = props.book
   const direction = (): ReadingDirection =>
-    seriesDirection(seriesKey) ?? props.publication.readingDirection ?? "ltr"
+    seriesDirection(book.seriesKey) ?? book.direction ?? "ltr"
 
   const [location, setLocation] = createSignal<ComicLocation>()
   const [scrub, setScrub] = createSignal<number>()
@@ -71,9 +82,7 @@ export function ComicReader(props: {
   const [finished, setFinished] = createSignal(false)
   const [conflict, setConflict] = createSignal<Progress>()
 
-  // Saving: the revision this device last read or wrote, and the place
-  // waiting to be written.
-  let revision = props.progress.revision
+  // The place waiting to be written.
   let pending: Locator | undefined
   let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -83,8 +92,7 @@ export function ComicReader(props: {
     pending = undefined
     if (!locator) return
     try {
-      revision = (await saveProgress(props.account, props.publication.id, revision, locator))
-        .revision
+      await book.positions.save(locator)
     } catch (error) {
       if (error instanceof ProgressConflict) {
         // Another device read on. The reader picks which place to keep.
@@ -102,23 +110,15 @@ export function ComicReader(props: {
     if (!conflict()) timer = setTimeout(() => void save(), saveDelay)
   }
 
-  const [next] = createResource(async () => {
-    // The book after this one in its series, for the end of the book.
-    const list = await seriesPublications(props.account, props.publication.series.id, {
-      limit: 500,
-    })
-    const index = list.items.findIndex((item) => item.id === props.publication.id)
-    return index >= 0 ? list.items[index + 1] : undefined
-  })
+  const [next] = createResource(() => book.next())
 
   onMount(() => {
     if (!element) return
-    const publicationId = props.publication.id
     view = new ComicView(
       element,
       {
-        count: props.pages.length,
-        load: (index) => loadImage(props.account, pagePath(publicationId, index)),
+        count: book.pages.length,
+        load: (index) => loadImage(book.account, book.pages[index]!),
       },
       {
         location: (place) => {
@@ -139,7 +139,7 @@ export function ComicReader(props: {
         },
       },
       { ...comicSettings(), direction: direction() },
-      props.progress.locator,
+      book.start,
     )
     element.focus({ preventScroll: true })
     const leave = () => void save()
@@ -187,11 +187,9 @@ export function ComicReader(props: {
           <ChevronLeft />
         </Button>
         <div class="min-w-0 flex-1 text-center">
-          <p class="truncate text-[15px] font-semibold">{publicationTitle(props.publication)}</p>
-          <Show when={seriesTitle(props.publication)}>
-            <p class="truncate text-[13px] text-muted-foreground">
-              {seriesTitle(props.publication)}
-            </p>
+          <p class="truncate text-[15px] font-semibold">{book.title}</p>
+          <Show when={book.subtitle}>
+            <p class="truncate text-[13px] text-muted-foreground">{book.subtitle}</p>
           </Show>
         </div>
         <Popover placement="bottom-end" gutter={8}>
@@ -227,7 +225,7 @@ export function ComicReader(props: {
                 { value: "rtl", label: "Right to left" },
               ]}
               onChange={(chosen) => {
-                setSeriesDirection(seriesKey, chosen)
+                setSeriesDirection(book.seriesKey, chosen)
                 view?.setOptions({ direction: chosen })
               }}
             />
@@ -258,16 +256,11 @@ export function ComicReader(props: {
             <div class="flex max-w-md items-center gap-4 rounded-2xl border bg-card/95 p-4 shadow-xl backdrop-blur-xl">
               <p class="min-w-0 text-[15px]">
                 <span class="block text-muted-foreground">Up next</span>
-                <span class="block truncate font-semibold">{publicationTitle(after())}</span>
+                <span class="block truncate font-semibold">{after().title}</span>
               </p>
-              <Link
-                to="/read/$server/$publicationId"
-                params={{ server: accountKey(props.account), publicationId: String(after().id) }}
-                replace
-                class={buttonVariants({ size: "sm" })}
-              >
+              <Button size="sm" onClick={() => after().open()}>
                 Read
-              </Link>
+              </Button>
             </div>
           </div>
         )}
@@ -285,12 +278,12 @@ export function ComicReader(props: {
             label="Page"
             value={shownPage()}
             minValue={0}
-            maxValue={Math.max(props.pages.length - 1, 1)}
+            maxValue={Math.max(book.pages.length - 1, 1)}
             inverted={direction() === "rtl"}
-            getValueLabel={(value) => `Page ${value + 1} of ${props.pages.length}`}
+            getValueLabel={(value) => `Page ${value + 1} of ${book.pages.length}`}
             onChange={setScrub}
             onChangeEnd={(value) => view?.goTo(value)}
-            disabled={props.pages.length < 2}
+            disabled={book.pages.length < 2}
           />
           <p class="text-center text-[13px] text-muted-foreground tabular-nums" aria-live="polite">
             {pageLabel()}
@@ -324,7 +317,7 @@ export function ComicReader(props: {
   )
 
   function otherPlace(): string {
-    const index = comicPageIndex(conflict()?.locator, props.pages.length)
+    const index = comicPageIndex(conflict()?.locator, book.pages.length)
     return index === undefined ? "another place" : `page ${index + 1}`
   }
 
@@ -332,7 +325,7 @@ export function ComicReader(props: {
   function keepThisPage() {
     const other = conflict()
     if (!other) return
-    revision = other.revision
+    book.positions.prefer(other)
     setConflict(undefined)
     void save()
   }
@@ -340,10 +333,10 @@ export function ComicReader(props: {
   function goToOther() {
     const other = conflict()
     if (!other) return
-    revision = other.revision
+    book.positions.prefer(other)
     pending = undefined
     setConflict(undefined)
-    const index = comicPageIndex(other.locator, props.pages.length)
+    const index = comicPageIndex(other.locator, book.pages.length)
     if (index !== undefined) view?.goTo(index)
   }
 }

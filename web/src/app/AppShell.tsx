@@ -1,7 +1,7 @@
 import { For, type JSX, Show } from "solid-js"
 import { Link, Outlet, useRouter } from "@tanstack/solid-router"
 import { Wordmark } from "../components/Wordmark.tsx"
-import { BookOpen, Building, ChevronLeft, Gear, Search } from "../components/icons.tsx"
+import { BookOpen, Building, ChevronLeft, Gear, Globe, Search } from "../components/icons.tsx"
 import { Button } from "../components/ui/button.tsx"
 import { cn } from "../lib/cn.ts"
 import { accounts } from "./accounts.ts"
@@ -12,6 +12,7 @@ import { Welcome } from "./SignIn.tsx"
 const places = [
   { to: "/", label: "Reading Now", icon: BookOpen },
   { to: "/shared", label: "Shared", icon: Building },
+  { to: "/sites", label: "Sites", icon: Globe },
   { to: "/search", label: "Search", icon: Search },
   { to: "/settings", label: "Settings", icon: Gear },
 ] as const
@@ -60,7 +61,7 @@ export function AppShell() {
               <Link
                 to={place.to}
                 activeOptions={{ exact: place.to === "/" }}
-                class="flex min-w-16 flex-col items-center gap-0.5 rounded-lg px-3 py-1 text-[11px] font-semibold text-muted-foreground data-[status=active]:text-link [&_svg]:size-6"
+                class="flex min-w-14 flex-col items-center gap-0.5 rounded-lg px-2 py-1 text-[11px] font-semibold text-muted-foreground data-[status=active]:text-link [&_svg]:size-6"
                 activeProps={{ "aria-current": "page" }}
               >
                 <place.icon />

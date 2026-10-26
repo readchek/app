@@ -165,7 +165,7 @@ function Row(props: { label: string; value: string | null | undefined }) {
 
 // Descriptions can be HTML, as EPUB ones often are. Only their text is
 // shown, a paragraph per block, so nothing from the file runs or loads.
-function paragraphs(description: string): string[] {
+export function paragraphs(description: string): string[] {
   const document = new DOMParser().parseFromString(description, "text/html")
   for (const element of document.querySelectorAll("br")) element.replaceWith("\n")
   for (const element of document.querySelectorAll("p, div, li, h1, h2, h3, h4")) {
@@ -190,7 +190,7 @@ function published(value: string | null): string | undefined {
   }).format(date)
 }
 
-function language(tag: string | null): string | undefined {
+export function language(tag: string | null): string | undefined {
   if (!tag) return undefined
   try {
     return new Intl.DisplayNames(undefined, { type: "language" }).of(tag) ?? tag

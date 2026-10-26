@@ -1,4 +1,4 @@
-import { For, Match, Show, Switch, createResource } from "solid-js"
+import { For, Match, Show, Switch, createMemo, createResource } from "solid-js"
 import { Link } from "@tanstack/solid-router"
 import { AlertCircle } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
@@ -7,7 +7,8 @@ import { type Account, accountKey, accounts, host } from "./accounts.ts"
 import { type Continued, continueReading, coverPath, recentlyAdded } from "./client.ts"
 import { Cover } from "./Cover.tsx"
 import { Screen } from "./AppShell.tsx"
-import { Shelf, ShelfItem, ShelfPlaceholder } from "./Shelf.tsx"
+import { type Destination, Shelf, ShelfItem, ShelfPlaceholder } from "./Shelf.tsx"
+import { continuingSiteSeries } from "./sites/positions.ts"
 import { progressCaption, publicationTitle, seriesTitle } from "./titles.ts"
 
 const shelfSize = 20
@@ -46,6 +47,17 @@ export function Home() {
 
 type Reading = Continued & { account: Account }
 
+/** One cover on Continue Reading, from a server's library or a site. */
+type Entry = {
+  key: string
+  account: Account
+  to: Destination
+  cover: string | undefined
+  title: string
+  detail: string
+  at: string
+}
+
 function ContinueReading(props: { accounts: Account[] }) {
   // One shelf for every server, most recently read first. A server that
   // can't be reached leaves out only its own books.
@@ -60,36 +72,71 @@ function ContinueReading(props: { accounts: Account[] }) {
           })),
         ),
       )
-      return pages
-        .flatMap((page) => (page.status === "fulfilled" ? page.value : []))
-        .sort((a, b) => (b.progress.updatedAt ?? "").localeCompare(a.progress.updatedAt ?? ""))
-        .slice(0, shelfSize)
+      return pages.flatMap((page) => (page.status === "fulfilled" ? page.value : []))
     },
   )
+
+  // Chapters read straight from a site join them; this browser keeps
+  // their places.
+  const entries = createMemo((): Entry[] => {
+    const fromServers = (reading.latest ?? []).map((item) => ({
+      key: `${accountKey(item.account)}/${item.publication.id}`,
+      account: item.account,
+      to: { server: accountKey(item.account), read: item.publication.id },
+      cover: item.publication.hasCover ? coverPath(item.publication) : undefined,
+      title: publicationTitle(item.publication),
+      detail: [seriesTitle(item.publication), progressCaption(item.progress)]
+        .filter(Boolean)
+        .join(" · "),
+      at: item.progress.updatedAt ?? "",
+    }))
+    const fromSites = continuingSiteSeries().flatMap((place) => {
+      const account = props.accounts.find((a) => accountKey(a) === place.server)
+      if (!account) return []
+      return [
+        {
+          key: `${place.server}/${place.extensionId}/${place.chapterId}`,
+          account,
+          to: {
+            server: place.server,
+            site: place.extensionId,
+            siteSeries: place.seriesId,
+            chapter: place.chapterId,
+            title: place.chapterTitle,
+          },
+          cover: place.coverUrl ?? undefined,
+          title: place.seriesTitle,
+          // How far comes first, since chapter titles run long.
+          detail: [
+            place.progression >= 1
+              ? "Finished"
+              : `${Math.max(1, Math.round(place.progression * 100))}%`,
+            place.chapterTitle,
+          ].join(" · "),
+          at: place.openedAt,
+        },
+      ]
+    })
+    return [...fromServers, ...fromSites]
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, shelfSize)
+  })
 
   return (
     <Switch>
       <Match when={reading.loading && !reading.latest}>
         <ShelfPlaceholder featured />
       </Match>
-      <Match when={reading()?.length}>
+      <Match when={entries().length}>
         <Shelf title="Continue Reading">
-          <For each={reading()}>
+          <For each={entries()}>
             {(item) => (
               <ShelfItem
                 featured
-                to={{ server: accountKey(item.account), read: item.publication.id }}
-                cover={
-                  <Cover
-                    account={item.account}
-                    path={item.publication.hasCover ? coverPath(item.publication) : undefined}
-                    title={publicationTitle(item.publication)}
-                  />
-                }
-                title={publicationTitle(item.publication)}
-                detail={[seriesTitle(item.publication), progressCaption(item.progress)]
-                  .filter(Boolean)
-                  .join(" · ")}
+                to={item.to}
+                cover={<Cover account={item.account} path={item.cover} title={item.title} />}
+                title={item.title}
+                detail={item.detail}
               />
             )}
           </For>

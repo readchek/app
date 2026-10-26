@@ -75,5 +75,12 @@ export function createPagedList<T, K>(
     onCleanup(() => observer.disconnect())
   }
 
-  return { items, state, error, more, sentinel }
+  /** Asks again for the page that failed. */
+  const retry = () => {
+    if (state() !== "failed") return
+    setError(undefined)
+    void more()
+  }
+
+  return { items, state, error, more, retry, sentinel }
 }

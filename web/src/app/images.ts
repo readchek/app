@@ -52,6 +52,16 @@ export function loadImage(account: Account, path: string): Promise<Blob> {
   return pending
 }
 
+/** An image that changes each time it's asked for, such as a frame of the server's browser. It isn't kept. */
+export async function loadLiveImage(account: Account, path: string): Promise<Blob> {
+  const response = await fetch(`${account.server}${path}`, {
+    cache: "no-store",
+    headers: { Authorization: `Bearer ${account.token}` },
+  })
+  if (!response.ok) throw new Error(`The server answered ${response.status} for an image.`)
+  return response.blob()
+}
+
 /** Forgets every kept image, such as when the last account signs out. */
 export async function clearImages() {
   if (typeof caches !== "undefined") await caches.delete(cacheName).catch(() => false)

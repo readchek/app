@@ -1,15 +1,28 @@
 import { Match, Switch, createResource } from "solid-js"
-import { Link, useParams } from "@tanstack/solid-router"
+import { Link, useNavigate, useParams } from "@tanstack/solid-router"
 import { AlertCircle, Spinner } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
 import { buttonVariants } from "../../components/ui/button.tsx"
-import { accountByKey } from "../accounts.ts"
-import { comicFormats, pages, progress, publication } from "../client.ts"
-import { ComicReader } from "./ComicReader.tsx"
+import { type Account, accountByKey, accountKey } from "../accounts.ts"
+import {
+  type PageInfo,
+  type Progress,
+  type PublicationDetail,
+  comicFormats,
+  pagePath,
+  pages,
+  progress,
+  publication,
+  saveProgress,
+  seriesPublications,
+} from "../client.ts"
+import { publicationTitle, seriesTitle } from "../titles.ts"
+import { type ComicBook, ComicReader } from "./ComicReader.tsx"
 
 /** A publication open full screen, in the reader its format needs. */
 export function Reader() {
   const params = useParams({ from: "/read/$server/$publicationId" })
+  const navigate = useNavigate()
   const account = () => accountByKey(params().server)
   const id = () => Number(params().publicationId)
 
@@ -43,15 +56,19 @@ export function Reader() {
             }
           />
         </Match>
-        <Match when={opened()}>
+        {/* Keyed, so the next book in the series opens a fresh reader. */}
+        <Match when={opened()} keyed>
           {(book) => (
             <Switch>
-              <Match when={comicFormats.includes(book().detail.format)}>
+              <Match when={comicFormats.includes(book.detail.format)}>
                 <ComicReader
-                  account={book().account}
-                  publication={book().detail}
-                  pages={book().pages}
-                  progress={book().progress}
+                  book={publicationComic(book, (id) =>
+                    navigate({
+                      to: "/read/$server/$publicationId",
+                      params: { server: params().server, publicationId: String(id) },
+                      replace: true,
+                    }),
+                  )}
                 />
               </Match>
               <Match when={true}>
@@ -74,7 +91,41 @@ export function Reader() {
   )
 }
 
-function Message(props: { text: string }) {
+/** A publication's pages, read with its place kept on the server. */
+function publicationComic(
+  opened: { account: Account; detail: PublicationDetail; pages: PageInfo[]; progress: Progress },
+  open: (id: number) => void,
+): ComicBook {
+  const { account, detail } = opened
+  let revision = opened.progress.revision
+  return {
+    account,
+    title: publicationTitle(detail),
+    subtitle: seriesTitle(detail),
+    pages: opened.pages.map((page) => pagePath(detail.id, page.index)),
+    start: opened.progress.locator,
+    seriesKey: `${accountKey(account)}/${detail.series.id}`,
+    direction: detail.readingDirection,
+    positions: {
+      save: async (locator) => {
+        revision = (await saveProgress(account, detail.id, revision, locator)).revision
+      },
+      prefer: (other) => {
+        revision = other.revision
+      },
+    },
+    next: async () => {
+      // The book after this one in its series, for the end of the book.
+      const list = await seriesPublications(account, detail.series.id, { limit: 500 })
+      const index = list.items.findIndex((item) => item.id === detail.id)
+      const after = index >= 0 ? list.items[index + 1] : undefined
+      return after && { title: publicationTitle(after), open: () => open(after.id) }
+    },
+  }
+}
+
+/** Says why the reader can't open something, with the way back. */
+export function Message(props: { text: string }) {
   return (
     <div class="mx-auto flex h-full max-w-md flex-col items-start justify-center gap-6 px-6">
       <Alert variant="destructive">

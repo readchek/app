@@ -137,3 +137,22 @@ export const Info = () => (
     <path d="M12 11v5.5M12 7.5v.01" />
   </svg>
 )
+
+export const Globe = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M3 12h18M12 3c2.5 2.6 3.75 5.6 3.75 9s-1.25 6.4-3.75 9c-2.5-2.6-3.75-5.6-3.75-9S9.5 5.6 12 3Z" />
+  </svg>
+)
+
+export const Bookmark = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M6.5 4.5h11v16L12 16.5l-5.5 4Z" />
+  </svg>
+)
+
+export const ArrowUpDown = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M8 19V5m0 0L4.5 8.5M8 5l3.5 3.5M16 5v14m0 0 3.5-3.5M16 19l-3.5-3.5" />
+  </svg>
+)

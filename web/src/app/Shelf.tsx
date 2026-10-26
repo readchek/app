@@ -3,8 +3,16 @@ import { Link } from "@tanstack/solid-router"
 import { cn } from "../lib/cn.ts"
 import { Skeleton } from "../components/ui/skeleton.tsx"
 
-/** Where a cover leads: a publication in the reader, or a series' page. `server` is the account's key. */
-export type Destination = { server: string; read: number } | { server: string; series: number }
+/**
+ * Where a cover leads: a publication in the reader, a series' page, a
+ * site's series, or a chapter from a site in the reader. `server` is the
+ * account's key.
+ */
+export type Destination =
+  | { server: string; read: number }
+  | { server: string; series: number }
+  | { server: string; site: string; siteSeries: string }
+  | { server: string; site: string; siteSeries: string; chapter: string; title: string }
 
 /** A cover and its caption, leading to `to`. */
 function CoverCard(props: { to: Destination; cover: JSX.Element; title: string; detail?: string }) {
@@ -28,6 +36,30 @@ function CoverCard(props: { to: Destination; cover: JSX.Element; title: string; 
           <Link
             to="/read/$server/$publicationId"
             params={{ server: to().server, publicationId: String(to().read) }}
+            class={style}
+          >
+            {body()}
+          </Link>
+        )}
+      </Match>
+      <Match when={"chapter" in props.to && props.to}>
+        {(to) => (
+          <Link
+            to="/chapter/$server/$extensionId"
+            params={{ server: to().server, extensionId: to().site }}
+            search={{ series: to().siteSeries, chapter: to().chapter, title: to().title }}
+            class={style}
+          >
+            {body()}
+          </Link>
+        )}
+      </Match>
+      <Match when={"siteSeries" in props.to && props.to}>
+        {(to) => (
+          <Link
+            to="/sites/$server/$extensionId/series"
+            params={{ server: to().server, extensionId: to().site }}
+            search={{ id: to().siteSeries }}
             class={style}
           >
             {body()}
