@@ -78,7 +78,7 @@ function ContinueReading(props: { accounts: Account[] }) {
             {(item) => (
               <ShelfItem
                 featured
-                open={{ server: accountKey(item.account), publicationId: item.publication.id }}
+                to={{ server: accountKey(item.account), read: item.publication.id }}
                 cover={
                   <Cover
                     account={item.account}
@@ -139,7 +139,7 @@ function RecentlyAdded(props: { account: Account; showHost: boolean }) {
               <For each={page().items}>
                 {(publication) => (
                   <ShelfItem
-                    open={{ server: accountKey(props.account), publicationId: publication.id }}
+                    to={{ server: accountKey(props.account), read: publication.id }}
                     cover={
                       <Cover
                         account={props.account}

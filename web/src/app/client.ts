@@ -185,3 +185,32 @@ export async function saveProgress(
     throw error
   }
 }
+
+export type Series = {
+  id: number
+  libraryId: number
+  title: string
+  publicationCount: number
+  coverPublicationId: number | null
+}
+
+export function librarySeries(
+  account: Account,
+  libraryId: number,
+  options: { cursor?: string; limit?: number } = {},
+  signal?: AbortSignal,
+): Promise<Page<Series>> {
+  return get(account, `/api/v1/libraries/${libraryId}/series${query(options)}`, signal)
+}
+
+export function series(account: Account, id: number, signal?: AbortSignal): Promise<Series> {
+  return get(account, `/api/v1/series/${id}`, signal)
+}
+
+export function search(
+  account: Account,
+  options: { q: string; libraryId?: number; cursor?: string; limit?: number },
+  signal?: AbortSignal,
+): Promise<Page<PublicationSummary>> {
+  return get(account, `/api/v1/search${query(options)}`, signal)
+}

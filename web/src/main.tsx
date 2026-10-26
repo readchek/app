@@ -16,6 +16,11 @@ import { Home } from "./app/Home.tsx"
 import { Settings as AppSettings } from "./app/Settings.tsx"
 import { AddServer } from "./app/SignIn.tsx"
 import { Reader } from "./app/reader/Reader.tsx"
+import { Search } from "./app/Search.tsx"
+import { Book } from "./app/shared/Book.tsx"
+import { Library } from "./app/shared/Library.tsx"
+import { Series } from "./app/shared/Series.tsx"
+import { Shared } from "./app/shared/Shared.tsx"
 import { AddLibrary } from "./admin/AddLibrary.tsx"
 import { AdminShell } from "./admin/AdminShell.tsx"
 import { Extensions } from "./admin/Extensions.tsx"
@@ -42,6 +47,34 @@ const root = createRootRoute({
 const app = createRoute({ getParentRoute: () => root, id: "app", component: AppShell })
 
 const home = createRoute({ getParentRoute: () => app, path: "/", component: Home })
+
+const shared = createRoute({ getParentRoute: () => app, path: "/shared", component: Shared })
+
+const library = createRoute({
+  getParentRoute: () => app,
+  path: "/shared/$server/libraries/$libraryId",
+  component: Library,
+})
+
+const series = createRoute({
+  getParentRoute: () => app,
+  path: "/shared/$server/series/$seriesId",
+  component: Series,
+})
+
+const book = createRoute({
+  getParentRoute: () => app,
+  path: "/shared/$server/books/$publicationId",
+  component: Book,
+})
+
+const searchRoute = createRoute({
+  getParentRoute: () => app,
+  path: "/search",
+  validateSearch: (search: Record<string, unknown>): { q?: string } =>
+    typeof search.q === "string" && search.q ? { q: search.q } : {},
+  component: Search,
+})
 
 const settings = createRoute({
   getParentRoute: () => app,
@@ -151,7 +184,7 @@ const adminSettings = createRoute({
 
 const router = createRouter({
   routeTree: root.addChildren([
-    app.addChildren([home, settings, signInRoute]),
+    app.addChildren([home, shared, library, series, book, searchRoute, settings, signInRoute]),
     read,
     contentSettings,
     admin.addChildren([

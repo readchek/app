@@ -115,3 +115,25 @@ export const Sliders = () => (
     <circle cx="10" cy="17" r="2" />
   </svg>
 )
+
+export const Search = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="m20 20-4.4-4.4" />
+  </svg>
+)
+
+export const Books = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <rect x="4" y="4" width="4" height="16" rx="1" />
+    <rect x="10" y="4" width="4" height="16" rx="1" />
+    <path d="m15.5 5.6 3.4-.9 2.6 14.6-3.4.9Z" />
+  </svg>
+)
+
+export const Info = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5.5M12 7.5v.01" />
+  </svg>
+)

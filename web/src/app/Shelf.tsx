@@ -1,7 +1,53 @@
-import { For, type JSX, Show } from "solid-js"
+import { For, type JSX, Match, Show, Switch } from "solid-js"
 import { Link } from "@tanstack/solid-router"
 import { cn } from "../lib/cn.ts"
 import { Skeleton } from "../components/ui/skeleton.tsx"
+
+/** Where a cover leads: a publication in the reader, or a series' page. `server` is the account's key. */
+export type Destination = { server: string; read: number } | { server: string; series: number }
+
+/** A cover and its caption, leading to `to`. */
+function CoverCard(props: { to: Destination; cover: JSX.Element; title: string; detail?: string }) {
+  const body = () => (
+    <>
+      <div class="transition-transform duration-200 group-hover:-translate-y-0.5 group-active:scale-[0.98]">
+        {props.cover}
+      </div>
+      <p class="mt-2 line-clamp-2 text-[15px] leading-snug">{props.title}</p>
+      <Show when={props.detail}>
+        <p class="mt-0.5 truncate text-[13px] text-muted-foreground">{props.detail}</p>
+      </Show>
+    </>
+  )
+  const style =
+    "group block rounded-md focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+  return (
+    <Switch>
+      <Match when={"read" in props.to && props.to}>
+        {(to) => (
+          <Link
+            to="/read/$server/$publicationId"
+            params={{ server: to().server, publicationId: String(to().read) }}
+            class={style}
+          >
+            {body()}
+          </Link>
+        )}
+      </Match>
+      <Match when={"series" in props.to && props.to}>
+        {(to) => (
+          <Link
+            to="/shared/$server/series/$seriesId"
+            params={{ server: to().server, seriesId: String(to().series) }}
+            class={style}
+          >
+            {body()}
+          </Link>
+        )}
+      </Match>
+    </Switch>
+  )
+}
 
 /** A titled row of covers that scrolls sideways, as the iOS app's shelves. */
 export function Shelf(props: { title: string; detail?: string; children: JSX.Element }) {
@@ -22,31 +68,64 @@ export function Shelf(props: { title: string; detail?: string; children: JSX.Ele
   )
 }
 
-/** One cover on a shelf with its caption, opening the publication in the reader. `featured` ones are larger, as Continue Reading's. */
+/** One cover on a shelf with its caption. `featured` ones are larger, as Continue Reading's. */
 export function ShelfItem(props: {
+  to: Destination
   cover: JSX.Element
   title: string
   detail?: string
   featured?: boolean
-  /** The account's key and the publication to open. */
-  open: { server: string; publicationId: number }
 }) {
   return (
     <li class={cn("shrink-0 snap-start", props.featured ? "w-40 sm:w-48" : "w-32 sm:w-36")}>
-      <Link
-        to="/read/$server/$publicationId"
-        params={{ server: props.open.server, publicationId: String(props.open.publicationId) }}
-        class="group block rounded-md focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
-      >
-        <div class="transition-transform duration-200 group-hover:-translate-y-0.5 group-active:scale-[0.98]">
-          {props.cover}
-        </div>
-        <p class="mt-2 line-clamp-2 text-[15px] leading-snug">{props.title}</p>
-        <Show when={props.detail}>
-          <p class="mt-0.5 truncate text-[13px] text-muted-foreground">{props.detail}</p>
-        </Show>
-      </Link>
+      <CoverCard to={props.to} cover={props.cover} title={props.title} detail={props.detail} />
     </li>
+  )
+}
+
+/** Covers in rows that fill the width, as the iOS app's library grids. */
+export function CoverGrid(props: { children: JSX.Element; class?: string }) {
+  return (
+    <ul
+      class={cn(
+        "grid grid-cols-[repeat(auto-fill,minmax(7.5rem,1fr))] gap-x-4 gap-y-6 sm:grid-cols-[repeat(auto-fill,minmax(9rem,1fr))]",
+        props.class,
+      )}
+    >
+      {props.children}
+    </ul>
+  )
+}
+
+export function GridItem(props: {
+  to: Destination
+  cover: JSX.Element
+  title: string
+  detail?: string
+}) {
+  return (
+    <li class="min-w-0">
+      <CoverCard to={props.to} cover={props.cover} title={props.title} detail={props.detail} />
+    </li>
+  )
+}
+
+/** A grid the shape of one that's loading. */
+export function GridPlaceholder(props: { count?: number }) {
+  return (
+    <div aria-hidden="true">
+      <CoverGrid>
+        <For each={Array.from({ length: props.count ?? 12 })}>
+          {() => (
+            <li>
+              <Skeleton class="aspect-[2/3] w-full rounded-md" />
+              <Skeleton class="mt-2.5 h-3.5 w-4/5" />
+              <Skeleton class="mt-2 h-3 w-1/2" />
+            </li>
+          )}
+        </For>
+      </CoverGrid>
+    </div>
   )
 }
 
