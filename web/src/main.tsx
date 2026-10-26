@@ -11,6 +11,10 @@ import { bundled } from "./api.ts"
 import { Page } from "./components/Page.tsx"
 import { buttonVariants } from "./components/ui/button.tsx"
 import { ContentSettings } from "./routes/ContentSettings.tsx"
+import { AppShell } from "./app/AppShell.tsx"
+import { Home } from "./app/Home.tsx"
+import { Settings as AppSettings } from "./app/Settings.tsx"
+import { AddServer } from "./app/SignIn.tsx"
 import { AddLibrary } from "./admin/AddLibrary.tsx"
 import { AdminShell } from "./admin/AdminShell.tsx"
 import { Extensions } from "./admin/Extensions.tsx"
@@ -25,20 +29,35 @@ const root = createRootRoute({
   component: Outlet,
   notFoundComponent: () => (
     <Page title="Page not found" lead="There's nothing at this address.">
-      <a href={bundled ? "/admin/" : "/settings/content"} class={buttonVariants()}>
-        {bundled ? "Go to the admin panel" : "Go to content settings"}
+      <a href={bundled ? "/admin/" : "/"} class={buttonVariants()}>
+        {bundled ? "Go to the admin panel" : "Go to Reading Now"}
       </a>
     </Page>
   ),
 })
 
-// Content settings are the only screen so far, so the app opens on it.
-const home = createRoute({
-  getParentRoute: () => root,
-  path: "/",
-  beforeLoad: () => {
-    throw redirect({ to: "/settings/content", replace: true })
+// The reading app: every screen inside the shell, which welcomes people
+// who haven't signed in to a server yet.
+const app = createRoute({ getParentRoute: () => root, id: "app", component: AppShell })
+
+const home = createRoute({ getParentRoute: () => app, path: "/", component: Home })
+
+const settings = createRoute({
+  getParentRoute: () => app,
+  path: "/settings",
+  component: AppSettings,
+})
+
+// `server` fills in the address, such as when a session ended. The iOS
+// app's link also carries a one-time sign-in code in the fragment.
+const signInRoute = createRoute({
+  getParentRoute: () => app,
+  path: "/sign-in",
+  validateSearch: (search: Record<string, unknown>): { server?: string } => {
+    const server = search.server
+    return typeof server === "string" && server ? { server } : {}
   },
+  component: AddServer,
 })
 
 export const contentSettings = createRoute({
@@ -123,7 +142,7 @@ const adminSettings = createRoute({
 
 const router = createRouter({
   routeTree: root.addChildren([
-    home,
+    app.addChildren([home, settings, signInRoute]),
     contentSettings,
     admin.addChildren([
       adminHome,

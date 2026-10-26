@@ -80,8 +80,12 @@ Chek Reader comes through Swift Package Manager, pinned to a release
 ## The web app
 
 `web/` is Chek on the web, served at [app.chek.page](https://app.chek.page).
-It has two parts so far:
+It has three parts so far:
 
+- **Reading Now**, the start of the full reading app. You sign in to one or
+  more Chek servers, and stay signed in until you sign out. It shows what
+  you're reading on every server, then what each one added recently. The
+  code is in `src/app`.
 - **Content settings**, where adults turn on mature series. The iOS app
   doesn't offer that, so it opens this page in Safari, signed in with a
   one-time code from the server.
