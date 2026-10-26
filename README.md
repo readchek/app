@@ -106,8 +106,11 @@ bun run typecheck && bun run lint && bun run format:check && bun run build
 bun run build:server   # the admin panel the server serves, in dist-server/
 ```
 
-- **Deploy.** `bun run deploy` builds it and publishes it to Cloudflare as
-  static files, after `cf auth login`.
+- **Deploy.** Every push to `main` that changes `web/` publishes it to
+  Cloudflare at app.chek.page through the Deploy web app workflow, which
+  signs in with the `CLOUDFLARE_API_TOKEN` repository secret. To redeploy
+  without a push, run the workflow from the Actions tab. From your own
+  machine, `bun run deploy` builds and publishes it after `cf auth login`.
 - **Local server.** A server accepts calls from the origins in
   `CHEK_WEB_ORIGINS` (`https://app.chek.page` by default). To use a local
   server with the dev page, start it with
