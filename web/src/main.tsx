@@ -278,3 +278,9 @@ declare module "@tanstack/solid-router" {
 }
 
 render(() => <RouterProvider router={router} />, document.getElementById("root")!)
+
+// Installed, the app opens without a connection. Only built apps register
+// it, so development always loads fresh files.
+if (import.meta.env.PROD && "serviceWorker" in navigator) {
+  void navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`).catch(() => {})
+}
