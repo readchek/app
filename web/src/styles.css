@@ -108,4 +108,9 @@
   h3 {
     @apply font-display;
   }
+  /* Safari masks passwords with ● (U+25CF), which DM Sans doesn't have, and
+     draws empty boxes instead of falling back. The system font has it. */
+  input[type="password"] {
+    font-family: system-ui, -apple-system, sans-serif;
+  }
 }
