@@ -17,6 +17,13 @@ struct SettingsView: View {
                     } label: {
                         Label("Reading", systemImage: "textformat.size")
                     }
+                    NavigationLink {
+                        AppearanceForm()
+                            .navigationTitle("Appearance")
+                            .navigationBarTitleDisplayMode(.inline)
+                    } label: {
+                        Label("Appearance", systemImage: "paintpalette")
+                    }
                 }
                 NewChapterAlertsSection()
                 ServersSection()

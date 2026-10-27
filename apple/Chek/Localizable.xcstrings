@@ -148,6 +148,9 @@
     "Anyone Can Add Repositories" : {
 
     },
+    "App Icon" : {
+
+    },
     "Appearance" : {
 
     },
@@ -260,6 +263,9 @@
 
     },
     "chek.page" : {
+
+    },
+    "Chibi Manga" : {
 
     },
     "Clear" : {
@@ -991,10 +997,16 @@
     "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Only you can see it." : {
 
     },
+    "The color of buttons, links and selections throughout Chek." : {
+
+    },
     "The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it." : {
 
     },
     "The file may be damaged." : {
+
+    },
+    "The icon on your Home Screen. Chibi Manga’s cat can stay with any theme." : {
 
     },
     "The library's administrator hasn't added any sites yet." : {
@@ -1013,6 +1025,9 @@
 
     },
     "Their files and reading positions are deleted from this device." : {
+
+    },
+    "Theme" : {
 
     },
     "There are no books in this series yet." : {

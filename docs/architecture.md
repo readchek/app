@@ -106,7 +106,8 @@ left on devices that update.
 | `LibraryStore` | Importing, removing and marking local books. Views read books with `@Query`. |
 | `ServerStore` | Connected accounts, their sign-in state and their clients. Also the demo: a temporary account on demo.chek.page with a fixed id (`DemoMode`), dropped at the next launch, whose reading places never sync since the account is shared. |
 | `ProgressStore` | Saving positions for every source, and syncing them to servers. |
-| `ReaderSettings` | Theme, text size and margins, kept in `UserDefaults`, and the reading direction chosen per series. |
+| `ReaderSettings` | Reading theme, text size and margins, kept in `UserDefaults`, and the reading direction chosen per series. |
+| `AppearanceSettings` | The app's theme, which tints every control and the windows' alerts, kept in `UserDefaults`. Also the home screen icon, which iOS keeps, so the store only mirrors and asks to change it. Code reads the theme's tint rather than `Color.accentColor`, which stays the asset catalog's blue. |
 | `FollowStore` | Following series from sources and checking them for new chapters, in the app and from the background refresh task (`FollowRefresh`), which notifies. New chapters across every followed series are listed on the Updates screen, from each series' kept listing. |
 | `Downloads` | Which source chapters and server comics are on the device, and the queue that fetches them one at a time. |
 
