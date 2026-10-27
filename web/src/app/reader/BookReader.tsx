@@ -1,25 +1,13 @@
-import {
-  For,
-  type JSX,
-  Show,
-  createEffect,
-  createResource,
-  createSignal,
-  on,
-  onCleanup,
-  onMount,
-} from "solid-js"
+import { Show, createEffect, createResource, createSignal, on, onCleanup, onMount } from "solid-js"
 import {
   type BookLocation,
   type BookPreferences,
   BookView,
   type Locator,
   type Publication,
-  type TocItem,
 } from "@readchek/reader"
 import { ListBullet, Minus, Plus, Sliders } from "../../components/icons.tsx"
 import { Button, buttonVariants } from "../../components/ui/button.tsx"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog.tsx"
 import {
   Popover,
   PopoverContent,
@@ -30,6 +18,7 @@ import { Slider } from "../../components/ui/slider.tsx"
 import { ToggleGroup } from "../../components/ui/toggle-group.tsx"
 import { cn } from "../../lib/cn.ts"
 import type { Account } from "../accounts.ts"
+import { ContentsDialog } from "./Contents.tsx"
 import { type BookSettings, bookSettings, changeBookSettings } from "./settings.ts"
 import {
   BottomBar,
@@ -39,6 +28,8 @@ import {
   type UpNext,
   UpNextCard,
   createKeeper,
+  createReaderKeys,
+  useCloseReader,
 } from "./shared.tsx"
 
 /** A book to read: the opened file, and where to start and keep its place. */
@@ -93,6 +84,18 @@ export function BookReader(props: { book: BookSource }) {
     return theme === "default" ? undefined : backgrounds[theme]
   }
 
+  const size = () => bookSettings().fontScale
+  const resize = (step: 1 | -1) => {
+    const index = sizes.findIndex((value) => value >= size() - 0.001)
+    const nextIndex = Math.min(Math.max((index < 0 ? 2 : index) + step, 0), sizes.length - 1)
+    changeBookSettings({ fontScale: sizes[nextIndex]! })
+  }
+  const pressKey = createReaderKeys({
+    close: useCloseReader(),
+    larger: () => resize(1),
+    smaller: () => resize(-1),
+  })
+
   onMount(() => {
     if (!element) return
     view = new BookView(
@@ -110,6 +113,7 @@ export function BookReader(props: { book: BookSource }) {
           setFinished(true)
           setControls(true)
         },
+        key: (key) => void pressKey(key),
         externalLink: (url) => {
           if (/^https?:/i.test(url)) open(url, "_blank", "noopener,noreferrer")
         },
@@ -149,13 +153,6 @@ export function BookReader(props: { book: BookSource }) {
   const percent = () => {
     const progress = location()?.locator.locations?.totalProgression ?? 0
     return `${Math.round(progress * 100)}%`
-  }
-
-  const size = () => bookSettings().fontScale
-  const resize = (step: 1 | -1) => {
-    const index = sizes.findIndex((value) => value >= size() - 0.001)
-    const nextIndex = Math.min(Math.max((index < 0 ? 2 : index) + step, 0), sizes.length - 1)
-    changeBookSettings({ fontScale: sizes[nextIndex]! })
   }
 
   return (
@@ -198,6 +195,7 @@ export function BookReader(props: { book: BookSource }) {
                   size="sm"
                   class="size-9 px-0"
                   aria-label="Smaller text"
+                  aria-keyshortcuts="-"
                   disabled={size() <= sizes[0]!}
                   onClick={() => resize(-1)}
                 >
@@ -209,6 +207,7 @@ export function BookReader(props: { book: BookSource }) {
                   size="sm"
                   class="size-9 px-0"
                   aria-label="Larger text"
+                  aria-keyshortcuts="+"
                   disabled={size() >= sizes[sizes.length - 1]!}
                   onClick={() => resize(1)}
                 >
@@ -292,25 +291,17 @@ export function BookReader(props: { book: BookSource }) {
         </p>
       </BottomBar>
 
-      <Dialog open={contents()} onOpenChange={setContents}>
-        <DialogContent class="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Contents</DialogTitle>
-          </DialogHeader>
-          <nav aria-label="Contents" class="-mx-2">
-            <TocList
-              items={book.publication.toc}
-              current={location()?.chapter}
-              depth={0}
-              choose={(item) => {
-                setContents(false)
-                void view?.goToHref(item.href)
-                setControls(false)
-              }}
-            />
-          </nav>
-        </DialogContent>
-      </Dialog>
+      <ContentsDialog
+        open={contents()}
+        onOpenChange={setContents}
+        items={book.publication.toc}
+        current={location()?.chapter}
+        choose={(item) => {
+          setContents(false)
+          void view?.goToHref(item.href)
+          setControls(false)
+        }}
+      />
 
       <ConflictDialog
         keeper={keeper}
@@ -323,43 +314,5 @@ export function BookReader(props: { book: BookSource }) {
         }}
       />
     </div>
-  )
-}
-
-/** A table of contents, nested as the book nests it. */
-export function TocList(props: {
-  items: TocItem[]
-  current: TocItem | undefined
-  depth: number
-  choose: (item: TocItem) => void
-}): JSX.Element {
-  return (
-    <ul class={cn(props.depth > 0 && "ms-4")}>
-      <For each={props.items}>
-        {(item) => (
-          <li>
-            <button
-              type="button"
-              class={cn(
-                "w-full rounded-lg px-2 py-2.5 text-start text-[15px] transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none",
-                props.current === item && "font-semibold text-link",
-              )}
-              aria-current={props.current === item ? "location" : undefined}
-              onClick={() => props.choose(item)}
-            >
-              {item.title}
-            </button>
-            <Show when={item.children.length > 0}>
-              <TocList
-                items={item.children}
-                current={props.current}
-                depth={props.depth + 1}
-                choose={props.choose}
-              />
-            </Show>
-          </li>
-        )}
-      </For>
-    </ul>
   )
 }

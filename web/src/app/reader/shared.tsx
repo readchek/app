@@ -134,6 +134,56 @@ export function ConflictDialog(props: {
   )
 }
 
+/** Leaves the reader for where the person came from, or Reading Now when they opened it directly. */
+export function useCloseReader(): () => void {
+  const navigate = useNavigate()
+  const router = useRouter()
+  return () => {
+    if (router.history.canGoBack()) router.history.back()
+    else void navigate({ to: "/" })
+  }
+}
+
+/** What the reader's keys do beyond turning pages. Text size is only a book's. */
+export type ReaderKeys = { close(): void; larger?(): void; smaller?(): void }
+
+/**
+ * Escape closes the reader, and + and − change a book's text size. Returns
+ * the handler for keys the book's page passes on, since its frame keeps
+ * them from this document.
+ */
+export function createReaderKeys(keys: ReaderKeys): (key: string) => boolean {
+  const press = (key: string) => {
+    const action =
+      key === "Escape"
+        ? keys.close
+        : key === "+" || key === "="
+          ? keys.larger
+          : key === "-" || key === "_"
+            ? keys.smaller
+            : undefined
+    action?.()
+    return action !== undefined
+  }
+  const keydown = (event: KeyboardEvent) => {
+    const target = event.target instanceof Element ? event.target : null
+    if (
+      event.defaultPrevented ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.altKey ||
+      // Kobalte closes a dialog or popover on Escape without marking the
+      // event, and focus is inside it while it's open.
+      target?.closest("input, textarea, select, [contenteditable], [role=dialog], [role=menu]")
+    )
+      return
+    if (press(event.key)) event.preventDefault()
+  }
+  addEventListener("keydown", keydown)
+  onCleanup(() => removeEventListener("keydown", keydown))
+  return press
+}
+
 /** The bar over the top of the page: back, the title, and the reader's buttons. */
 export function TopBar(props: {
   shown: boolean
@@ -142,12 +192,7 @@ export function TopBar(props: {
   children?: JSX.Element
   class?: string
 }) {
-  const navigate = useNavigate()
-  const router = useRouter()
-  const close = () => {
-    if (router.history.canGoBack()) router.history.back()
-    else void navigate({ to: "/" })
-  }
+  const close = useCloseReader()
   return (
     <header
       class={cn(
@@ -162,6 +207,7 @@ export function TopBar(props: {
         size="sm"
         class="size-10 px-0 [&_svg]:size-5"
         aria-label="Close"
+        aria-keyshortcuts="Escape"
         onClick={close}
       >
         <ChevronLeft />
