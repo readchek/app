@@ -1,7 +1,7 @@
 import { For, Match, Show, Switch, createMemo, createResource, createSignal } from "solid-js"
-import { useNavigate, useSearch } from "@tanstack/solid-router"
+import { Link, useNavigate, useSearch } from "@tanstack/solid-router"
 import { Search as SearchIcon } from "../components/icons.tsx"
-import { Button } from "../components/ui/button.tsx"
+import { Button, buttonVariants } from "../components/ui/button.tsx"
 import { Select } from "../components/ui/select.tsx"
 import { ToggleGroup } from "../components/ui/toggle-group.tsx"
 import { type Account, accountKey, accounts, host } from "./accounts.ts"
@@ -9,10 +9,18 @@ import { Screen } from "./AppShell.tsx"
 import { type PublicationSummary, comicFormats, coverPath, search } from "./client.ts"
 import { Cover } from "./Cover.tsx"
 import { createPagedList } from "./paged.ts"
-import { CoverGrid, GridItem, GridPlaceholder } from "./Shelf.tsx"
+import {
+  CoverGrid,
+  GridItem,
+  GridPlaceholder,
+  Shelf,
+  ShelfItem,
+  ShelfPlaceholder,
+} from "./Shelf.tsx"
 import { Failure } from "./shared/Library.tsx"
 import { clearRecentSearches, keepRecentSearch, recentSearches } from "./searches.ts"
 import { readableLibraries } from "./shared/data.ts"
+import { type InstalledExtension, installedExtensions, searchSite } from "./sites/api.ts"
 import { publicationTitle, seriesTitle } from "./titles.ts"
 
 type Kind = "all" | "comics" | "books"
@@ -143,6 +151,19 @@ export function Search() {
               />
             )}
           </For>
+          {/* Sites are searched too, as on iOS, unless the search is of one library. */}
+          <Show when={place().libraryId === undefined}>
+            <For each={targets()}>
+              {(account) => (
+                <SiteResults
+                  account={account}
+                  query={query()}
+                  kind={kind()}
+                  showHost={targets().length > 1}
+                />
+              )}
+            </For>
+          </Show>
         </Show>
       </div>
     </Screen>
@@ -183,7 +204,9 @@ function Results(props: {
           <GridPlaceholder count={6} />
         </Match>
         <Match when={shown().length === 0 && found.state() === "done"}>
-          <p class="text-[15px] text-muted-foreground">Nothing matches “{props.query}”.</p>
+          <p class="text-[15px] text-muted-foreground">
+            Nothing in your libraries matches “{props.query}”.
+          </p>
         </Match>
         <Match when={true}>
           <CoverGrid>
@@ -208,5 +231,101 @@ function Results(props: {
         </Match>
       </Switch>
     </section>
+  )
+}
+
+/** Whether a site has the kind of thing asked for: comics come as pages or PDFs, books as EPUB. */
+function siteMatchesKind(site: InstalledExtension, kind: Kind): boolean {
+  if (kind === "all") return true
+  return site.formats.some((format) => (format === "epub") === (kind === "books"))
+}
+
+/** The sites a server reaches, each searched for the first page of its matches. */
+function SiteResults(props: { account: Account; query: string; kind: Kind; showHost: boolean }) {
+  const [sites] = createResource(
+    () => props.account,
+    (account) => installedExtensions(account),
+  )
+  const shown = () =>
+    (sites() ?? []).filter((site) => site.usable && siteMatchesKind(site, props.kind))
+
+  return (
+    <Show when={shown().length > 0}>
+      <section class="mb-10">
+        <Show when={props.showHost}>
+          <h2 class="mb-6 text-[22px] leading-tight tracking-[-0.03em]">
+            Sites on {host(props.account.server)}
+          </h2>
+        </Show>
+        <For each={shown()}>
+          {(site) => <SiteShelf account={props.account} site={site} query={props.query} />}
+        </For>
+      </section>
+    </Show>
+  )
+}
+
+function SiteShelf(props: { account: Account; site: InstalledExtension; query: string }) {
+  const [found] = createResource(
+    () => ({ account: props.account, id: props.site.id, q: props.query }),
+    ({ account, id, q }) => searchSite(account, id, { q, page: 1 }),
+  )
+  const seeAll = () => (
+    <Link
+      to="/sites/$server/$extensionId"
+      params={{ server: accountKey(props.account), extensionId: props.site.id }}
+      search={{ q: props.query }}
+      class={buttonVariants({ variant: "link", size: "inline" })}
+    >
+      {found.error ? `Open ${props.site.name}` : "See all"}
+    </Link>
+  )
+
+  return (
+    <Switch>
+      <Match when={found.error}>
+        {/* A site can need a sign-in or a check first, which its own page offers. */}
+        <Shelf title={props.site.name} action={seeAll()}>
+          <li class="text-[15px] text-muted-foreground">
+            {props.site.name} couldn't be searched right now.
+          </li>
+        </Shelf>
+      </Match>
+      <Match when={found.loading}>
+        <ShelfPlaceholder />
+      </Match>
+      <Match when={found()?.items.length === 0}>
+        <Shelf title={props.site.name}>
+          <li class="text-[15px] text-muted-foreground">
+            Nothing on {props.site.name} matches “{props.query}”.
+          </li>
+        </Shelf>
+      </Match>
+      <Match when={found()}>
+        {(page) => (
+          <Shelf title={props.site.name} action={seeAll()}>
+            <For each={page().items}>
+              {(item) => (
+                <ShelfItem
+                  to={{
+                    server: accountKey(props.account),
+                    site: props.site.id,
+                    siteSeries: item.id,
+                  }}
+                  cover={
+                    <Cover
+                      account={props.account}
+                      path={item.coverUrl ?? undefined}
+                      title={item.title}
+                    />
+                  }
+                  title={item.title}
+                />
+              )}
+            </For>
+          </Shelf>
+        )}
+      </Match>
+    </Switch>
   )
 }
