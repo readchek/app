@@ -20,7 +20,7 @@ export type User = {
 export type Session = { server: string; token: string; user: User }
 
 export const demoServer = "https://demo.chek.page"
-const demoAccount = { name: "demo", password: "demochekreader" }
+export const demoAccount = { name: "demo", password: "demochekreader" }
 const device = "Chek on the web"
 
 export class ApiError extends Error {

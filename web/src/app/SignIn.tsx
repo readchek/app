@@ -4,6 +4,8 @@ import {
   ApiError,
   type Session,
   bundled,
+  demoAccount,
+  demoServer,
   openLink,
   serverAddress,
   signIn,
@@ -17,6 +19,10 @@ import { Input, Label } from "../components/ui/input.tsx"
 import { addAccount } from "./accounts.ts"
 import { Screen } from "./AppShell.tsx"
 
+// demo.chek.page serves this build itself, and its account's password is
+// public, so visitors find the form filled in and only press Sign in.
+const demo = bundled && location.origin === demoServer
+
 function message(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong. Try again."
 }
@@ -26,7 +32,11 @@ export function Welcome() {
   return (
     <Page
       title="Welcome to Chek"
-      lead="Read the books and comics your Chek server shares with you."
+      lead={
+        demo
+          ? "This is the Chek demo. Its account is filled in, so sign in to look around."
+          : "Read the books and comics your Chek server shares with you."
+      }
     >
       <SignInForm />
     </Page>
@@ -111,11 +121,23 @@ function SignInForm() {
         </Show>
         <Label>
           Name
-          <Input name="name" autocomplete="username" autocapitalize="off" required />
+          <Input
+            name="name"
+            value={demo ? demoAccount.name : ""}
+            autocomplete="username"
+            autocapitalize="off"
+            required
+          />
         </Label>
         <Label>
           Password
-          <Input name="password" type="password" autocomplete="current-password" required />
+          <Input
+            name="password"
+            type="password"
+            value={demo ? demoAccount.password : ""}
+            autocomplete="current-password"
+            required
+          />
         </Label>
         <Show when={error()}>
           <Alert variant="destructive">
@@ -133,9 +155,11 @@ function SignInForm() {
           </Show>
           Sign in
         </Button>
-        <p class="text-sm text-muted-foreground">
-          If you sign in to Chek with another service, set a password in the Chek app first.
-        </p>
+        <Show when={!demo}>
+          <p class="text-sm text-muted-foreground">
+            If you sign in to Chek with another service, set a password in the Chek app first.
+          </p>
+        </Show>
       </form>
       <Show when={!bundled}>
         <p class="border-t pt-6 text-[15px] text-muted-foreground">
