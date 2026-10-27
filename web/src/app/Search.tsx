@@ -1,11 +1,7 @@
 import { For, Match, Show, Switch, createMemo, createResource, createSignal } from "solid-js"
 import { Link, useNavigate, useSearch } from "@tanstack/solid-router"
 import { Search as SearchIcon } from "../components/icons.tsx"
-<<<<<<< HEAD
 import { Button, buttonVariants } from "../components/ui/button.tsx"
-=======
-import { Button } from "../components/ui/button.tsx"
->>>>>>> origin/claude/project-thread-6g4odk
 import { Select } from "../components/ui/select.tsx"
 import { ToggleGroup } from "../components/ui/toggle-group.tsx"
 import { type Account, accountKey, accounts, host } from "./accounts.ts"
