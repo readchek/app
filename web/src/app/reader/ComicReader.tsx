@@ -84,12 +84,16 @@ export function ComicReader(props: { book: ComicBook }) {
   const [finished, setFinished] = createSignal(false)
   const keeper = createKeeper(book.positions)
   const [next] = createResource(() => book.next())
+<<<<<<< HEAD
   // + and − zoom a comic's page, as they change a book's text size.
   createReaderKeys({
     close: useCloseReader(),
     larger: () => view?.zoomBy(1.25),
     smaller: () => view?.zoomBy(0.8),
   })
+=======
+  createReaderKeys({ close: useCloseReader() })
+>>>>>>> origin/claude/project-thread-6g4odk
 
   onMount(() => {
     if (!element) return
