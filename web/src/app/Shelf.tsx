@@ -81,18 +81,26 @@ function CoverCard(props: { to: Destination; cover: JSX.Element; title: string; 
   )
 }
 
-/** A titled row of covers that scrolls sideways, as the iOS app's shelves. */
-export function Shelf(props: { title: string; detail?: string; children: JSX.Element }) {
+/** A titled row of covers that scrolls sideways, as the iOS app's shelves, with an `action` such as "See all". */
+export function Shelf(props: {
+  title: string
+  detail?: string
+  action?: JSX.Element
+  children: JSX.Element
+}) {
   return (
     <section class="mb-10">
-      <h2 class="mb-4 flex items-baseline gap-2 text-[22px] leading-tight tracking-[-0.03em]">
-        {props.title}
-        <Show when={props.detail}>
-          <span class="font-sans text-sm font-normal tracking-normal text-muted-foreground">
-            {props.detail}
-          </span>
-        </Show>
-      </h2>
+      <div class="mb-4 flex items-baseline justify-between gap-4">
+        <h2 class="flex min-w-0 items-baseline gap-2 text-[22px] leading-tight tracking-[-0.03em]">
+          {props.title}
+          <Show when={props.detail}>
+            <span class="font-sans text-sm font-normal tracking-normal text-muted-foreground">
+              {props.detail}
+            </span>
+          </Show>
+        </h2>
+        {props.action}
+      </div>
       <ul class="-mx-5 flex snap-x scroll-px-5 gap-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8">
         {props.children}
       </ul>

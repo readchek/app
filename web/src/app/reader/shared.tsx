@@ -144,11 +144,11 @@ export function useCloseReader(): () => void {
   }
 }
 
-/** What the reader's keys do beyond turning pages. Text size is only a book's. */
+/** What the reader's keys do beyond turning pages: a book's text size, or a comic's zoom. */
 export type ReaderKeys = { close(): void; larger?(): void; smaller?(): void }
 
 /**
- * Escape closes the reader, and + and − change a book's text size. Returns
+ * Escape closes the reader, and + and − make the page bigger or smaller. Returns
  * the handler for keys the book's page passes on, since its frame keeps
  * them from this document.
  */
