@@ -1,19 +1,20 @@
 import { For, type JSX, Show } from "solid-js"
 import { Link, Outlet, useRouter } from "@tanstack/solid-router"
 import { Wordmark } from "../components/Wordmark.tsx"
-import { BookOpen, Building, ChevronLeft, Gear, Globe, Search } from "../components/icons.tsx"
+import { BookOpen, Building, ChevronLeft, Gear, Globe } from "../components/icons.tsx"
 import { Button } from "../components/ui/button.tsx"
 import { cn } from "../lib/cn.ts"
 import { accounts } from "./accounts.ts"
+import { SearchField } from "./SearchField.tsx"
 import { Welcome } from "./SignIn.tsx"
 
 // The app's places, as the iOS app's tabs. On a wide window they're a
-// sidebar, as on iPad; on a phone they're a bar along the bottom.
+// sidebar, as on iPad; on a phone they're a bar along the bottom. Search
+// isn't one: its field is on every screen, at the top of either.
 const places = [
   { to: "/", label: "Reading Now", icon: BookOpen },
   { to: "/shared", label: "Shared", icon: Building },
   { to: "/sites", label: "Sites", icon: Globe },
-  { to: "/search", label: "Search", icon: Search },
   { to: "/settings", label: "Settings", icon: Gear },
 ] as const
 
@@ -30,7 +31,8 @@ export function AppShell() {
           >
             <Wordmark />
           </Link>
-          <nav aria-label="Chek" class="mt-8 grid gap-0.5">
+          <SearchField class="mt-7" />
+          <nav aria-label="Chek" class="mt-4 grid gap-0.5">
             <For each={places}>
               {(place) => (
                 <Link
@@ -50,6 +52,9 @@ export function AppShell() {
           </p>
         </aside>
         <div class="min-w-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <div class="sticky top-0 z-40 border-b bg-background/85 px-5 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 backdrop-blur-xl sm:px-8 lg:hidden">
+            <SearchField class="mx-auto max-w-7xl" />
+          </div>
           <Outlet />
         </div>
         <nav

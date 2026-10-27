@@ -6,7 +6,7 @@
       "name": "chek-web",
       "dependencies": {
         "@kobalte/core": "0.13.14",
-        "@readchek/reader": "github:readchek/chek-reader#56991febc501c74ed1b49ebd061f7865c46ed026",
+        "@readchek/reader": "github:readchek/chek-reader#994927eb60ba0c951c7b308a4bc111b168c4e773",
         "@tanstack/solid-router": "1.170.43",
         "class-variance-authority": "0.7.1",
         "clsx": "2.1.1",
@@ -271,7 +271,7 @@
 
     "@poppinss/exception": ["@poppinss/exception@1.2.3", "", {}, "sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw=="],
 
-    "@readchek/reader": ["@readchek/reader@github:readchek/chek-reader#56991fe", { "peerDependencies": { "pdfjs-dist": "6.4.299" }, "optionalPeers": ["pdfjs-dist"] }, "readchek-chek-reader-56991fe", "sha512-pbp6Si3YdFnkfXvrrr/A0S81ComoU2EBO5nHAU3An2DE2h36yFI8/T02DhIYg+lmpxKMwO9KJr/XgA96LDCb8A=="],
+    "@readchek/reader": ["@readchek/reader@github:readchek/chek-reader#994927e", { "peerDependencies": { "pdfjs-dist": "6.4.299" }, "optionalPeers": ["pdfjs-dist"] }, "readchek-chek-reader-994927e", "sha512-s4ORZ/IlDpdZDZiSyYVtpghGhnibKgGmEOtbRkxQ8ujY14oGuVrQTIp8+joDLlDnuR4mMzwMHrh8s73Ux3xv4Q=="],
 
     "@rolldown/binding-android-arm-eabi": ["@rolldown/binding-android-arm-eabi@1.2.15", "", { "os": "android", "cpu": "arm" }, "sha512-aLcgK9gIJ3YRvrrtfSBbRa27F5WrpiTaPulnFpsHPxpUHgFlSgnU4854MHwoRGEBhfRJDWCS2WQ7lIjskE9Olw=="],
 

@@ -22,7 +22,7 @@ import { loadFile } from "../files.ts"
 import { publicationTitle, seriesTitle } from "../titles.ts"
 import { type BookSource, BookReader } from "./BookReader.tsx"
 import { type ComicBook, ComicReader, serverPages } from "./ComicReader.tsx"
-import type { Positions, UpNext } from "./shared.tsx"
+import { type Positions, type UpNext, createReaderKeys, useCloseReader } from "./shared.tsx"
 
 /** A publication open full screen, in the reader its format needs. */
 export function Reader() {
@@ -246,6 +246,7 @@ export async function openBook(
 
 /** Says why the reader can't open something, with the way back. */
 export function Message(props: { text: string }) {
+  createReaderKeys({ close: useCloseReader() })
   return (
     <div class="mx-auto flex h-full max-w-md flex-col items-start justify-center gap-6 px-6">
       <Alert variant="destructive">

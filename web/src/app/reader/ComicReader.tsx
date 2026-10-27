@@ -10,7 +10,6 @@ import {
 } from "@readchek/reader"
 import { ListBullet, Sliders } from "../../components/icons.tsx"
 import { Button, buttonVariants } from "../../components/ui/button.tsx"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog.tsx"
 import {
   Popover,
   PopoverContent,
@@ -22,7 +21,7 @@ import { ToggleGroup } from "../../components/ui/toggle-group.tsx"
 import { cn } from "../../lib/cn.ts"
 import type { Account } from "../accounts.ts"
 import { loadImage } from "../images.ts"
-import { TocList } from "./BookReader.tsx"
+import { ContentsDialog } from "./Contents.tsx"
 import {
   changeComicSettings,
   comicSettings,
@@ -37,6 +36,8 @@ import {
   type UpNext,
   UpNextCard,
   createKeeper,
+  createReaderKeys,
+  useCloseReader,
 } from "./shared.tsx"
 
 /** A comic or PDF to read: its pages, and where to start and keep its place. */
@@ -83,6 +84,7 @@ export function ComicReader(props: { book: ComicBook }) {
   const [finished, setFinished] = createSignal(false)
   const keeper = createKeeper(book.positions)
   const [next] = createResource(() => book.next())
+  createReaderKeys({ close: useCloseReader() })
 
   onMount(() => {
     if (!element) return
@@ -220,26 +222,18 @@ export function ComicReader(props: { book: ComicBook }) {
         </p>
       </BottomBar>
 
-      <Dialog open={contents()} onOpenChange={setContents}>
-        <DialogContent class="max-w-xl">
-          <DialogHeader>
-            <DialogTitle>Contents</DialogTitle>
-          </DialogHeader>
-          <nav aria-label="Contents" class="-mx-2">
-            <TocList
-              items={book.toc ?? []}
-              current={undefined}
-              depth={0}
-              choose={(item) => {
-                setContents(false)
-                const index = pageOf({ href: item.href, type: "application/pdf" })
-                if (index !== undefined) view?.goTo(index)
-                setControls(false)
-              }}
-            />
-          </nav>
-        </DialogContent>
-      </Dialog>
+      <ContentsDialog
+        open={contents()}
+        onOpenChange={setContents}
+        items={book.toc ?? []}
+        current={undefined}
+        choose={(item) => {
+          setContents(false)
+          const index = pageOf({ href: item.href, type: "application/pdf" })
+          if (index !== undefined) view?.goTo(index)
+          setControls(false)
+        }}
+      />
 
       <ConflictDialog
         keeper={keeper}
