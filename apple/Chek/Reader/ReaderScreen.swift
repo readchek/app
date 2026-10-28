@@ -31,6 +31,9 @@ struct ReaderScreen: View {
                 ZStack {
                     ReaderCanvas(kind: session.item.kind)
                     ReaderContent(session: session, insets: contentInsets)
+                    if session.item.kind == .comic {
+                        ControlsScrim(isShowing: session.isShowingControls)
+                    }
                     ChapterEndCard(session: session, opening: opening, open: open) {
                         Task { await session.findNeighbors(with: finder) }
                     }
@@ -170,6 +173,28 @@ private struct ReaderColorScheme: ViewModifier {
 
     func body(content: Content) -> some View {
         content.preferredColorScheme(kind == .comic ? .dark : ReaderTheme(settings.theme).colorScheme)
+    }
+}
+
+/// A shade at the top and bottom of a comic while the controls show.
+/// Comics read in dark mode, and over a white page the glass bars, the
+/// page count and the status bar's white text all wash out without it.
+private struct ControlsScrim: View {
+    let isShowing: Bool
+
+    var body: some View {
+        VStack(spacing: 0) {
+            LinearGradient(colors: [.black.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 160)
+            Spacer(minLength: 0)
+            LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                .frame(height: 180)
+        }
+        .ignoresSafeArea()
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        .opacity(isShowing ? 1 : 0)
+        .animation(.smooth(duration: 0.25), value: isShowing)
     }
 }
 
