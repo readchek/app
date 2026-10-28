@@ -11,8 +11,15 @@ struct ReaderScreen: View {
     @State private var contentInsets = EdgeInsets()
     /// How far the reader has been pulled down to close it.
     @State private var pull: CGFloat = 0
+    /// The chapter or volume being got ready to read next, if any.
+    @State private var opening: ReadingTarget?
+    /// Why it couldn't be opened, until that's been seen.
+    @State private var openingFailure: DisplayError?
     @Environment(AppRouter.self) private var router
     @Environment(ReaderSettings.self) private var settings
+    @Environment(ServerSync.self) private var sync
+    @Environment(LibraryStore.self) private var library
+    @Environment(ProgressStore.self) private var progress
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         _session = State(initialValue: ReaderSession(item: item, preferences: preferences))
@@ -24,12 +31,8 @@ struct ReaderScreen: View {
                 ZStack {
                     ReaderCanvas(kind: session.item.kind)
                     ReaderContent(session: session, insets: contentInsets)
-                    if let chapter = session.item.sourceChapter {
-                        NextChapterButton(session: session, chapter: chapter) { next in
-                            continueReading(next)
-                        }
-                    } else {
-                        BookEndButton(session: session)
+                    ChapterEndCard(session: session, opening: opening, open: open) {
+                        Task { await session.findNeighbors(with: finder) }
                     }
                     if session.controller.state == .ready {
                         ReadingHint(session: session)
@@ -38,7 +41,7 @@ struct ReaderScreen: View {
                 // A new chapter is a new page view, not the last one's
                 // reused with its old pages.
                 .id(session.item.id)
-                .readerToolbars(session: session, width: proxy.size.width, openChapter: continueReading)
+                .readerToolbars(session: session, width: proxy.size.width, opening: opening, open: open)
                 // The bars' edge effect darkens the page's top and bottom
                 // even with the bars hidden; the page should run clean.
                 .scrollEdgeEffectHidden(true, for: .all)
@@ -79,9 +82,36 @@ struct ReaderScreen: View {
         .task(id: session.item.id) {
             await session.open()
         }
+        // Alongside opening, so the way on is known before the last page.
+        .task(id: session.item.id) {
+            await session.findNeighbors(with: finder)
+        }
+        .sensoryFeedback(.impact(weight: .light), trigger: session.item.id)
+        .alert(isPresented: Binding(get: { openingFailure != nil }, set: { if !$0 { openingFailure = nil } }), error: openingFailure) {
+            Button("OK", role: .cancel) {}
+        }
     }
 
-    /// Goes on to the next chapter in place, without closing the reader.
+    private var finder: NeighborFinder {
+        NeighborFinder(sync: sync, library: library, progress: progress)
+    }
+
+    /// Gets `target` ready and goes on to it in place. A second tap while
+    /// one is opening is ignored.
+    private func open(_ target: ReadingTarget) {
+        guard opening == nil else { return }
+        opening = target
+        Task {
+            defer { opening = nil }
+            do {
+                continueReading(try await finder.readingItem(for: target))
+            } catch {
+                openingFailure = error
+            }
+        }
+    }
+
+    /// Goes on to another chapter in place, without closing the reader.
     private func continueReading(_ item: ReadingItem) {
         let finished = session
         Task { await finished.controller.close() }

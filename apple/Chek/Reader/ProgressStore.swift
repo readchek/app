@@ -39,10 +39,13 @@ final class ProgressStore {
         save()
     }
 
-    /// Records `locator` as the place in `ref`.
-    func record(_ locator: Locator, in ref: PublicationRef) {
+    /// Records `locator` as the place in `ref`. `isAtEnd` says it's the
+    /// last page, which finishes it: a position's progress is where its
+    /// page starts, so a comic's last page reports 19 of 20 as 95%, and
+    /// without this a chapter read to the end would never count as read.
+    func record(_ locator: Locator, in ref: PublicationRef, isAtEnd: Bool = false) {
         guard let data = try? JSONEncoder().encode(locator) else { return }
-        let progress = locator.locations.totalProgression
+        let progress = isAtEnd ? 1 : locator.locations.totalProgression
         switch ref {
         case .local(let id):
             guard let book = book(id), book.location != data else { return }

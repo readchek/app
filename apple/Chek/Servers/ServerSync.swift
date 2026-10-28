@@ -87,6 +87,10 @@ final class ServerSync {
             item.seriesKey = "server/\(publication.server.uuidString)/series/\(series)"
         }
         item.isOnDevice = isDownloaded
+        item.serverPublication = publication
+        if publication.seriesID != nil {
+            item.series = publication.seriesTitle
+        }
         return item
     }
 
@@ -159,6 +163,7 @@ final class ServerSync {
             startLocation: state.savedLocation
         )
         item.sourceChapter = chapter
+        item.series = chapter.seriesTitle
         item.seriesKey = "source/\(chapter.server.uuidString)/\(chapter.source)/\(chapter.seriesID)"
         item.isOnDevice = ChapterFiles.downloadedPageCount(of: chapter) != nil
         return item
@@ -175,6 +180,7 @@ final class ServerSync {
             startLocation: state.savedLocation
         )
         item.sourceChapter = chapter
+        item.series = chapter.seriesTitle
         item.seriesKey = "source/\(chapter.server.uuidString)/\(chapter.source)/\(chapter.seriesID)"
         item.isOnDevice = isOnDevice
         item.rights = rights.flatMap { $0.isEmpty ? nil : $0 }
@@ -200,12 +206,12 @@ final class ServerSync {
         }
     }
 
-    /// The chapter after `chapter` in its series, in reading order, or nil
-    /// at the last one or when the list can't be read.
-    /// What follows a chapter in its series.
-    enum NextChapter: Equatable {
-        case next(SourceChapterRef)
-        /// The chapter is the series' last.
+    // MARK: - Series order
+
+    /// What comes before or after something in its series.
+    enum Neighbor<Item: Equatable>: Equatable {
+        case found(Item)
+        /// There's nothing further that way: it's the series' first or last.
         case end
         /// The server couldn't say and nothing on the device can either.
         case unknown
@@ -213,17 +219,28 @@ final class ServerSync {
 
     /// The chapter after `chapter`, from the server, or from what it said
     /// last time when it can't be reached.
-    func chapter(after chapter: SourceChapterRef) async -> NextChapter {
+    func chapter(after chapter: SourceChapterRef) async -> Neighbor<SourceChapterRef> {
+        await neighbor(of: chapter, toward: .oldestFirst)
+    }
+
+    /// The chapter before `chapter`, found the same way as the one after.
+    func chapter(before chapter: SourceChapterRef) async -> Neighbor<SourceChapterRef> {
+        await neighbor(of: chapter, toward: .newestFirst)
+    }
+
+    /// The chapter next to `chapter` going the way `order` reads: the one
+    /// after it oldest first, the one before it newest first.
+    private func neighbor(of chapter: SourceChapterRef, toward order: ChekClient.ChapterOrder) async -> Neighbor<SourceChapterRef> {
         let seriesID = chapter.seriesID
         let source = chapter.source
         let chapterID = chapter.chapterID
-        let next: ChekAPI.SourceChapter
+        let neighbor: ChekAPI.SourceChapter
         do {
             let page = try await servers.request(chapter.server) { client throws(ChekError) in
-                try await client.chapterPage(ofSeries: seriesID, inSource: source, order: .oldestFirst, after: chapterID, limit: 1)
+                try await client.chapterPage(ofSeries: seriesID, inSource: source, order: order, after: chapterID, limit: 1)
             }
-            guard let following = page.items.first else { return .end }
-            next = following
+            guard let found = page.items.first else { return .end }
+            neighbor = found
         } catch .notFound {
             // The source no longer lists this chapter.
             return .unknown
@@ -233,24 +250,80 @@ final class ServerSync {
                   let current = snapshot.chapter(containing: chapterID) else {
                 return .unknown
             }
-            if let following = snapshot.chapter(after: chapterID) {
-                next = following.chapter
-            } else if let total = snapshot.total, current.position + max(current.chapter.releases?.count ?? 1, 1) > total {
-                return .end
-            } else {
-                return .unknown
+            switch order {
+            case .oldestFirst:
+                if let following = snapshot.chapter(after: chapterID) {
+                    neighbor = following.chapter
+                } else if let total = snapshot.total, current.position + max(current.chapter.releases?.count ?? 1, 1) > total {
+                    return .end
+                } else {
+                    return .unknown
+                }
+            case .newestFirst:
+                if let preceding = snapshot.chapter(before: chapterID) {
+                    neighbor = preceding.chapter
+                } else if current.position <= 1 {
+                    return .end
+                } else {
+                    return .unknown
+                }
             }
         }
-        return .next(SourceChapterRef(
+        return .found(SourceChapterRef(
             server: chapter.server,
             source: chapter.source,
             seriesID: chapter.seriesID,
             seriesTitle: chapter.seriesTitle,
-            chapterID: next.id,
-            chapterTitle: next.displayTitle,
+            chapterID: neighbor.id,
+            chapterTitle: neighbor.displayTitle,
             isRightToLeft: chapter.isRightToLeft,
             seriesCoverPath: chapter.seriesCoverPath
         ))
+    }
+
+    /// The publications either side of `publication` in its series, in
+    /// the server's reading order: numbered ones by number, then the rest
+    /// by title.
+    ///
+    /// The series is read a page at a time from its start until the one
+    /// after `publication` turns up, since the server's pages only run
+    /// forward. Even a long manga is a handful of pages.
+    func neighbors(of publication: RemotePublication) async -> (previous: Neighbor<RemotePublication>, next: Neighbor<RemotePublication>) {
+        guard let series = publication.seriesID else { return (.end, .end) }
+        let server = publication.server
+        var cursor: String?
+        var previous: RemotePublication?
+        var isFound = false
+        var before: Neighbor<RemotePublication> {
+            previous.map(Neighbor<RemotePublication>.found) ?? .end
+        }
+        // A bound on pages, so a server that keeps answering with a cursor
+        // can't keep this going forever.
+        for _ in 0..<100 {
+            let page: ChekAPI.Page<ChekAPI.PublicationSummary>
+            do {
+                page = try await servers.request(server) { [cursor] client throws(ChekError) in
+                    try await client.publications(inSeries: series, cursor: cursor)
+                }
+            } catch {
+                return (isFound ? before : .unknown, .unknown)
+            }
+            for summary in page.items {
+                let item = RemotePublication(summary, server: server)
+                if isFound {
+                    return (before, .found(item))
+                }
+                if item.id == publication.id {
+                    isFound = true
+                } else {
+                    previous = item
+                }
+            }
+            guard let next = page.nextCursor else { break }
+            cursor = next
+        }
+        guard isFound else { return (.unknown, .unknown) }
+        return (before, .end)
     }
 
     /// Brings the device's copy of your place up to date with the server's

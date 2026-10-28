@@ -120,6 +120,17 @@ to start, and where to save. `ReaderSession` owns the `ReaderController`,
 whether the controls are showing, and which panel is open. Only
 `ProgressRecorder`, the scrubber and the page label read the location.
 
+Finishing one chapter never means leaving the reader to find the next.
+As a publication opens, `ReaderSession` asks `NeighborFinder` what's
+either side of it in its series: the source's chapters, the server
+series' publications in its order, or the device's books by their place
+in the series. The bottom bar gets previous and next buttons beside the
+scrubber, and the last page shows the next one as a single button
+(`ChapterEndCard`), or says you're caught up and offers to follow the
+series. The next opens in place, from the start if you'd finished it.
+Reaching the last page counts as finishing, even though a position's
+progress is where its page starts.
+
 On a screen wider than it is tall, such as an iPad held sideways, comics
 show two pages at a time after the cover, which is Chek Reader's doing.
 

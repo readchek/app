@@ -18,10 +18,16 @@ struct ReadingItem: Identifiable {
     let subtitle: String?
     let kind: PublicationKind
     let content: Content
-    let startLocation: Locator?
+    var startLocation: Locator?
     /// The chapter this is, when it's read straight from a source, so the
     /// reader can offer the one after it.
     var sourceChapter: SourceChapterRef?
+    /// The publication this is, when it's read from a server, so the
+    /// reader can offer the ones either side of it in its series.
+    var serverPublication: RemotePublication?
+    /// The series this is one of, by title, when it's part of one, so
+    /// the reader can offer the chapters or volumes either side of it.
+    var series: String?
     /// What settings made for this publication also apply to: its series,
     /// when it's one of a series, since a manga reads the same way
     /// throughout. Nil when the publication is only itself.
@@ -56,6 +62,7 @@ struct ReadingItem: Identifiable {
             content: .source(.file(book.fileURL)),
             startLocation: book.savedLocation
         )
+        series = book.seriesTitle.flatMap { $0.isEmpty ? nil : $0 }
     }
 }
 

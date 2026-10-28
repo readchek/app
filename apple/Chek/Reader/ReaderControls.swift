@@ -3,8 +3,8 @@ import SwiftUI
 
 extension View {
     /// The reader's toolbars, shown and hidden together.
-    func readerToolbars(session: ReaderSession, width: CGFloat, openChapter: @escaping (ReadingItem) -> Void) -> some View {
-        modifier(ReaderToolbars(session: session, width: width, openChapter: openChapter))
+    func readerToolbars(session: ReaderSession, width: CGFloat, opening: ReadingTarget?, open: @escaping (ReadingTarget) -> Void) -> some View {
+        modifier(ReaderToolbars(session: session, width: width, opening: opening, open: open))
     }
 }
 
@@ -13,8 +13,10 @@ private struct ReaderToolbars: ViewModifier {
     /// The screen's width. Toolbar items size to their content, and a
     /// slider has none, so the scrubber is given its width.
     let width: CGFloat
-    /// Opens another chapter of the same series in place.
-    let openChapter: (ReadingItem) -> Void
+    /// What's being got ready to open, if anything.
+    let opening: ReadingTarget?
+    /// Opens another chapter or volume of the same series in place.
+    let open: (ReadingTarget) -> Void
     @Environment(AppRouter.self) private var router
 
     func body(content: Content) -> some View {
@@ -37,9 +39,21 @@ private struct ReaderToolbars: ViewModifier {
                     }
                     .disabled(session.controller.state != .ready)
                 }
+                // The chapters either side, beside the scrubber, as in
+                // Mihon and Webtoon: going on never needs the contents.
+                if session.item.series != nil {
+                    ToolbarItem(placement: .bottomBar) {
+                        SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: session.item.sourceChapter != nil, opening: opening, open: open)
+                    }
+                }
                 ToolbarItem(placement: .bottomBar) {
                     ReaderScrubber(controller: session.controller)
-                        .frame(width: min(max(width - 136, 160), 500))
+                        .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
+                }
+                if session.item.series != nil {
+                    ToolbarItem(placement: .bottomBar) {
+                        SeriesStepButton(lookup: session.next, direction: .next, isChapter: session.item.sourceChapter != nil, opening: opening, open: open)
+                    }
                 }
                 ToolbarSpacer(.fixed, placement: .bottomBar)
                 ToolbarItem(placement: .bottomBar) {
@@ -64,7 +78,7 @@ private struct ReaderToolbars: ViewModifier {
                     // A book from a source has its own contents, which say
                     // more than the source's one chapter for it.
                     if let chapter = session.item.sourceChapter, session.item.kind == .comic {
-                        ChaptersPanel(session: session, chapter: chapter, open: openChapter)
+                        ChaptersPanel(session: session, chapter: chapter, open: open)
                     } else {
                         ContentsPanel(session: session)
                     }
@@ -78,6 +92,50 @@ private struct ReaderToolbars: ViewModifier {
                     )
                 }
             }
+    }
+}
+
+/// Goes to the chapter or volume before or after this one. Disabled
+/// while it's looked up and at either end of the series.
+private struct SeriesStepButton: View {
+    enum Direction {
+        case previous, next
+    }
+
+    let lookup: NeighborLookup
+    let direction: Direction
+    /// Whether the series is in chapters rather than volumes or books.
+    let isChapter: Bool
+    let opening: ReadingTarget?
+    let open: (ReadingTarget) -> Void
+
+    var body: some View {
+        Button {
+            if let target = lookup.target {
+                open(target)
+            }
+        } label: {
+            Label {
+                title
+            } icon: {
+                if let opening, opening == lookup.target {
+                    ProgressView()
+                } else {
+                    Image(systemName: direction == .previous ? "backward.end.fill" : "forward.end.fill")
+                }
+            }
+        }
+        .disabled(lookup.target == nil || opening != nil)
+        .accessibilityValue(lookup.target.map { Text($0.title) } ?? Text(""))
+    }
+
+    private var title: Text {
+        switch (direction, isChapter) {
+        case (.previous, true): Text("Previous Chapter")
+        case (.next, true): Text("Next Chapter")
+        case (.previous, false): Text("Previous in Series")
+        case (.next, false): Text("Next in Series")
+        }
     }
 }
 

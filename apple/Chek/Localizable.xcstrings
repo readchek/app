@@ -211,6 +211,9 @@
     "Chapters" : {
 
     },
+    "Check Again" : {
+
+    },
     "Check for Next Chapter" : {
 
     },
@@ -439,6 +442,12 @@
     "Find books, comics, and authors in your library, shared libraries, and sites." : {
 
     },
+    "Finding the Next Chapter" : {
+
+    },
+    "Finding What's Next" : {
+
+    },
     "Finished" : {
 
     },
@@ -461,6 +470,9 @@
 
     },
     "Freeing up space clears copies of recently read books from shared libraries and cover images. They're fetched again as you read. Your library, downloads, and reading positions are kept." : {
+
+    },
+    "Get notified when a new chapter comes out." : {
 
     },
     "Go to Chapters" : {
@@ -580,6 +592,9 @@
     "Newest First" : {
 
     },
+    "Next in Series" : {
+
+    },
     "Next %lld Unread" : {
       "comment" : "Button that downloads the next unread chapters"
     },
@@ -599,9 +614,6 @@
 
     },
     "No Longer Updated" : {
-
-    },
-    "No More Chapters" : {
 
     },
     "No new chapters. Chek checks a few times a day, or you can [check now](chek-action://check)." : {
@@ -683,6 +695,12 @@
 
     },
     "Position Saved on Another Device" : {
+
+    },
+    "Previous Chapter" : {
+
+    },
+    "Previous in Series" : {
 
     },
     "Privacy Policy" : {
@@ -964,6 +982,12 @@
     "Text" : {
       "comment" : "Plain text files, and the text settings section in the reader"
     },
+    "That's the Last One" : {
+
+    },
+    "That's the latest chapter of %@." : {
+
+    },
     "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Everyone with access to this library can add sites from it." : {
 
     },
@@ -1010,6 +1034,9 @@
 
     },
     "This book doesn't have a table of contents." : {
+
+    },
+    "This Book Is No Longer in Your Library" : {
 
     },
     "This book is shared openly by the site it comes from, on these terms." : {
@@ -1121,6 +1148,12 @@
 
     },
     "Your password is sent only to this library." : {
+
+    },
+    "You're All Caught Up" : {
+
+    },
+    "You've reached the end of %@." : {
 
     }
   },

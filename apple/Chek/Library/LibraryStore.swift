@@ -145,6 +145,28 @@ final class LibraryStore {
         return try? context.fetch(descriptor).first
     }
 
+    /// The books either side of `book` in its series on this device, by
+    /// their place in the series, then by title for books without one.
+    /// Nil each way at either end, and both ways for a book in no series.
+    func neighbors(of book: Book) -> (previous: Book?, next: Book?) {
+        guard let series = book.seriesTitle, !series.isEmpty else { return (nil, nil) }
+        let wanted: String? = series
+        let descriptor = FetchDescriptor<Book>(predicate: #Predicate { $0.seriesTitle == wanted })
+        let books = ((try? context.fetch(descriptor)) ?? []).sorted { first, second in
+            switch (first.seriesPosition, second.seriesPosition) {
+            case let (a?, b?) where a != b: a < b
+            case (.some, nil): true
+            case (nil, .some): false
+            default: first.title.localizedStandardCompare(second.title) == .orderedAscending
+            }
+        }
+        guard let index = books.firstIndex(where: { $0.id == book.id }) else { return (nil, nil) }
+        return (
+            index > books.startIndex ? books[index - 1] : nil,
+            index + 1 < books.endIndex ? books[index + 1] : nil
+        )
+    }
+
     private func save() {
         // A failed save leaves the change in the context, and SwiftData
         // tries again with the next save or its autosave.

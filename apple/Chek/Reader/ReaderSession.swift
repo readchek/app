@@ -32,6 +32,11 @@ final class ReaderSession {
     /// Whether the sign-in form is up, for a server that ended its session
     /// while you were reading from it.
     var isSigningIn = false
+    /// What comes after this in its series, looked up as it opens so the
+    /// way on is ready before you reach the last page.
+    private(set) var next: NeighborLookup = .looking
+    /// What comes before it, for going back a chapter.
+    private(set) var previous: NeighborLookup = .looking
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         self.item = item
@@ -74,6 +79,26 @@ final class ReaderSession {
         } else {
             await open()
         }
+    }
+
+    /// Looks up what's either side of this in its series.
+    func findNeighbors(with finder: NeighborFinder) async {
+        if next != .looking || previous != .looking {
+            next = .looking
+            previous = .looking
+        }
+        let found = await finder.neighbors(of: item)
+        next = found.next
+        previous = found.previous
+    }
+
+    /// Whether the last page is showing. Only the views that change on it
+    /// read it, since it reads the location.
+    var isOnLastPage: Bool {
+        guard let count = controller.positions?.count, count > 0,
+              let position = controller.location?.locations.position
+        else { return false }
+        return position >= count
     }
 
     /// Text settings only reach text that reflows, so comics and PDFs
