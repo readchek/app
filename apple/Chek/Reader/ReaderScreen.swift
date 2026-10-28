@@ -187,8 +187,8 @@ private struct ControlsScrim: View {
             LinearGradient(colors: [.black.opacity(0.8), .black.opacity(0.45), .clear], startPoint: .top, endPoint: .bottom)
                 .frame(height: 180)
             Spacer(minLength: 0)
-            LinearGradient(colors: [.clear, .black.opacity(0.45), .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
-                .frame(height: 200)
+            LinearGradient(colors: [.clear, .black.opacity(0.55), .black.opacity(0.85)], startPoint: .top, endPoint: .bottom)
+                .frame(height: 220)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)

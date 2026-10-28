@@ -24,19 +24,29 @@ struct ChapterEndCard: View {
         VStack {
             Spacer()
             if isShowing && !isPutAway {
-                VStack(spacing: 6) {
-                    // Says it can be pulled down, as a sheet's does.
-                    Capsule()
-                        .fill(.white.opacity(0.7))
-                        .frame(width: 36, height: 5)
-                        .shadow(color: .black.opacity(0.3), radius: 2)
-                        .accessibilityHidden(true)
-                    content
+                content
+                    .frame(maxWidth: 440)
+                    .offset(y: pull)
+                    .gesture(putAway)
+                    .accessibilityAction(named: Text("Hide")) { isPutAway = true }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else if isShowing {
+                // What's left once it's pulled down: enough to bring it
+                // back, small enough to read past.
+                Button {
+                    isPutAway = false
+                } label: {
+                    Label {
+                        peekTitle
+                    } icon: {
+                        Image(systemName: "chevron.up")
+                    }
+                    .font(.footnote.weight(.semibold))
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 8)
+                    .readerCardGlass(kind: session.item.kind, in: .capsule)
                 }
-                .frame(maxWidth: 440)
-                .offset(y: pull)
-                .gesture(putAway)
-                .accessibilityAction(named: Text("Hide")) { isPutAway = true }
+                .buttonStyle(.plain)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
         }
@@ -45,6 +55,7 @@ struct ChapterEndCard: View {
         .padding(.bottom, session.isShowingControls ? 64 : 16)
         .frame(maxWidth: .infinity)
         .animation(.snappy, value: isShowing)
+        .animation(.snappy, value: isPutAway)
         .onChange(of: isShowing) { _, showing in
             if !showing {
                 isPutAway = false
@@ -56,6 +67,11 @@ struct ChapterEndCard: View {
 
     private var isShowing: Bool {
         session.controller.state == .ready && session.isOnLastPage
+    }
+
+    private var peekTitle: Text {
+        guard let target = session.next.target else { return Text("Show Options") }
+        return target.isChapter ? Text("Next Chapter") : Text("Next in Series")
     }
 
     private var putAway: some Gesture {
@@ -241,10 +257,18 @@ private struct CaughtUp: View {
 
     @ViewBuilder private var followButton: some View {
         if isFollowing {
-            Label("Following", systemImage: "bell.fill")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 6)
+            // A button still, so the row keeps its shape, and a second tap
+            // undoes a first one by mistake.
+            Button {
+                unfollow()
+            } label: {
+                Label("Following", systemImage: "bell.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 4)
+            }
+            .buttonStyle(.glass)
+            .accessibilityHint(Text("Stop getting notified about new chapters."))
         } else {
             Button {
                 follow()
@@ -266,6 +290,14 @@ private struct CaughtUp: View {
             .disabled(isLookingUp)
             .accessibilityHint(Text("Get notified when a new chapter comes out."))
         }
+    }
+
+    private func unfollow() {
+        guard let chapter = item.sourceChapter,
+              let follow = follows.followed(server: chapter.server, source: chapter.source, series: chapter.seriesID)
+        else { return }
+        follows.unfollow(follow)
+        isFollowing = false
     }
 
     /// Follows the series, looking it up again first if that failed, as
@@ -334,16 +366,24 @@ private struct ReaderCardGlass<CardShape: Shape>: ViewModifier {
     let shape: CardShape
     @Environment(ReaderSettings.self) private var settings
 
-    func body(content: Content) -> some View {
-        content.glassEffect(.regular.tint(tint), in: shape)
+    @ViewBuilder func body(content: Content) -> some View {
+        if kind == .book && settings.theme == .dark {
+            // Glass over a near-black page stays near-black, so a dark
+            // book's card is a raised surface instead, as dark mode's are.
+            content.background {
+                shape.fill(Color(white: 0.19))
+                    .overlay(shape.stroke(.white.opacity(0.14), lineWidth: 1))
+                    .shadow(color: .black.opacity(0.5), radius: 16, y: 4)
+            }
+        } else {
+            content.glassEffect(.regular.tint(tint), in: shape)
+        }
     }
 
     private var tint: Color {
         switch kind {
         // Comics always read in dark mode, whatever the page's colors.
         case .comic: .black.opacity(0.6)
-        // A dark page gets a lighter card, or the two run together.
-        case .book where settings.theme == .dark: Color(white: 0.22).opacity(0.9)
         case .book: ReaderTheme(settings.theme).background.opacity(0.85)
         }
     }
