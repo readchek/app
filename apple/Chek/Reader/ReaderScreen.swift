@@ -184,11 +184,11 @@ private struct ControlsScrim: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            LinearGradient(colors: [.black.opacity(0.6), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 160)
-            Spacer(minLength: 0)
-            LinearGradient(colors: [.clear, .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+            LinearGradient(colors: [.black.opacity(0.8), .black.opacity(0.45), .clear], startPoint: .top, endPoint: .bottom)
                 .frame(height: 180)
+            Spacer(minLength: 0)
+            LinearGradient(colors: [.clear, .black.opacity(0.45), .black.opacity(0.8)], startPoint: .top, endPoint: .bottom)
+                .frame(height: 200)
         }
         .ignoresSafeArea()
         .allowsHitTesting(false)

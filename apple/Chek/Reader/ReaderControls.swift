@@ -48,9 +48,6 @@ private struct ReaderToolbars: ViewModifier {
                 }
                 ToolbarItem(placement: .bottomBar) {
                     ReaderScrubber(controller: session.controller)
-                        // A smaller thumb, so the shorter track beside the
-                        // chapter buttons still reads as a track.
-                        .controlSize(session.item.series == nil ? .regular : .small)
                         .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
                 }
                 if session.item.series != nil {
@@ -193,7 +190,10 @@ private struct ReaderScrubber: View {
 
     var body: some View {
         let count = controller.positions?.count ?? 0
-        let position = Double(controller.location?.locations.position ?? 1)
+        // Reflowing text's last screen can sit on an earlier position than
+        // the last, which would leave the thumb short of the end at 100%.
+        let isAtEnd = (controller.location?.locations.totalProgression ?? 0) >= ReadingStatus.finishedThreshold
+        let position = isAtEnd && count > 1 ? Double(count) : Double(controller.location?.locations.position ?? 1)
         HStack(spacing: 12) {
             if count > 1 {
                 Slider(
