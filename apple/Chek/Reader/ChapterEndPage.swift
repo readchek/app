@@ -53,7 +53,7 @@ struct ChapterEndPage: View {
             entry(isNext ? "Next" : "Previous", target.title)
                 .allowsHitTesting(false)
         case .end, .caughtUp:
-            Text(next == .end ? "That's the last one" : "You're caught up")
+            (next == .end ? Text("That's the last one") : Text("You're caught up"))
                 .font(.subheadline)
                 .foregroundStyle(secondary)
                 .allowsHitTesting(false)
