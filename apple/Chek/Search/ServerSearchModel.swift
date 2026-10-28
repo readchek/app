@@ -105,6 +105,12 @@ final class ServerSearchModel {
         }
     }
 
+    /// How much longer typing has to rest before sites are asked, on top of
+    /// the pause that searches libraries. A site answers each search with
+    /// requests to the site itself, which its bot checks count, so it
+    /// shouldn't be asked for every word on the way to the one meant.
+    static let siteDelay: Duration = .milliseconds(700)
+
     func search(_ text: String, filters: SearchFilters, servers: ServerStore) async {
         generation += 1
         let current = generation
@@ -161,7 +167,10 @@ final class ServerSearchModel {
         // the rest, and its section comes when it has something.
         let sourceTasks = sourceResults.filter(\.state.isLoading).map { target in
             Task {
-                guard let answer = await Self.searchSource(target.source.id, query: query, page: 1, account: target.account, servers: servers),
+                // A new keystroke cancels this wait, so the site is never asked.
+                try? await Task.sleep(for: Self.siteDelay)
+                guard !Task.isCancelled,
+                      let answer = await Self.searchSource(target.source.id, query: query, page: 1, account: target.account, servers: servers),
                       current == generation else { return }
                 settle(source: target.id, answer)
             }

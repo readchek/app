@@ -39,3 +39,20 @@ export function clearRecentSearches() {
   }
   setRecent([])
 }
+
+/**
+ * How much longer than the field's own pause typing rests before sites are
+ * searched. A site answers each search with requests to the site, which its
+ * bot checks count, so it shouldn't be asked for every word on the way.
+ */
+export const siteDelay = 700
+
+// The last search pressed for with Return, as a new object each time so the
+// same words pressed again still count.
+const [submitted, setSubmitted] = createSignal<{ q: string }>()
+
+export { submitted as submittedSearch }
+
+export function submitSearch(q: string) {
+  setSubmitted({ q })
+}

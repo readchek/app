@@ -1,4 +1,15 @@
-import { For, Match, Show, Switch, createMemo, createResource, createSignal } from "solid-js"
+import {
+  For,
+  Match,
+  Show,
+  Switch,
+  createEffect,
+  createMemo,
+  createResource,
+  createSignal,
+  on,
+  onCleanup,
+} from "solid-js"
 import { Link, useNavigate, useSearch } from "@tanstack/solid-router"
 import { Search as SearchIcon } from "../components/icons.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"
@@ -18,7 +29,13 @@ import {
   ShelfPlaceholder,
 } from "./Shelf.tsx"
 import { Failure } from "./shared/Library.tsx"
-import { clearRecentSearches, keepRecentSearch, recentSearches } from "./searches.ts"
+import {
+  clearRecentSearches,
+  keepRecentSearch,
+  recentSearches,
+  siteDelay,
+  submittedSearch,
+} from "./searches.ts"
 import { readableLibraries } from "./shared/data.ts"
 import { type InstalledExtension, installedExtensions, searchSite } from "./sites/api.ts"
 import { publicationTitle, seriesTitle } from "./titles.ts"
@@ -73,8 +90,35 @@ export function Search() {
   const targets = () =>
     signedIn().filter((account) => !place().server || accountKey(account) === place().server)
 
+  // Sites are asked once typing has rested a while longer (see siteDelay).
+  // Pressing Return or picking a recent search asks them at once.
+  const [siteQuery, setSiteQuery] = createSignal("")
+  let siteTimer: ReturnType<typeof setTimeout> | undefined
+  onCleanup(() => clearTimeout(siteTimer))
+  createEffect(
+    on(query, (q) => {
+      clearTimeout(siteTimer)
+      if (submittedSearch()?.q === q) setSiteQuery(q)
+      else if (q !== siteQuery()) siteTimer = setTimeout(() => setSiteQuery(q), siteDelay)
+    }),
+  )
+  createEffect(
+    on(
+      submittedSearch,
+      (submitted) => {
+        if (submitted?.q === query()) {
+          clearTimeout(siteTimer)
+          setSiteQuery(submitted.q)
+        }
+      },
+      { defer: true },
+    ),
+  )
+
   const searchFor = (item: string) => {
     keepRecentSearch(item)
+    clearTimeout(siteTimer)
+    setSiteQuery(item)
     void navigate({ to: "/search", search: { q: item }, replace: true })
   }
 
@@ -157,7 +201,8 @@ export function Search() {
               {(account) => (
                 <SiteResults
                   account={account}
-                  query={query()}
+                  query={siteQuery()}
+                  pending={siteQuery() !== query()}
                   kind={kind()}
                   showHost={targets().length > 1}
                 />
@@ -241,7 +286,14 @@ function siteMatchesKind(site: InstalledExtension, kind: Kind): boolean {
 }
 
 /** The sites a server reaches, each searched for the first page of its matches. */
-function SiteResults(props: { account: Account; query: string; kind: Kind; showHost: boolean }) {
+function SiteResults(props: {
+  account: Account
+  query: string
+  /** Whether typing has moved on from `query` and the sites haven't been asked yet. */
+  pending: boolean
+  kind: Kind
+  showHost: boolean
+}) {
   const [sites] = createResource(
     () => props.account,
     (account) => installedExtensions(account),
@@ -258,16 +310,29 @@ function SiteResults(props: { account: Account; query: string; kind: Kind; showH
           </h2>
         </Show>
         <For each={shown()}>
-          {(site) => <SiteShelf account={props.account} site={site} query={props.query} />}
+          {(site) => (
+            <SiteShelf
+              account={props.account}
+              site={site}
+              query={props.query}
+              pending={props.pending}
+            />
+          )}
         </For>
       </section>
     </Show>
   )
 }
 
-function SiteShelf(props: { account: Account; site: InstalledExtension; query: string }) {
+function SiteShelf(props: {
+  account: Account
+  site: InstalledExtension
+  query: string
+  pending: boolean
+}) {
   const [found] = createResource(
-    () => ({ account: props.account, id: props.site.id, q: props.query }),
+    // Nothing is asked while typing hasn't rested long enough.
+    () => !props.pending && { account: props.account, id: props.site.id, q: props.query },
     ({ account, id, q }) => searchSite(account, id, { q, page: 1 }),
   )
   const seeAll = () => (
@@ -291,7 +356,7 @@ function SiteShelf(props: { account: Account; site: InstalledExtension; query: s
           </li>
         </Shelf>
       </Match>
-      <Match when={found.loading}>
+      <Match when={props.pending || found.loading}>
         <ShelfPlaceholder />
       </Match>
       <Match when={found()?.items.length === 0}>
