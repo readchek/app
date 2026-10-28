@@ -7,14 +7,13 @@ import SwiftUI
 struct ChaptersPanel: View {
     let session: ReaderSession
     let chapter: SourceChapterRef
-    let open: (ReadingItem) -> Void
+    let open: (ReadingTarget) -> Void
     @Environment(\.dismiss) private var dismiss
     @Environment(ServerStore.self) private var servers
-    @Environment(ServerSync.self) private var sync
     @Query private var states: [SourceReadingState]
     @State private var chapters: ChapterList?
 
-    init(session: ReaderSession, chapter: SourceChapterRef, open: @escaping (ReadingItem) -> Void) {
+    init(session: ReaderSession, chapter: SourceChapterRef, open: @escaping (ReadingTarget) -> Void) {
         self.session = session
         self.chapter = chapter
         self.open = open
@@ -100,12 +99,8 @@ struct ChaptersPanel: View {
                 dismiss()
                 return
             }
-            let next = ref(item)
-            Task {
-                let item = try? await sync.readingItem(for: next)
-                dismiss()
-                if let item { open(item) }
-            }
+            dismiss()
+            open(.chapter(ref(item)))
         } label: {
             HStack {
                 Text(item.displayTitle)

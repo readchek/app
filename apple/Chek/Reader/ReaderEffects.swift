@@ -26,11 +26,12 @@ private struct PositionRecorder: ViewModifier {
         content
             .onChange(of: session.controller.location) { old, location in
                 guard let location, session.controller.state == .ready else { return }
-                progress.record(location, in: session.item.ref)
+                progress.record(location, in: session.item.ref, isAtEnd: session.isOnLastPage)
                 // The reader refines the opening location as it lays the
                 // page out, which isn't a page turn.
                 if let old, !location.isSamePlace(as: old) {
                     session.hideControls()
+                    session.leaveChapterEnd()
                 }
             }
             .onChange(of: session.controller.state) { _, state in

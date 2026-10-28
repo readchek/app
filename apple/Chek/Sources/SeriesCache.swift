@@ -24,7 +24,6 @@ nonisolated enum SeriesCache {
         var chapters: [KnownChapter]
         var savedAt: Date
 
-        /// The chapter after `id` in reading order, if it's been seen.
         /// The chapter after the one release `id` belongs to, if it's been
         /// seen. Positions count releases, so the next chapter starts past
         /// all of this one's.
@@ -32,6 +31,13 @@ nonisolated enum SeriesCache {
             guard let current = chapter(containing: id) else { return nil }
             let next = current.position + max(current.chapter.releases?.count ?? 1, 1)
             return chapters.first { $0.position == next }
+        }
+
+        /// The chapter before the one release `id` belongs to, if it's
+        /// been seen: the one whose releases end just where this one's start.
+        func chapter(before id: String) -> KnownChapter? {
+            guard let current = chapter(containing: id) else { return nil }
+            return chapters.last { $0.position + max($0.chapter.releases?.count ?? 1, 1) == current.position }
         }
 
         /// The chapter release `id` belongs to.
