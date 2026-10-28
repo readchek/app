@@ -35,6 +35,8 @@ struct ChapterEndPage: View {
             }
             .frame(maxWidth: 340, alignment: .leading)
             .padding(.horizontal, 32)
+            // A little above the middle, where the eye takes the middle to be.
+            .padding(.bottom, 80)
         }
         .overlay(alignment: .bottom) {
             footer
@@ -50,8 +52,8 @@ struct ChapterEndPage: View {
         case .found(let target):
             entry(isNext ? "Next" : "Previous", target.title)
                 .allowsHitTesting(false)
-        case .end:
-            Text("That's the last one")
+        case .end, .caughtUp:
+            Text(next == .end ? "That's the last one" : "You're caught up")
                 .font(.subheadline)
                 .foregroundStyle(secondary)
                 .allowsHitTesting(false)

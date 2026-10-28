@@ -32,6 +32,9 @@ enum NeighborLookup: Equatable {
     case found(ReadingTarget)
     /// Nothing further that way: the series' first or last.
     case end
+    /// Nothing further yet: the latest chapter of a series that's still
+    /// coming out.
+    case caughtUp
     /// The server couldn't be reached and nothing kept on the device says.
     case unknown
     /// The publication isn't part of a series.
@@ -63,7 +66,11 @@ struct NeighborFinder {
             // The way on matters more, so it's asked for first.
             let next = await sync.chapter(after: chapter)
             let previous = await sync.chapter(before: chapter)
-            return (NeighborLookup(previous, as: ReadingTarget.chapter), NeighborLookup(next, as: ReadingTarget.chapter))
+            var following = NeighborLookup(next, as: ReadingTarget.chapter)
+            if following == .end, await isStillComingOut(chapter) {
+                following = .caughtUp
+            }
+            return (NeighborLookup(previous, as: ReadingTarget.chapter), following)
         }
         if let publication = item.serverPublication {
             guard publication.seriesID != nil else { return (.none, .none) }
@@ -78,6 +85,17 @@ struct NeighborFinder {
             )
         }
         return (.none, .none)
+    }
+
+    /// Whether the source's series may get more chapters. Sites mostly
+    /// carry series still coming out, so one whose status isn't known is
+    /// taken to be.
+    private func isStillComingOut(_ chapter: SourceChapterRef) async -> Bool {
+        let snapshot = await SeriesCache.read(server: chapter.server, source: chapter.source, series: chapter.seriesID)
+        switch snapshot?.series.status {
+        case "completed", "cancelled": return false
+        default: return true
+        }
     }
 
     /// What the reader needs to open `target`. One you've already read to

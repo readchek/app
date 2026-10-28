@@ -38,7 +38,7 @@ struct ChapterEndLine: View {
     private var isShowing: Bool {
         guard session.item.kind == .book, session.controller.state == .ready, session.isOnLastPage, !session.isShowingControls else { return false }
         switch session.next {
-        case .found, .unknown, .end: return true
+        case .found, .unknown, .end, .caughtUp: return true
         case .looking, .none: return false
         }
     }
@@ -78,6 +78,8 @@ struct ChapterEndLine: View {
             .accessibilityHint(Text("Checks again."))
         case .end:
             Text("That's the last one")
+        case .caughtUp:
+            Text("You're caught up")
         case .looking, .none:
             EmptyView()
         }
