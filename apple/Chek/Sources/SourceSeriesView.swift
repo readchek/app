@@ -353,7 +353,7 @@ private struct SourceSeriesContent: View {
         if let latest {
             let ref = SourceChapterRef(latest)
             guard latest.readingStatus == .finished else { return (ref, latest.readingStatus) }
-            if case .next(let following) = await sync.chapter(after: ref) {
+            if case .found(let following) = await sync.chapter(after: ref) {
                 return (following, statuses[following.chapterID]?.readingStatus ?? .new)
             }
             return (ref, latest.readingStatus)
