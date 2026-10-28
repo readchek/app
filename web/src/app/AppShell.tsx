@@ -5,12 +5,12 @@ import { BookOpen, Building, ChevronLeft, Gear, Globe } from "../components/icon
 import { Button } from "../components/ui/button.tsx"
 import { cn } from "../lib/cn.ts"
 import { accounts } from "./accounts.ts"
-import { SearchField } from "./SearchField.tsx"
+import { SearchButton, SearchPalette } from "./SearchPalette.tsx"
 import { Welcome } from "./SignIn.tsx"
 
 // The app's places, as the iOS app's tabs. On a wide window they're a
 // sidebar, as on iPad; on a phone they're a bar along the bottom. Search
-// isn't one: its field is on every screen, at the top of either.
+// isn't one: it opens over every screen, from the top of either.
 const places = [
   { to: "/", label: "Reading Now", icon: BookOpen },
   { to: "/shared", label: "Shared", icon: Building },
@@ -31,7 +31,7 @@ export function AppShell() {
           >
             <Wordmark />
           </Link>
-          <SearchField class="mt-7" />
+          <SearchButton class="mt-7" />
           <nav aria-label="Chek" class="mt-4 grid gap-0.5">
             <For each={places}>
               {(place) => (
@@ -55,10 +55,11 @@ export function AppShell() {
           {/* The bars are nearly opaque rather than blurred, since Safari
               redraws a blur behind them on every frame of a scroll. */}
           <div class="sticky top-0 z-40 border-b bg-background/95 px-5 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 sm:px-8 lg:hidden">
-            <SearchField class="mx-auto max-w-7xl" />
+            <SearchButton class="mx-auto max-w-7xl" />
           </div>
           <Outlet />
         </div>
+        <SearchPalette />
         <nav
           aria-label="Chek"
           class="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t bg-background/95 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] lg:hidden"

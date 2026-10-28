@@ -13,7 +13,14 @@ import {
   DialogTitle,
 } from "../../components/ui/dialog.tsx"
 import { Input } from "../../components/ui/input.tsx"
-import { Select } from "../../components/ui/select.tsx"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.tsx"
 import { type Account, accountKey } from "../accounts.ts"
 import { type Library, libraries, search } from "../client.ts"
 import { type RemoteSeries, addExtensionLibrary, followSeries } from "./api.ts"
@@ -122,16 +129,30 @@ export function Follow(props: { account: Account; extensionId: string; series: R
                 </Show>
                 <Switch>
                   <Match when={loaded().libraries.length > 1}>
-                    <Select
-                      label="Library"
-                      showLabel
+                    <Select<{ value: string; label: string }>
+                      class="grid gap-1.5"
                       options={loaded().libraries.map((library) => ({
                         value: String(library.id),
                         label: library.name,
                       }))}
+                      optionValue="value"
+                      optionTextValue="label"
                       value={target() && { value: String(target()!.id), label: target()!.name }}
-                      onChange={(option) => setChosen(Number(option.value))}
-                    />
+                      onChange={(option) => option && setChosen(Number(option.value))}
+                      disallowEmptySelection
+                      gutter={6}
+                      itemComponent={(item) => (
+                        <SelectItem item={item.item}>{item.item.rawValue.label}</SelectItem>
+                      )}
+                    >
+                      <SelectLabel>Library</SelectLabel>
+                      <SelectTrigger>
+                        <SelectValue<{ value: string; label: string }>>
+                          {(state) => state.selectedOption().label}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent />
+                    </Select>
                   </Match>
                   <Match when={loaded().libraries.length === 1}>
                     <p class="text-[15px]">

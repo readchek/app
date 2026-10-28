@@ -1,19 +1,16 @@
-import {
-  For,
-  Match,
-  Show,
-  Switch,
-  createEffect,
-  createMemo,
-  createSignal,
-  on,
-  onCleanup,
-} from "solid-js"
+import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js"
 import { createResource } from "../lib/resource.ts"
 import { Link, useNavigate, useSearch } from "@tanstack/solid-router"
 import { Search as SearchIcon } from "../components/icons.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"
-import { Select } from "../components/ui/select.tsx"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select.tsx"
 import { ToggleGroup } from "../components/ui/toggle-group.tsx"
 import { type Account, accountKey, accounts, host } from "./accounts.ts"
 import { Screen } from "./AppShell.tsx"
@@ -29,13 +26,8 @@ import {
   ShelfPlaceholder,
 } from "./Shelf.tsx"
 import { Failure } from "./shared/Library.tsx"
-import {
-  clearRecentSearches,
-  keepRecentSearch,
-  recentSearches,
-  siteDelay,
-  submittedSearch,
-} from "./searches.ts"
+import { clearRecentSearches, keepRecentSearch, recentSearches } from "./searches.ts"
+import { openSearch } from "./SearchPalette.tsx"
 import { readableLibraries } from "./shared/data.ts"
 import { type InstalledExtension, installedExtensions, searchSite } from "./sites/api.ts"
 import { publicationTitle, seriesTitle } from "./titles.ts"
@@ -44,8 +36,9 @@ type Kind = "all" | "comics" | "books"
 type Place = { value: string; label: string; server?: string; libraryId?: number }
 
 /**
- * Search results, as the iOS app's Search: every server you're signed in
- * to at once, or one place. The search field is the shell's, on every screen.
+ * All the results of a search, as the iOS app's Search: every server you're
+ * signed in to at once, or one place. The palette shows the top few; this
+ * screen opens from its "Show all results".
  */
 export function Search() {
   const navigate = useNavigate()
@@ -90,48 +83,43 @@ export function Search() {
   const targets = () =>
     signedIn().filter((account) => !place().server || accountKey(account) === place().server)
 
-  // Sites are asked once typing has rested a while longer (see siteDelay).
-  // Pressing Return or picking a recent search asks them at once.
-  const [siteQuery, setSiteQuery] = createSignal("")
-  let siteTimer: ReturnType<typeof setTimeout> | undefined
-  onCleanup(() => clearTimeout(siteTimer))
-  createEffect(
-    on(query, (q) => {
-      clearTimeout(siteTimer)
-      if (submittedSearch()?.q === q) setSiteQuery(q)
-      else if (q !== siteQuery()) siteTimer = setTimeout(() => setSiteQuery(q), siteDelay)
-    }),
-  )
-  createEffect(
-    on(
-      submittedSearch,
-      (submitted) => {
-        if (submitted?.q === query()) {
-          clearTimeout(siteTimer)
-          setSiteQuery(submitted.q)
-        }
-      },
-      { defer: true },
-    ),
-  )
-
+  // This screen opens on purpose, from the palette's "Show all results", so
+  // sites are asked at once rather than after typing rests.
   const searchFor = (item: string) => {
     keepRecentSearch(item)
-    clearTimeout(siteTimer)
-    setSiteQuery(item)
     void navigate({ to: "/search", search: { q: item }, replace: true })
   }
 
   return (
-    <Screen title={query() ? `Results for “${query()}”` : "Search"}>
+    <Screen
+      title={query() ? `Results for “${query()}”` : "Search"}
+      actions={
+        <Button variant="outline" size="sm" onClick={() => openSearch(query())}>
+          <SearchIcon />
+          Search again
+        </Button>
+      }
+    >
       <div class="flex flex-wrap items-end gap-3">
-        <Select
-          label="Where"
+        <Select<Place>
           class="min-w-44"
           options={places()}
+          optionValue="value"
+          optionTextValue="label"
           value={place()}
-          onChange={(chosen) => setPlaceValue(chosen.value)}
-        />
+          onChange={(chosen) => chosen && setPlaceValue(chosen.value)}
+          disallowEmptySelection
+          gutter={6}
+          itemComponent={(item) => (
+            <SelectItem item={item.item}>{item.item.rawValue.label}</SelectItem>
+          )}
+        >
+          <SelectLabel class="sr-only">Where</SelectLabel>
+          <SelectTrigger>
+            <SelectValue<Place>>{(state) => state.selectedOption().label}</SelectValue>
+          </SelectTrigger>
+          <SelectContent />
+        </Select>
         <ToggleGroup
           label="Kind"
           class="w-64 [&>span]:sr-only"
@@ -201,8 +189,7 @@ export function Search() {
               {(account) => (
                 <SiteResults
                   account={account}
-                  query={siteQuery()}
-                  pending={siteQuery() !== query()}
+                  query={query()}
                   kind={kind()}
                   showHost={targets().length > 1}
                 />
@@ -286,14 +273,7 @@ function siteMatchesKind(site: InstalledExtension, kind: Kind): boolean {
 }
 
 /** The sites a server reaches, each searched for the first page of its matches. */
-function SiteResults(props: {
-  account: Account
-  query: string
-  /** Whether typing has moved on from `query` and the sites haven't been asked yet. */
-  pending: boolean
-  kind: Kind
-  showHost: boolean
-}) {
+function SiteResults(props: { account: Account; query: string; kind: Kind; showHost: boolean }) {
   const [sites] = createResource(
     () => props.account,
     (account) => installedExtensions(account),
@@ -310,29 +290,16 @@ function SiteResults(props: {
           </h2>
         </Show>
         <For each={shown()}>
-          {(site) => (
-            <SiteShelf
-              account={props.account}
-              site={site}
-              query={props.query}
-              pending={props.pending}
-            />
-          )}
+          {(site) => <SiteShelf account={props.account} site={site} query={props.query} />}
         </For>
       </section>
     </Show>
   )
 }
 
-function SiteShelf(props: {
-  account: Account
-  site: InstalledExtension
-  query: string
-  pending: boolean
-}) {
+function SiteShelf(props: { account: Account; site: InstalledExtension; query: string }) {
   const [found] = createResource(
-    // Nothing is asked while typing hasn't rested long enough.
-    () => !props.pending && { account: props.account, id: props.site.id, q: props.query },
+    () => ({ account: props.account, id: props.site.id, q: props.query }),
     ({ account, id, q }) => searchSite(account, id, { q, page: 1 }),
   )
   const seeAll = () => (
@@ -356,7 +323,7 @@ function SiteShelf(props: {
           </li>
         </Shelf>
       </Match>
-      <Match when={props.pending || found.loading}>
+      <Match when={found.loading}>
         <ShelfPlaceholder />
       </Match>
       <Match when={found()?.items.length === 0}>

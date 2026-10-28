@@ -1,40 +1,86 @@
-import type { JSX } from "solid-js"
-import { Switch as SwitchPrimitive } from "@kobalte/core/switch"
+import type { JSX, ValidComponent } from "solid-js"
+import { splitProps } from "solid-js"
+
+import type { PolymorphicProps } from "@kobalte/core"
+import * as SwitchPrimitive from "@kobalte/core/switch"
+
 import { cn } from "../../lib/cn.ts"
 
-/** A setting that's on or off, drawn as a row: its label and a line under it, then the switch. After solid-ui's switch. */
-export function Switch(props: {
-  class?: string
-  checked: boolean
-  onChange: (checked: boolean) => void
-  disabled?: boolean
-  label: JSX.Element
-  description?: JSX.Element
-}) {
+// solid-ui's switch in Chek's shape: a little larger, in brand blue.
+
+const Switch = SwitchPrimitive.Root
+const SwitchErrorMessage = SwitchPrimitive.ErrorMessage
+
+type SwitchControlProps = SwitchPrimitive.SwitchControlProps & {
+  class?: string | undefined
+  children?: JSX.Element
+}
+
+const SwitchControl = <T extends ValidComponent = "input">(
+  props: PolymorphicProps<T, SwitchControlProps>,
+) => {
+  const [local, others] = splitProps(props as SwitchControlProps, ["class", "children"])
   return (
-    <SwitchPrimitive
-      checked={props.checked}
-      onChange={props.onChange}
-      disabled={props.disabled}
-      class={cn(
-        "group flex items-start justify-between gap-4 py-4 data-[disabled]:cursor-default [&:not([data-disabled])]:cursor-pointer",
-        props.class,
-      )}
-    >
-      <span class="grid min-w-0 gap-0.5">
-        <SwitchPrimitive.Label class="cursor-[inherit] font-semibold">
-          {props.label}
-        </SwitchPrimitive.Label>
-        {props.description && (
-          <SwitchPrimitive.Description class="text-[15px] leading-snug text-muted-foreground">
-            {props.description}
-          </SwitchPrimitive.Description>
-        )}
-      </span>
+    <>
       <SwitchPrimitive.Input class="peer" />
-      <SwitchPrimitive.Control class="mt-0.5 inline-flex h-7 w-12 shrink-0 items-center rounded-full bg-input p-0.5 transition-colors peer-focus-visible:ring-3 peer-focus-visible:ring-ring/40 data-[checked]:bg-primary data-[disabled]:opacity-50">
-        <SwitchPrimitive.Thumb class="size-6 rounded-full bg-background shadow-sm transition-transform data-[checked]:translate-x-5" />
+      <SwitchPrimitive.Control
+        class={cn(
+          "inline-flex h-7 w-12 shrink-0 cursor-pointer items-center rounded-full bg-input p-0.5 transition-colors peer-focus-visible:ring-3 peer-focus-visible:ring-ring/40 data-[checked]:bg-primary data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50",
+          local.class,
+        )}
+        {...others}
+      >
+        {local.children}
       </SwitchPrimitive.Control>
-    </SwitchPrimitive>
+    </>
   )
 }
+
+type SwitchThumbProps = SwitchPrimitive.SwitchThumbProps & { class?: string | undefined }
+
+const SwitchThumb = <T extends ValidComponent = "div">(
+  props: PolymorphicProps<T, SwitchThumbProps>,
+) => {
+  const [local, others] = splitProps(props as SwitchThumbProps, ["class"])
+  return (
+    <SwitchPrimitive.Thumb
+      class={cn(
+        "pointer-events-none block size-6 rounded-full bg-background shadow-sm transition-transform data-[checked]:translate-x-5",
+        local.class,
+      )}
+      {...others}
+    />
+  )
+}
+
+type SwitchLabelProps = SwitchPrimitive.SwitchLabelProps & { class?: string | undefined }
+
+const SwitchLabel = <T extends ValidComponent = "label">(
+  props: PolymorphicProps<T, SwitchLabelProps>,
+) => {
+  const [local, others] = splitProps(props as SwitchLabelProps, ["class"])
+  return (
+    <SwitchPrimitive.Label
+      class={cn("cursor-[inherit] font-semibold data-[disabled]:opacity-70", local.class)}
+      {...others}
+    />
+  )
+}
+
+type SwitchDescriptionProps = SwitchPrimitive.SwitchDescriptionProps & {
+  class?: string | undefined
+}
+
+const SwitchDescription = <T extends ValidComponent = "div">(
+  props: PolymorphicProps<T, SwitchDescriptionProps>,
+) => {
+  const [local, others] = splitProps(props as SwitchDescriptionProps, ["class"])
+  return (
+    <SwitchPrimitive.Description
+      class={cn("text-[15px] leading-snug text-muted-foreground", local.class)}
+      {...others}
+    />
+  )
+}
+
+export { Switch, SwitchControl, SwitchThumb, SwitchLabel, SwitchDescription, SwitchErrorMessage }

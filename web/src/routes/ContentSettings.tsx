@@ -19,9 +19,15 @@ import { AlertCircle, CheckCircle, Lock, Spinner } from "../components/icons.tsx
 import { Alert } from "../components/ui/alert.tsx"
 import { Badge } from "../components/ui/badge.tsx"
 import { Button } from "../components/ui/button.tsx"
-import { Checkbox } from "../components/ui/checkbox.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
-import { RadioGroup, RadioGroupLabel, RadioRow } from "../components/ui/radio-group.tsx"
+import { Checkbox, CheckboxLabel } from "../components/ui/checkbox.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../components/ui/text-field.tsx"
+import {
+  RadioGroup,
+  RadioGroupItem,
+  RadioGroupItemDescription,
+  RadioGroupItemLabel,
+  RadioGroupLabel,
+} from "../components/ui/radio-group.tsx"
 
 type Level = "everyone" | "teen" | "mature"
 
@@ -159,27 +165,24 @@ function SignIn(props: { server?: string; notice: string }) {
         Safari.
       </p>
       <form class="grid gap-4" onSubmit={submit}>
-        <Label>
-          Server address
-          <Input
-            name="server"
-            value={props.server ?? ""}
+        <TextField name="server" defaultValue={props.server ?? ""} required>
+          <TextFieldLabel>Server address</TextFieldLabel>
+          <TextFieldInput
             placeholder="chek.example.com"
             autocomplete="url"
             inputmode="url"
             autocapitalize="off"
             spellcheck={false}
-            required
           />
-        </Label>
-        <Label>
-          Name
-          <Input name="name" autocomplete="username" autocapitalize="off" required />
-        </Label>
-        <Label>
-          Password
-          <Input name="password" type="password" autocomplete="current-password" required />
-        </Label>
+        </TextField>
+        <TextField name="name" required>
+          <TextFieldLabel>Name</TextFieldLabel>
+          <TextFieldInput autocomplete="username" autocapitalize="off" />
+        </TextField>
+        <TextField name="password" required>
+          <TextFieldLabel>Password</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="current-password" />
+        </TextField>
         <Show when={error()}>
           <Alert variant="destructive">
             <AlertCircle />
@@ -282,18 +285,15 @@ export function ContentRatingsForm(props: {
                 <div class="divide-y border-y">
                   <For each={levels}>
                     {(level) => (
-                      <RadioRow
-                        value={level.id}
-                        title={
-                          <>
-                            {level.title}
-                            <Show when={level.id === "mature"}>
-                              <Badge variant="butter">18+</Badge>
-                            </Show>
-                          </>
-                        }
-                        description={level.detail}
-                      />
+                      <RadioGroupItem value={level.id}>
+                        <RadioGroupItemLabel>
+                          {level.title}
+                          <Show when={level.id === "mature"}>
+                            <Badge variant="butter">18+</Badge>
+                          </Show>
+                        </RadioGroupItemLabel>
+                        <RadioGroupItemDescription>{level.detail}</RadioGroupItemDescription>
+                      </RadioGroupItem>
                     )}
                   </For>
                 </div>
@@ -305,7 +305,7 @@ export function ContentRatingsForm(props: {
               </Show>
               <Show when={choice() === "mature" && changed()}>
                 <Checkbox checked={adult()} onChange={setAdult}>
-                  I'm 18 or older, and I want to see adult content.
+                  <CheckboxLabel>I'm 18 or older, and I want to see adult content.</CheckboxLabel>
                 </Checkbox>
               </Show>
               <Show

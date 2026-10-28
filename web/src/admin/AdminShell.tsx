@@ -8,7 +8,12 @@ import { AlertCircle, Lock, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Badge } from "../components/ui/badge.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
+import {
+  TextField,
+  TextFieldDescription,
+  TextFieldInput,
+  TextFieldLabel,
+} from "../components/ui/text-field.tsx"
 import { cn } from "../lib/cn.ts"
 import { type ServerInfo, serverInfo, setUp } from "./api.ts"
 import { message } from "./util.ts"
@@ -195,19 +200,16 @@ function Welcome() {
       <Match when={true}>
         <Heading title="Admin" lead="Manage your Chek server's libraries, people and extensions." />
         <form class="grid gap-4" onSubmit={find}>
-          <Label>
-            Server address
-            <Input
-              name="server"
-              value={search().server ?? lastServer()}
+          <TextField name="server" defaultValue={search().server ?? lastServer()} required>
+            <TextFieldLabel>Server address</TextFieldLabel>
+            <TextFieldInput
               placeholder="chek.example.com"
               autocomplete="url"
               inputmode="url"
               autocapitalize="off"
               spellcheck={false}
-              required
             />
-          </Label>
+          </TextField>
           <Show when={error() || (server() && info.error)}>
             <Alert variant="destructive">
               <AlertCircle />
@@ -266,14 +268,14 @@ function SignIn(props: { server: string; info: ServerInfo; onChange?: () => void
         </Show>
       </p>
       <form class="grid gap-4" onSubmit={submit}>
-        <Label>
-          Name
-          <Input name="name" autocomplete="username" autocapitalize="off" required />
-        </Label>
-        <Label>
-          Password
-          <Input name="password" type="password" autocomplete="current-password" required />
-        </Label>
+        <TextField name="name" required>
+          <TextFieldLabel>Name</TextFieldLabel>
+          <TextFieldInput autocomplete="username" autocapitalize="off" />
+        </TextField>
+        <TextField name="password" required>
+          <TextFieldLabel>Password</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="current-password" />
+        </TextField>
         <Show when={error()}>
           <Alert variant="destructive">
             <AlertCircle />
@@ -339,42 +341,34 @@ function SetUp(props: { server: string }) {
         lead={<>Claim {new URL(props.server).host} by making its first admin account.</>}
       />
       <form class="grid gap-4" onSubmit={submit}>
-        <Label>
-          Setup token
-          <Input
-            name="token"
+        <TextField name="token" required>
+          <TextFieldLabel>Setup token</TextFieldLabel>
+          <TextFieldInput
             autocomplete="off"
             autocapitalize="off"
             spellcheck={false}
             class="font-mono text-[15px]"
-            required
           />
-          <span class="text-sm font-normal text-muted-foreground">
+          <TextFieldDescription>
             The server prints it in its log when it starts without accounts. With Docker, run{" "}
             <code class="rounded bg-muted px-1 py-0.5 text-[13px]">docker logs chek</code>. If you
             set <code class="rounded bg-muted px-1 py-0.5 text-[13px]">CHEK_SETUP_TOKEN</code>, use
             that.
-          </span>
-        </Label>
-        <Label>
-          Your name
-          <Input name="name" autocomplete="username" autocapitalize="off" maxlength={64} required />
-        </Label>
-        <Label>
-          Password
-          <Input
-            name="password"
-            type="password"
-            autocomplete="new-password"
-            minlength={8}
-            required
-          />
-          <span class="text-sm font-normal text-muted-foreground">At least 8 characters.</span>
-        </Label>
-        <Label>
-          Password again
-          <Input name="confirm" type="password" autocomplete="new-password" required />
-        </Label>
+          </TextFieldDescription>
+        </TextField>
+        <TextField name="name" required>
+          <TextFieldLabel>Your name</TextFieldLabel>
+          <TextFieldInput autocomplete="username" autocapitalize="off" maxlength={64} />
+        </TextField>
+        <TextField name="password" required>
+          <TextFieldLabel>Password</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="new-password" minlength={8} />
+          <TextFieldDescription>At least 8 characters.</TextFieldDescription>
+        </TextField>
+        <TextField name="confirm" required>
+          <TextFieldLabel>Password again</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="new-password" />
+        </TextField>
         <Show when={error()}>
           <Alert variant="destructive">
             <AlertCircle />

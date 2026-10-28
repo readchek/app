@@ -1,7 +1,8 @@
 import { createSignal } from "solid-js"
 
 // Recent searches, kept in this browser as the iOS app keeps them on the
-// device. The search field adds to them and the results screen lists them.
+// device. The search palette adds to them and lists them, as does the
+// results screen.
 
 const recentKey = "chek.recentSearches"
 const recentCount = 8
@@ -46,13 +47,3 @@ export function clearRecentSearches() {
  * bot checks count, so it shouldn't be asked for every word on the way.
  */
 export const siteDelay = 700
-
-// The last search pressed for with Return, as a new object each time so the
-// same words pressed again still count.
-const [submitted, setSubmitted] = createSignal<{ q: string }>()
-
-export { submitted as submittedSearch }
-
-export function submitSearch(q: string) {
-  setSubmitted({ q })
-}

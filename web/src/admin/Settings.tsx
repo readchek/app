@@ -5,7 +5,7 @@ import { forget } from "../session.ts"
 import { AlertCircle, ArrowUpRight, CheckCircle, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../components/ui/text-field.tsx"
 import { Heading, adminSession } from "./AdminShell.tsx"
 import { Section } from "./LibraryDetail.tsx"
 import { changePassword, serverInfo } from "./api.ts"
@@ -71,24 +71,18 @@ export function Settings() {
 
         <Section title="Your password">
           <form class="grid gap-4" onSubmit={submit}>
-            <Label>
-              Current password
-              <Input name="current" type="password" autocomplete="current-password" required />
-            </Label>
-            <Label>
-              New password
-              <Input
-                name="next"
-                type="password"
-                autocomplete="new-password"
-                minlength={8}
-                required
-              />
-            </Label>
-            <Label>
-              New password again
-              <Input name="confirm" type="password" autocomplete="new-password" required />
-            </Label>
+            <TextField name="current" required>
+              <TextFieldLabel>Current password</TextFieldLabel>
+              <TextFieldInput type="password" autocomplete="current-password" />
+            </TextField>
+            <TextField name="next" required>
+              <TextFieldLabel>New password</TextFieldLabel>
+              <TextFieldInput type="password" autocomplete="new-password" minlength={8} />
+            </TextField>
+            <TextField name="confirm" required>
+              <TextFieldLabel>New password again</TextFieldLabel>
+              <TextFieldInput type="password" autocomplete="new-password" />
+            </TextField>
             <Show when={status()}>
               {(shown) => (
                 <Alert variant={shown().ok ? "success" : "destructive"} role="status">

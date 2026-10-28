@@ -12,10 +12,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
-import { RadioGroup, RadioGroupLabel, RadioRow } from "../components/ui/radio-group.tsx"
+import {
+  TextField,
+  TextFieldDescription,
+  TextFieldInput,
+  TextFieldLabel,
+} from "../components/ui/text-field.tsx"
+import {
+  RadioGroup,
+  RadioGroupItem,
+  RadioGroupItemDescription,
+  RadioGroupItemLabel,
+  RadioGroupLabel,
+} from "../components/ui/radio-group.tsx"
 import { Skeleton } from "../components/ui/skeleton.tsx"
-import { Switch as Toggle } from "../components/ui/switch.tsx"
+import {
+  Switch as Toggle,
+  SwitchControl as ToggleControl,
+  SwitchDescription as ToggleDescription,
+  SwitchLabel as ToggleLabel,
+  SwitchThumb as ToggleThumb,
+} from "../components/ui/switch.tsx"
 import { Heading, adminSession } from "./AdminShell.tsx"
 import { Section } from "./LibraryDetail.tsx"
 import {
@@ -119,12 +136,22 @@ export function Extensions() {
         <Section title="People's own repositories">
           <div class="border-y">
             <Toggle
+              class="flex items-start justify-between gap-4 py-4 data-[disabled]:cursor-default [&:not([data-disabled])]:cursor-pointer"
               checked={policy()?.allowAnyRepository ?? false}
               disabled={!policy()}
               onChange={(on) => void toggle(on)}
-              label="Let people add any repository"
-              description="Readers can add repositories only they see. Turning this off keeps them, but nothing from them is installed or run."
-            />
+            >
+              <span class="grid min-w-0 gap-0.5">
+                <ToggleLabel>Let people add any repository</ToggleLabel>
+                <ToggleDescription>
+                  Readers can add repositories only they see. Turning this off keeps them, but
+                  nothing from them is installed or run.
+                </ToggleDescription>
+              </span>
+              <ToggleControl class="mt-0.5">
+                <ToggleThumb />
+              </ToggleControl>
+            </Toggle>
           </div>
           <Show when={policyError()}>
             <Alert variant="destructive">
@@ -278,59 +305,67 @@ function AddRepository(props: { onAdded: (added: Repository) => void }) {
   return (
     <Section title="Add a repository">
       <form class="grid gap-4" onSubmit={submit}>
-        <Label>
-          Address
-          <Input
-            name="url"
+        <TextField name="url" required>
+          <TextFieldLabel>Address</TextFieldLabel>
+          <TextFieldInput
             placeholder="chek.page/extensions or github:owner/repo"
             autocapitalize="off"
             spellcheck={false}
             dir="ltr"
-            required
           />
-          <span class="text-sm font-normal text-muted-foreground">
+          <TextFieldDescription>
             Its index.json, the folder holding it, or a GitHub repository.
-          </span>
-        </Label>
+          </TextFieldDescription>
+        </TextField>
         <RadioGroup value={kind()} onChange={(value) => setKind(value as CredentialKind)}>
           <RadioGroupLabel class="mb-1">Signing in</RadioGroupLabel>
           <div class="divide-y border-y">
-            <RadioRow value="none" title="Public" description="Anyone can read it." />
-            <RadioRow
-              value="bearer"
-              title="Access token"
-              description="Such as a read-only GitHub token for a private repository."
-            />
-            <RadioRow value="basic" title="Username and password" description="HTTP Basic." />
-            <RadioRow value="header" title="A header" description="Such as an API key." />
+            <RadioGroupItem value="none">
+              <RadioGroupItemLabel>Public</RadioGroupItemLabel>
+              <RadioGroupItemDescription>Anyone can read it.</RadioGroupItemDescription>
+            </RadioGroupItem>
+            <RadioGroupItem value="bearer">
+              <RadioGroupItemLabel>Access token</RadioGroupItemLabel>
+              <RadioGroupItemDescription>
+                Such as a read-only GitHub token for a private repository.
+              </RadioGroupItemDescription>
+            </RadioGroupItem>
+            <RadioGroupItem value="basic">
+              <RadioGroupItemLabel>Username and password</RadioGroupItemLabel>
+              <RadioGroupItemDescription>HTTP Basic.</RadioGroupItemDescription>
+            </RadioGroupItem>
+            <RadioGroupItem value="header">
+              <RadioGroupItemLabel>A header</RadioGroupItemLabel>
+              <RadioGroupItemDescription>Such as an API key.</RadioGroupItemDescription>
+            </RadioGroupItem>
           </div>
         </RadioGroup>
         <Switch>
           <Match when={kind() === "bearer"}>
-            <Label>
-              Token
-              <Input name="token" type="password" autocomplete="off" required />
-            </Label>
+            <TextField name="token" required>
+              <TextFieldLabel>Token</TextFieldLabel>
+              <TextFieldInput type="password" autocomplete="off" />
+            </TextField>
           </Match>
           <Match when={kind() === "basic"}>
-            <Label>
-              Username
-              <Input name="username" autocomplete="off" autocapitalize="off" required />
-            </Label>
-            <Label>
-              Password
-              <Input name="secret" type="password" autocomplete="off" required />
-            </Label>
+            <TextField name="username" required>
+              <TextFieldLabel>Username</TextFieldLabel>
+              <TextFieldInput autocomplete="off" autocapitalize="off" />
+            </TextField>
+            <TextField name="secret" required>
+              <TextFieldLabel>Password</TextFieldLabel>
+              <TextFieldInput type="password" autocomplete="off" />
+            </TextField>
           </Match>
           <Match when={kind() === "header"}>
-            <Label>
-              Header name
-              <Input name="header" placeholder="X-Api-Key" autocomplete="off" required />
-            </Label>
-            <Label>
-              Value
-              <Input name="value" type="password" autocomplete="off" required />
-            </Label>
+            <TextField name="header" required>
+              <TextFieldLabel>Header name</TextFieldLabel>
+              <TextFieldInput placeholder="X-Api-Key" autocomplete="off" />
+            </TextField>
+            <TextField name="value" required>
+              <TextFieldLabel>Value</TextFieldLabel>
+              <TextFieldInput type="password" autocomplete="off" />
+            </TextField>
           </Match>
         </Switch>
         <Show when={kind() !== "none"}>
