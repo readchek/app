@@ -211,12 +211,6 @@
     "Chapters" : {
 
     },
-    "Check Again" : {
-
-    },
-    "Check for Next Chapter" : {
-
-    },
     "Check its sign-in details under Advanced." : {
 
     },
@@ -245,6 +239,9 @@
 
     },
     "Checking for updates…" : {
+
+    },
+    "Checks again." : {
 
     },
     "Chek checks for new chapters in series you follow a few times a day and notifies you." : {
@@ -326,6 +323,9 @@
 
     },
     "Couldn't Add This File" : {
+
+    },
+    "Couldn't check what's next" : {
 
     },
     "Couldn't Connect" : {
@@ -421,6 +421,9 @@
     "Downloads" : {
 
     },
+    "End of the series" : {
+
+    },
     "Enter the address you were given, such as books.example.com." : {
 
     },
@@ -440,12 +443,6 @@
 
     },
     "Find books, comics, and authors in your library, shared libraries, and sites." : {
-
-    },
-    "Finding the Next Chapter" : {
-
-    },
-    "Finding What's Next" : {
 
     },
     "Finished" : {
@@ -472,9 +469,6 @@
     "Freeing up space clears copies of recently read books from shared libraries and cover images. They're fetched again as you read. Your library, downloads, and reading positions are kept." : {
 
     },
-    "Get notified when a new chapter comes out." : {
-
-    },
     "Go to Chapters" : {
 
     },
@@ -485,9 +479,6 @@
 
     },
     "Headers" : {
-
-    },
-    "Hide" : {
 
     },
     "Home" : {
@@ -593,6 +584,9 @@
 
     },
     "Newest First" : {
+
+    },
+    "Next: %@" : {
 
     },
     "Next in Series" : {
@@ -886,9 +880,6 @@
     "Show Newer Chapters" : {
 
     },
-    "Show Options" : {
-
-    },
     "Shows less of the summary" : {
 
     },
@@ -973,9 +964,6 @@
     "Started" : {
 
     },
-    "Stop getting notified about new chapters." : {
-
-    },
     "Storage" : {
 
     },
@@ -990,12 +978,6 @@
     },
     "Text" : {
       "comment" : "Plain text files, and the text settings section in the reader"
-    },
-    "That's the Last One" : {
-
-    },
-    "That's the latest chapter of %@." : {
-
     },
     "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Everyone with access to this library can add sites from it." : {
 
@@ -1159,7 +1141,7 @@
     "Your password is sent only to this library." : {
 
     },
-    "You're All Caught Up" : {
+    "You're caught up" : {
 
     },
     "You've reached the end of %@." : {

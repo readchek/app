@@ -34,7 +34,7 @@ struct ReaderScreen: View {
                     if session.item.kind == .comic {
                         ControlsScrim(isShowing: session.isShowingControls)
                     }
-                    ChapterEndCard(session: session, opening: opening, open: open) {
+                    ChapterEndLine(session: session, opening: opening, open: open) {
                         Task { await session.findNeighbors(with: finder) }
                     }
                     if session.controller.state == .ready {

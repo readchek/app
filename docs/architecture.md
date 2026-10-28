@@ -125,9 +125,9 @@ As a publication opens, `ReaderSession` asks `NeighborFinder` what's
 either side of it in its series: the source's chapters, the server
 series' publications in its order, or the device's books by their place
 in the series. The bottom bar gets previous and next buttons beside the
-scrubber, and the last page shows the next one as a single button
-(`ChapterEndCard`), or says you're caught up and offers to follow the
-series. The next opens in place, from the start if you'd finished it.
+scrubber, and the last page names the next one in a quiet line at its
+foot (`ChapterEndLine`) that a tap opens, or says you're caught up. The
+next opens in place, from the start if you'd finished it.
 Reaching the last page counts as finishing, even though a position's
 progress is where its page starts.
 
