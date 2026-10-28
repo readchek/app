@@ -196,7 +196,7 @@ export function TopBar(props: {
   return (
     <header
       class={cn(
-        "absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-background/85 px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 backdrop-blur-xl transition-[opacity,transform] duration-200 sm:px-4",
+        "absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 transition-[opacity,transform] duration-200 sm:px-4",
         !props.shown && "pointer-events-none -translate-y-2 opacity-0",
         props.class,
       )}
@@ -228,7 +228,7 @@ export function BottomBar(props: { shown: boolean; children: JSX.Element; class?
   return (
     <footer
       class={cn(
-        "absolute inset-x-0 bottom-0 z-10 border-t bg-background/85 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-xl transition-[opacity,transform] duration-200",
+        "absolute inset-x-0 bottom-0 z-10 border-t bg-background/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] transition-[opacity,transform] duration-200",
         !props.shown && "pointer-events-none translate-y-2 opacity-0",
         props.class,
       )}
@@ -243,7 +243,7 @@ export function BottomBar(props: { shown: boolean; children: JSX.Element; class?
 export function UpNextCard(props: { next: UpNext }) {
   return (
     <div class="absolute inset-x-0 bottom-28 z-10 flex justify-center px-4">
-      <div class="flex max-w-md items-center gap-4 rounded-2xl border bg-card/95 p-4 shadow-xl backdrop-blur-xl">
+      <div class="flex max-w-md items-center gap-4 rounded-2xl border bg-card p-4 shadow-xl">
         <p class="min-w-0 text-[15px]">
           <span class="block text-muted-foreground">Up next</span>
           <span class="block truncate font-semibold">{props.next.title}</span>

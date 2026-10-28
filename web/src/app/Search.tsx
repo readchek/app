@@ -5,11 +5,11 @@ import {
   Switch,
   createEffect,
   createMemo,
-  createResource,
   createSignal,
   on,
   onCleanup,
 } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { Link, useNavigate, useSearch } from "@tanstack/solid-router"
 import { Search as SearchIcon } from "../components/icons.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"

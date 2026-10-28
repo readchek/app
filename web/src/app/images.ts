@@ -13,11 +13,16 @@ const storedAt = "x-chek-stored-at"
 
 const inFlight = new Map<string, Promise<Blob>>()
 
+let opened: Promise<Cache | undefined> | undefined
+
 function openCache(): Promise<Cache | undefined> {
   // The Cache API exists only on https and localhost, which leaves out a
   // server's own page on a plain http home network. Those fetch each time.
   if (typeof caches === "undefined") return Promise.resolve(undefined)
-  return caches.open(cacheName).catch(() => undefined)
+  // Opened once: Safari takes a while over each open, and a shelf asks for
+  // twenty covers at once.
+  opened ??= caches.open(cacheName).catch(() => undefined)
+  return opened
 }
 
 async function fetchImage(account: Account, url: string): Promise<Blob> {
@@ -64,5 +69,6 @@ export async function loadLiveImage(account: Account, path: string): Promise<Blo
 
 /** Forgets every kept image, such as when the last account signs out. */
 export async function clearImages() {
+  opened = undefined
   if (typeof caches !== "undefined") await caches.delete(cacheName).catch(() => false)
 }

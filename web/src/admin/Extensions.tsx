@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch, createResource, createSignal } from "solid-js"
+import { For, Match, Show, Switch, createSignal } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { ApiError } from "../api.ts"
 import { AlertCircle, CheckCircle, Lock, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"

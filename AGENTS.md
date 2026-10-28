@@ -44,6 +44,7 @@ Before you push, build what you changed and run the tests. Tests cover logic tha
   - Use `@Observable`, and keep fast-changing values such as the reader's `location` out of views that don't need them.
   - Use `.leading` and `.trailing`, never left and right.
   - Don't use soft-deprecated APIs such as `NavigationView` or the old `onChange`.
+- **Web data loading.** In `web/`, import `createResource` from `src/lib/resource.ts`, never from `solid-js`. Solid's own resources suspend the router's transition, so a screen would stay hidden until every request on it answered. Show placeholders while a resource is undefined instead.
 - **Localization.** User-facing strings go through `Localizable.xcstrings`.
 - **Style.** Four-space indentation, one type per file where practical, and comments that explain why rather than what.
 

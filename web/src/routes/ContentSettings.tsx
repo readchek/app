@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch, createResource, createSignal, onMount } from "solid-js"
+import { For, Match, Show, Switch, createSignal, onMount } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { useSearch } from "@tanstack/solid-router"
 import {
   ApiError,

@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch, createMemo, createResource, createSignal } from "solid-js"
+import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js"
+import { createResource } from "../../lib/resource.ts"
 import { useNavigate, useParams } from "@tanstack/solid-router"
 import { AlertCircle, Search as SearchIcon } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"

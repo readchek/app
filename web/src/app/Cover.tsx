@@ -45,9 +45,11 @@ export function Cover(props: { account: Account; path?: string; title: string; c
     <div
       ref={(element) => (frame = element)}
       class={cn(
-        "relative aspect-[2/3] w-full overflow-hidden rounded-md bg-muted shadow-sm shadow-black/15",
-        // A hairline keeps white covers from melting into the page.
-        "after:pointer-events-none after:absolute after:inset-0 after:rounded-md after:ring-1 after:ring-foreground/10 after:ring-inset",
+        "relative aspect-[2/3] w-full overflow-hidden rounded-md bg-muted",
+        // A hairline keeps white covers from melting into the page. It's a
+        // border, not a shadow: Safari repaints shadows as a page scrolls,
+        // and a shelf of them makes scrolling stutter.
+        "after:pointer-events-none after:absolute after:inset-0 after:rounded-md after:border after:border-foreground/10",
         props.class,
       )}
       aria-hidden="true"

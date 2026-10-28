@@ -1,13 +1,5 @@
-import {
-  type JSX,
-  Match,
-  Show,
-  Switch,
-  createEffect,
-  createResource,
-  createSignal,
-  onCleanup,
-} from "solid-js"
+import { type JSX, Match, Show, Switch, createEffect, createSignal, onCleanup } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { Link, useNavigate, useParams } from "@tanstack/solid-router"
 import { AlertCircle, CheckCircle, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"

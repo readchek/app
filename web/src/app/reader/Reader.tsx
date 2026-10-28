@@ -1,4 +1,5 @@
-import { Match, Switch, createResource } from "solid-js"
+import { Match, Switch } from "solid-js"
+import { createResource } from "../../lib/resource.ts"
 import { DrmError, Epub, type Publication, TextBook } from "@readchek/reader"
 import type { PdfDocument } from "@readchek/reader/pdf"
 import { Link, useNavigate, useParams } from "@tanstack/solid-router"

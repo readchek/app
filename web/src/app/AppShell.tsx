@@ -52,14 +52,16 @@ export function AppShell() {
           </p>
         </aside>
         <div class="min-w-0 pb-[calc(4.5rem+env(safe-area-inset-bottom))] lg:pb-0">
-          <div class="sticky top-0 z-40 border-b bg-background/85 px-5 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 backdrop-blur-xl sm:px-8 lg:hidden">
+          {/* The bars are nearly opaque rather than blurred, since Safari
+              redraws a blur behind them on every frame of a scroll. */}
+          <div class="sticky top-0 z-40 border-b bg-background/95 px-5 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 sm:px-8 lg:hidden">
             <SearchField class="mx-auto max-w-7xl" />
           </div>
           <Outlet />
         </div>
         <nav
           aria-label="Chek"
-          class="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t bg-background/85 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] backdrop-blur-xl lg:hidden"
+          class="fixed inset-x-0 bottom-0 z-40 flex justify-around border-t bg-background/95 px-2 pt-1.5 pb-[calc(0.375rem+env(safe-area-inset-bottom))] lg:hidden"
         >
           <For each={places}>
             {(place) => (

@@ -1,4 +1,5 @@
-import { For, type JSX, Match, Show, Switch, createResource, createSignal } from "solid-js"
+import { For, type JSX, Match, Show, Switch, createSignal } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { Link, Outlet, useNavigate, useSearch } from "@tanstack/solid-router"
 import { ApiError, type Session, bundled, serverAddress, signIn } from "../api.ts"
 import { forget, remember, session } from "../session.ts"

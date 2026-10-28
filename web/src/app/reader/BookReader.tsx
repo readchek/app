@@ -1,4 +1,5 @@
-import { Show, createEffect, createResource, createSignal, on, onCleanup, onMount } from "solid-js"
+import { Show, createEffect, createSignal, on, onCleanup, onMount } from "solid-js"
+import { createResource } from "../../lib/resource.ts"
 import {
   type BookLocation,
   type BookPreferences,
@@ -263,9 +264,7 @@ export function BookReader(props: { book: BookSource }) {
 
       <Show when={failure()}>
         <div class="absolute inset-x-0 top-24 z-10 flex justify-center px-4">
-          <p class="max-w-md rounded-2xl border bg-card/95 p-4 text-[15px] shadow-xl backdrop-blur-xl">
-            {failure()}
-          </p>
+          <p class="max-w-md rounded-2xl border bg-card p-4 text-[15px] shadow-xl">{failure()}</p>
         </div>
       </Show>
 

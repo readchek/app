@@ -1,4 +1,5 @@
-import { Show, createResource, createSignal } from "solid-js"
+import { Show, createSignal } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { bundled } from "../api.ts"
 import { forget } from "../session.ts"
 import { AlertCircle, ArrowUpRight, CheckCircle, Spinner } from "../components/icons.tsx"
