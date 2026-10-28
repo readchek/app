@@ -1,6 +1,6 @@
-import { type JSX, Show, createSignal, onCleanup } from "solid-js"
+import { type JSX, Show, createEffect, createSignal, onCleanup } from "solid-js"
 import { useNavigate, useRouter } from "@tanstack/solid-router"
-import { ChevronLeft } from "../../components/icons.tsx"
+import { ChevronLeft, ChevronRight } from "../../components/icons.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import {
   Dialog,
@@ -184,23 +184,151 @@ export function createReaderKeys(keys: ReaderKeys): (key: string) => boolean {
   return press
 }
 
+// With a mouse, controls show while it moves and hide once it rests;
+// long enough to reach a control, short enough not to sit over the page.
+const hideDelay = 2500
+
+const mouse = matchMedia("(hover: hover) and (pointer: fine)")
+
+/** The reader's bars and buttons over the page: when they show, and what keeps them up. */
+export type Controls = ReturnType<typeof createControls>
+
+/**
+ * Shows and hides the controls over the page. With a mouse, as on a
+ * website, they follow the pointer: they show when it moves and hide when
+ * it rests, unless it's over them or a control is in use. On a touch
+ * screen a tap in the middle of the page shows or hides them, as in the
+ * iOS app.
+ */
+export function createControls() {
+  const [hovering, setHovering] = createSignal(mouse.matches)
+  const [shown, setShown] = createSignal(true)
+  const holds = new Set<string>()
+  let timer: ReturnType<typeof setTimeout> | undefined
+
+  const schedule = () => {
+    clearTimeout(timer)
+    if (hovering() && holds.size === 0) timer = setTimeout(() => setShown(false), hideDelay)
+  }
+  const show = () => {
+    setShown(true)
+    schedule()
+  }
+  const followDevice = (event: MediaQueryListEvent) => {
+    setHovering(event.matches)
+    show()
+  }
+  mouse.addEventListener("change", followDevice)
+  // Tab reaches the controls even while they're hidden, and they stay up
+  // while the keyboard moves the slider. Other keys read on.
+  const keydown = (event: KeyboardEvent) => {
+    if (event.key === "Tab" || document.activeElement?.closest("[role=slider]")) show()
+  }
+  addEventListener("keydown", keydown, true)
+  onCleanup(() => {
+    clearTimeout(timer)
+    mouse.removeEventListener("change", followDevice)
+    removeEventListener("keydown", keydown, true)
+  })
+  // They start shown, so the reader sees where they are, then get out of the way.
+  schedule()
+
+  const hold = (reason: string, held: boolean) => {
+    if (held) holds.add(reason)
+    else holds.delete(reason)
+    if (held) setShown(true)
+    schedule()
+  }
+
+  return {
+    shown,
+    /** Whether a mouse drives the controls rather than taps. */
+    hovering,
+    show,
+    hide() {
+      clearTimeout(timer)
+      setShown(false)
+    },
+    /** The mouse moved over the page. */
+    moved() {
+      if (hovering()) show()
+    },
+    /** A tap in the middle of the page, which shows or hides the controls on a touch screen. */
+    tap() {
+      if (!hovering()) setShown((now) => !now)
+    },
+    /** Keeps the controls up while `held`, such as while a menu is open. */
+    hold,
+    /** Keeps the controls up while the mouse is over `element` or presses it, such as a bar. */
+    watch(element: HTMLElement, name: string) {
+      element.addEventListener("pointerenter", (event) => {
+        if (event.pointerType === "mouse") hold(`${name} pointer`, true)
+      })
+      element.addEventListener("pointerleave", (event) => {
+        if (event.pointerType === "mouse") hold(`${name} pointer`, false)
+      })
+      // Captured, since the slider's thumb stops its pointer events.
+      element.addEventListener(
+        "pointerdown",
+        () => {
+          hold(`${name} press`, true)
+          const release = () => {
+            hold(`${name} press`, false)
+            // The slider focuses its thumb as a drag ends, and would then take
+            // the arrow keys, which turn pages everywhere else. Tabbing to it
+            // keeps them.
+            setTimeout(() => {
+              const focused = document.activeElement
+              if (focused instanceof HTMLElement && element.contains(focused)) {
+                if (focused.closest("[role=slider]")) focused.blur()
+              }
+            })
+          }
+          addEventListener("pointerup", release, { once: true, capture: true })
+        },
+        true,
+      )
+    },
+  }
+}
+
+/**
+ * Ties something over the page to the controls: it stays up while used,
+ * and lets go of focus once hidden. Returns the ref for its element.
+ */
+function useControl(controls: Controls, name: string): (element: HTMLElement) => void {
+  let element: HTMLElement | undefined
+  createEffect(() => {
+    if (controls.shown()) return
+    // Focus left on a hidden control would take keys from the page.
+    const focused = document.activeElement
+    if (focused instanceof HTMLElement && element?.contains(focused)) focused.blur()
+  })
+  return (node) => {
+    element = node
+    controls.watch(node, name)
+  }
+}
+
 /** The bar over the top of the page: back, the title, and the reader's buttons. */
 export function TopBar(props: {
-  shown: boolean
+  controls: Controls
   title: string
   subtitle?: string
   children?: JSX.Element
   class?: string
 }) {
   const close = useCloseReader()
+  const ref = useControl(props.controls, "top")
   return (
     <header
+      ref={ref}
       class={cn(
         "absolute inset-x-0 top-0 z-10 flex items-center gap-2 border-b bg-background/95 px-2 pt-[calc(0.5rem+env(safe-area-inset-top))] pb-2 transition-[opacity,transform] duration-200 sm:px-4",
-        !props.shown && "pointer-events-none -translate-y-2 opacity-0",
+        !props.controls.shown() && "pointer-events-none -translate-y-2 opacity-0",
         props.class,
       )}
-      aria-hidden={!props.shown}
+      inert={!props.controls.shown()}
     >
       <Button
         variant="ghost"
@@ -224,18 +352,60 @@ export function TopBar(props: {
 }
 
 /** The bar along the bottom of the page. */
-export function BottomBar(props: { shown: boolean; children: JSX.Element; class?: string }) {
+export function BottomBar(props: { controls: Controls; children: JSX.Element; class?: string }) {
+  const ref = useControl(props.controls, "bottom")
   return (
     <footer
+      ref={ref}
       class={cn(
         "absolute inset-x-0 bottom-0 z-10 border-t bg-background/95 px-5 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] transition-[opacity,transform] duration-200",
-        !props.shown && "pointer-events-none translate-y-2 opacity-0",
+        !props.controls.shown() && "pointer-events-none translate-y-2 opacity-0",
         props.class,
       )}
-      aria-hidden={!props.shown}
+      inert={!props.controls.shown()}
     >
       <div class="mx-auto grid max-w-3xl gap-2.5">{props.children}</div>
     </footer>
+  )
+}
+
+/**
+ * Page turn buttons at either side of the page, for a mouse. They show and
+ * hide with the controls; touch screens turn pages with taps and swipes.
+ */
+export function PageButtons(props: {
+  controls: Controls
+  /** Whether forward is toward the left, as in a right-to-left book. */
+  rtl: boolean
+  previous: () => void
+  next: () => void
+}) {
+  const side = (left: boolean) => {
+    const ref = useControl(props.controls, left ? "left" : "right")
+    const forward = () => left === props.rtl
+    return (
+      <Button
+        ref={ref}
+        variant="outline"
+        size="sm"
+        class={cn(
+          "absolute top-1/2 z-10 size-10 -translate-y-1/2 px-0 transition-opacity duration-200 [&_svg]:size-5",
+          left ? "left-2" : "right-2",
+          !props.controls.shown() && "pointer-events-none opacity-0",
+        )}
+        aria-label={forward() ? "Next page" : "Previous page"}
+        inert={!props.controls.shown()}
+        onClick={() => (forward() ? props.next() : props.previous())}
+      >
+        {left ? <ChevronLeft /> : <ChevronRight />}
+      </Button>
+    )
+  }
+  return (
+    <Show when={props.controls.hovering()}>
+      {side(true)}
+      {side(false)}
+    </Show>
   )
 }
 

@@ -6,6 +6,7 @@ import {
   BookView,
   type Locator,
   type Publication,
+  type TocItem,
 } from "@readchek/reader"
 import { ListBullet, Minus, Plus, Sliders } from "../../components/icons.tsx"
 import { Button, buttonVariants } from "../../components/ui/button.tsx"
@@ -24,10 +25,12 @@ import { type BookSettings, bookSettings, changeBookSettings } from "./settings.
 import {
   BottomBar,
   ConflictDialog,
+  PageButtons,
   type Positions,
   TopBar,
   type UpNext,
   UpNextCard,
+  createControls,
   createKeeper,
   createReaderKeys,
   useCloseReader,
@@ -56,6 +59,15 @@ const sizes = [0.8, 0.9, 1, 1.1, 1.25, 1.4, 1.6, 1.8, 2]
 
 const dark = matchMedia("(prefers-color-scheme: dark)")
 
+/** The title of the entry each contents entry is inside, such as a chapter's part. */
+function parentTitles(items: TocItem[], parent?: string, found = new Map<TocItem, string>()) {
+  for (const item of items) {
+    if (parent) found.set(item, parent)
+    parentTitles(item.children, item.title, found)
+  }
+  return found
+}
+
 /** A book open full screen, paged like the iOS app's, with contents, settings and a place kept as you read. */
 export function BookReader(props: { book: BookSource }) {
   let element: HTMLDivElement | undefined
@@ -64,7 +76,7 @@ export function BookReader(props: { book: BookSource }) {
 
   const [location, setLocation] = createSignal<BookLocation>()
   const [scrub, setScrub] = createSignal<number>()
-  const [controls, setControls] = createSignal(true)
+  const controls = createControls()
   const [finished, setFinished] = createSignal(false)
   const [contents, setContents] = createSignal(false)
   const [failure, setFailure] = createSignal<string>()
@@ -96,6 +108,7 @@ export function BookReader(props: { book: BookSource }) {
     larger: () => resize(1),
     smaller: () => resize(-1),
   })
+  const rtl = book.publication.metadata.readingProgression === "rtl"
 
   onMount(() => {
     if (!element) return
@@ -109,12 +122,14 @@ export function BookReader(props: { book: BookSource }) {
           if (!place.atEnd) setFinished(false)
           keeper.keep(place.locator)
         },
-        tap: () => setControls((shown) => !shown),
+        tap: () => controls.tap(),
+        pointer: () => controls.moved(),
         end: () => {
           setFinished(true)
-          setControls(true)
+          controls.show()
         },
-        key: (key) => void pressKey(key),
+        // Tab moves focus within the page's frame too, toward the controls.
+        key: (key) => (key === "Tab" ? controls.show() : void pressKey(key)),
         externalLink: (url) => {
           if (/^https?:/i.test(url)) open(url, "_blank", "noopener,noreferrer")
         },
@@ -147,21 +162,40 @@ export function BookReader(props: { book: BookSource }) {
   const label = () => {
     const place = location()
     if (!place) return ""
-    if (scrub() !== undefined) return `Position ${shownPosition()} of ${total()}`
+    if (scrub() !== undefined) return scrubLabel(shownPosition())
     const page = `Page ${place.page + 1} of ${place.pageCount}`
     return place.chapter ? `${place.chapter.title} · ${page}` : page
   }
+  const progressionOf = (position: number) => (position - 1) / total()
+  const parents = parentTitles(book.publication.toc)
+  // While dragging, where the book would open: the chapter, with the part
+  // it's in, since many books number chapters again in each part.
+  const scrubLabel = (position: number) => {
+    const chapter = view?.chapterAt(progressionOf(position))
+    if (!chapter) return `Position ${position} of ${total()}`
+    const parent = parents.get(chapter)
+    return parent ? `${parent} · ${chapter.title}` : chapter.title
+  }
   const percent = () => {
-    const progress = location()?.locator.locations?.totalProgression ?? 0
+    const progress =
+      scrub() === undefined
+        ? (location()?.locator.locations?.totalProgression ?? 0)
+        : progressionOf(shownPosition())
     return `${Math.round(progress * 100)}%`
   }
 
   return (
-    <div class="relative h-full" style={{ background: background() }}>
+    <div
+      class="relative h-full"
+      style={{ background: background() }}
+      onPointerMove={(event) => {
+        if (event.pointerType === "mouse" && (event.movementX || event.movementY)) controls.moved()
+      }}
+    >
       <div ref={(node) => (element = node)} class="absolute inset-0" aria-label="Book" />
 
       <TopBar
-        shown={controls()}
+        controls={controls}
         title={book.title}
         subtitle={location()?.chapter?.title ?? book.subtitle}
       >
@@ -171,12 +205,19 @@ export function BookReader(props: { book: BookSource }) {
             size="sm"
             class="size-10 px-0 [&_svg]:size-5"
             aria-label="Contents"
-            onClick={() => setContents(true)}
+            onClick={() => {
+              setContents(true)
+              controls.hold("contents", true)
+            }}
           >
             <ListBullet />
           </Button>
         </Show>
-        <Popover placement="bottom-end" gutter={8}>
+        <Popover
+          placement="bottom-end"
+          gutter={8}
+          onOpenChange={(open) => controls.hold("settings", open)}
+        >
           <PopoverTrigger
             class={cn(
               buttonVariants({ variant: "ghost", size: "sm" }),
@@ -270,16 +311,23 @@ export function BookReader(props: { book: BookSource }) {
 
       <Show when={finished() && next()}>{(after) => <UpNextCard next={after()} />}</Show>
 
-      <BottomBar shown={controls()}>
+      <PageButtons
+        controls={controls}
+        rtl={rtl}
+        previous={() => void view?.previous()}
+        next={() => void view?.next()}
+      />
+
+      <BottomBar controls={controls}>
         <Slider
           label="Place in the book"
           value={shownPosition()}
           minValue={1}
           maxValue={Math.max(total(), 2)}
-          inverted={book.publication.metadata.readingProgression === "rtl"}
-          getValueLabel={(value) => `Position ${value} of ${total()}`}
+          inverted={rtl}
+          getValueLabel={scrubLabel}
           onChange={setScrub}
-          onChangeEnd={(value) => void view?.goToProgression((value - 1) / total())}
+          onChangeEnd={(value) => void view?.goToProgression(progressionOf(value))}
           disabled={total() < 2}
         />
         <p class="flex justify-between gap-4 text-[13px] text-muted-foreground tabular-nums">
@@ -292,13 +340,17 @@ export function BookReader(props: { book: BookSource }) {
 
       <ContentsDialog
         open={contents()}
-        onOpenChange={setContents}
+        onOpenChange={(open) => {
+          setContents(open)
+          controls.hold("contents", open)
+        }}
         items={book.publication.toc}
         current={location()?.chapter}
         choose={(item) => {
           setContents(false)
+          controls.hold("contents", false)
           void view?.goToHref(item.href)
-          setControls(false)
+          controls.hide()
         }}
       />
 
