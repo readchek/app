@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch, createResource, createSignal } from "solid-js"
+import { For, Match, Show, Switch, createSignal } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { Link, useNavigate, useParams } from "@tanstack/solid-router"
 import type { Role, User } from "../api.ts"
 import { AlertCircle, CheckCircle, Spinner } from "../components/icons.tsx"

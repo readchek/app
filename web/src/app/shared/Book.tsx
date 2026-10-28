@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch, createMemo, createResource } from "solid-js"
+import { For, Match, Show, Switch, createMemo } from "solid-js"
+import { createResource } from "../../lib/resource.ts"
 import { Link, useNavigate, useParams } from "@tanstack/solid-router"
 import { buttonVariants } from "../../components/ui/button.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"

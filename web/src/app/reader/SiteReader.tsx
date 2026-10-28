@@ -1,4 +1,5 @@
-import { Match, Switch, createResource } from "solid-js"
+import { Match, Switch } from "solid-js"
+import { createResource } from "../../lib/resource.ts"
 import type { Publication, ReadingDirection } from "@readchek/reader"
 import { useNavigate, useParams, useSearch } from "@tanstack/solid-router"
 import { Spinner } from "../../components/icons.tsx"

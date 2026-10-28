@@ -1,4 +1,5 @@
-import { Show, createResource, createSignal, onCleanup, onMount } from "solid-js"
+import { Show, createSignal, onCleanup, onMount } from "solid-js"
+import { createResource } from "../../lib/resource.ts"
 import {
   type ComicLocation,
   ComicView,

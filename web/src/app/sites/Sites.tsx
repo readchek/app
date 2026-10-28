@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch, createResource } from "solid-js"
+import { For, Match, Show, Switch } from "solid-js"
+import { createResource } from "../../lib/resource.ts"
 import { Link } from "@tanstack/solid-router"
 import { ChevronRight, Globe } from "../../components/icons.tsx"
 import { Badge } from "../../components/ui/badge.tsx"

@@ -5,6 +5,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  lazyRouteComponent,
   redirect,
 } from "@tanstack/solid-router"
 import { Page } from "./components/Page.tsx"
@@ -15,8 +16,6 @@ import { Home } from "./app/Home.tsx"
 import { AccountSettings } from "./app/settings/AccountSettings.tsx"
 import { Settings as AppSettings } from "./app/settings/Settings.tsx"
 import { AddServer } from "./app/SignIn.tsx"
-import { Reader } from "./app/reader/Reader.tsx"
-import { SiteReader } from "./app/reader/SiteReader.tsx"
 import { Search } from "./app/Search.tsx"
 import { Book } from "./app/shared/Book.tsx"
 import { Library } from "./app/shared/Library.tsx"
@@ -26,15 +25,21 @@ import { ManageSites } from "./app/sites/ManageSites.tsx"
 import { Site } from "./app/sites/Site.tsx"
 import { SiteSeries } from "./app/sites/SiteSeries.tsx"
 import { Sites } from "./app/sites/Sites.tsx"
-import { AddLibrary } from "./admin/AddLibrary.tsx"
-import { AdminShell } from "./admin/AdminShell.tsx"
-import { Extensions } from "./admin/Extensions.tsx"
-import { Libraries } from "./admin/Libraries.tsx"
-import { LibraryDetail } from "./admin/LibraryDetail.tsx"
-import { Settings } from "./admin/Settings.tsx"
-import { EditUser, NewUser } from "./admin/UserForm.tsx"
-import { Users } from "./admin/Users.tsx"
 import "./styles.css"
+
+// The readers and the admin panel load when first opened, so the screens
+// most visits start on don't wait for their code.
+const Reader = lazyRouteComponent(() => import("./app/reader/Reader.tsx"), "Reader")
+const SiteReader = lazyRouteComponent(() => import("./app/reader/SiteReader.tsx"), "SiteReader")
+const AdminShell = lazyRouteComponent(() => import("./admin/AdminShell.tsx"), "AdminShell")
+const Libraries = lazyRouteComponent(() => import("./admin/Libraries.tsx"), "Libraries")
+const AddLibrary = lazyRouteComponent(() => import("./admin/AddLibrary.tsx"), "AddLibrary")
+const LibraryDetail = lazyRouteComponent(() => import("./admin/LibraryDetail.tsx"), "LibraryDetail")
+const Users = lazyRouteComponent(() => import("./admin/Users.tsx"), "Users")
+const NewUser = lazyRouteComponent(() => import("./admin/UserForm.tsx"), "NewUser")
+const EditUser = lazyRouteComponent(() => import("./admin/UserForm.tsx"), "EditUser")
+const Extensions = lazyRouteComponent(() => import("./admin/Extensions.tsx"), "Extensions")
+const Settings = lazyRouteComponent(() => import("./admin/Settings.tsx"), "Settings")
 
 const root = createRootRoute({
   component: Outlet,
@@ -237,6 +242,9 @@ const adminSettings = createRoute({
 })
 
 const router = createRouter({
+  // A link's code starts loading when it's hovered or touched, so a reader
+  // loaded on first use is usually ready by the click.
+  defaultPreload: "intent",
   routeTree: root.addChildren([
     app.addChildren([
       home,
@@ -277,6 +285,20 @@ declare module "@tanstack/solid-router" {
 }
 
 render(() => <RouterProvider router={router} />, document.getElementById("root")!)
+
+// A tab left open across a release asks for screens' code by the old
+// release's names, which no longer exist. Loading the page again picks up
+// the new release; the mark keeps a missing file from reloading forever.
+addEventListener("vite:preloadError", (event) => {
+  try {
+    if (sessionStorage.getItem("chek.reloaded") === location.href) return
+    sessionStorage.setItem("chek.reloaded", location.href)
+  } catch {
+    return
+  }
+  event.preventDefault()
+  location.reload()
+})
 
 // Installed, the app opens without a connection. Only built apps register
 // it, so development always loads fresh files.

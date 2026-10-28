@@ -1,4 +1,5 @@
-import { For, Match, Show, Switch, createResource, createSignal } from "solid-js"
+import { For, Match, Show, Switch, createSignal } from "solid-js"
+import { createResource } from "../lib/resource.ts"
 import { AlertCircle, ArrowUp, ChevronRight, Folder } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Button } from "../components/ui/button.tsx"

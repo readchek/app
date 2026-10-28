@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js"
 import { type Session, signOut } from "../api.ts"
+import { forget } from "./snapshot.ts"
 
 /** A Chek server the reader is signed in to. `expired` once the server stops taking its token. */
 export type Account = Session & { expired?: boolean }
@@ -56,6 +57,7 @@ export function expire(server: string) {
 export async function removeAccount(server: string) {
   const current = account(server)
   save(accounts().filter((a) => a.server !== server))
+  forget(host(server))
   // The account is gone from this browser either way; a failed sign-out
   // only leaves the session to expire on the server.
   if (current && !current.expired) await signOut(current).catch(() => {})
