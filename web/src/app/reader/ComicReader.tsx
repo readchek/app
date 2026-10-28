@@ -17,8 +17,14 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "../../components/ui/popover.tsx"
-import { Slider } from "../../components/ui/slider.tsx"
-import { ToggleGroup } from "../../components/ui/toggle-group.tsx"
+import {
+  Slider,
+  SliderFill,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from "../../components/ui/slider.tsx"
+import { Choice } from "../../components/Choice.tsx"
 import { cn } from "../../lib/cn.ts"
 import type { Account } from "../accounts.ts"
 import { loadImage } from "../images.ts"
@@ -183,7 +189,7 @@ export function ComicReader(props: { book: ComicBook }) {
           </PopoverTrigger>
           <PopoverContent class="grid gap-5">
             <PopoverTitle>Reading settings</PopoverTitle>
-            <ToggleGroup
+            <Choice
               label="Pages"
               value={comicSettings().flow}
               options={[
@@ -196,7 +202,7 @@ export function ComicReader(props: { book: ComicBook }) {
                 view?.setOptions({ flow })
               }}
             />
-            <ToggleGroup
+            <Choice
               label="Direction"
               value={direction()}
               options={[
@@ -208,7 +214,7 @@ export function ComicReader(props: { book: ComicBook }) {
                 view?.setOptions({ direction: chosen })
               }}
             />
-            <ToggleGroup
+            <Choice
               label="Two pages at once"
               value={comicSettings().spreads}
               options={[
@@ -240,16 +246,22 @@ export function ComicReader(props: { book: ComicBook }) {
 
       <BottomBar controls={controls}>
         <Slider
-          label="Page"
-          value={shownPage()}
+          class="flex-row"
+          value={[shownPage()]}
           minValue={0}
           maxValue={Math.max(count() - 1, 1)}
           inverted={direction() === "rtl"}
-          getValueLabel={(value) => `Page ${value + 1} of ${count()}`}
-          onChange={setScrub}
-          onChangeEnd={(value) => view?.goTo(value)}
+          getValueLabel={(params) => `Page ${params.values[0]! + 1} of ${count()}`}
+          onChange={(values) => setScrub(values[0]!)}
+          onChangeEnd={(values) => view?.goTo(values[0]!)}
           disabled={count() < 2}
-        />
+        >
+          <SliderLabel class="sr-only">Page</SliderLabel>
+          <SliderTrack>
+            <SliderFill />
+            <SliderThumb />
+          </SliderTrack>
+        </Slider>
         <p class="text-center text-[13px] text-muted-foreground tabular-nums" aria-live="polite">
           {pageLabel()}
         </p>

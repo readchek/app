@@ -16,8 +16,14 @@ import {
   PopoverTitle,
   PopoverTrigger,
 } from "../../components/ui/popover.tsx"
-import { Slider } from "../../components/ui/slider.tsx"
-import { ToggleGroup } from "../../components/ui/toggle-group.tsx"
+import {
+  Slider,
+  SliderFill,
+  SliderLabel,
+  SliderThumb,
+  SliderTrack,
+} from "../../components/ui/slider.tsx"
+import { Choice } from "../../components/Choice.tsx"
 import { cn } from "../../lib/cn.ts"
 import type { Account } from "../accounts.ts"
 import { ContentsDialog } from "./Contents.tsx"
@@ -257,7 +263,7 @@ export function BookReader(props: { book: BookSource }) {
                 </Button>
               </div>
             </div>
-            <ToggleGroup
+            <Choice
               label="Theme"
               value={bookSettings().theme}
               options={[
@@ -268,7 +274,7 @@ export function BookReader(props: { book: BookSource }) {
               ]}
               onChange={(theme) => changeBookSettings({ theme })}
             />
-            <ToggleGroup
+            <Choice
               label="Font"
               value={bookSettings().font}
               options={[
@@ -278,7 +284,7 @@ export function BookReader(props: { book: BookSource }) {
               ]}
               onChange={(font) => changeBookSettings({ font })}
             />
-            <ToggleGroup
+            <Choice
               label="Line spacing"
               value={String(bookSettings().lineHeight)}
               options={[
@@ -289,7 +295,7 @@ export function BookReader(props: { book: BookSource }) {
               ]}
               onChange={(value) => changeBookSettings({ lineHeight: Number(value) })}
             />
-            <ToggleGroup
+            <Choice
               label="Margins"
               value={String(bookSettings().marginScale)}
               options={[
@@ -320,16 +326,22 @@ export function BookReader(props: { book: BookSource }) {
 
       <BottomBar controls={controls}>
         <Slider
-          label="Place in the book"
-          value={shownPosition()}
+          class="flex-row"
+          value={[shownPosition()]}
           minValue={1}
           maxValue={Math.max(total(), 2)}
           inverted={rtl}
-          getValueLabel={scrubLabel}
-          onChange={setScrub}
-          onChangeEnd={(value) => void view?.goToProgression(progressionOf(value))}
+          getValueLabel={(params) => scrubLabel(params.values[0]!)}
+          onChange={(values) => setScrub(values[0]!)}
+          onChangeEnd={(values) => void view?.goToProgression(progressionOf(values[0]!))}
           disabled={total() < 2}
-        />
+        >
+          <SliderLabel class="sr-only">Place in the book</SliderLabel>
+          <SliderTrack>
+            <SliderFill />
+            <SliderThumb />
+          </SliderTrack>
+        </Slider>
         <p class="flex justify-between gap-4 text-[13px] text-muted-foreground tabular-nums">
           <span class="min-w-0 truncate" aria-live="polite">
             {label()}

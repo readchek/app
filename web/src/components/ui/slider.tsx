@@ -13,9 +13,7 @@ type SliderRootProps<T extends ValidComponent = "div"> = SliderPrimitive.SliderR
   class?: string | undefined
 }
 
-// Exported as SliderRoot until the reader moves off the Slider wrapper
-// below; then it takes solid-ui's name.
-const SliderRoot = <T extends ValidComponent = "div">(
+const Slider = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, SliderRootProps<T>>,
 ) => {
   const [local, others] = splitProps(props as SliderRootProps, ["class"])
@@ -93,43 +91,4 @@ const SliderValueLabel = <T extends ValidComponent = "label">(
   return <SliderPrimitive.ValueLabel as={Label} {...props} />
 }
 
-/** One value along a track, such as a page in a book. The reader's controls still use this. */
-function Slider(props: {
-  class?: string
-  label: string
-  value: number
-  minValue: number
-  maxValue: number
-  onChange: (value: number) => void
-  onChangeEnd?: (value: number) => void
-  getValueLabel?: (value: number) => string
-  disabled?: boolean
-  /** Fills from the end, as a right-to-left comic's scrubber does. */
-  inverted?: boolean
-}) {
-  return (
-    <SliderRoot
-      class={cn("flex-row", props.class)}
-      value={[props.value]}
-      minValue={props.minValue}
-      maxValue={props.maxValue}
-      onChange={(values: number[]) => props.onChange(values[0]!)}
-      onChangeEnd={(values: number[]) => props.onChangeEnd?.(values[0]!)}
-      getValueLabel={
-        props.getValueLabel
-          ? (params: { values: number[] }) => props.getValueLabel!(params.values[0]!)
-          : undefined
-      }
-      disabled={props.disabled}
-      inverted={props.inverted}
-    >
-      <SliderLabel class="sr-only">{props.label}</SliderLabel>
-      <SliderTrack>
-        <SliderFill />
-        <SliderThumb />
-      </SliderTrack>
-    </SliderRoot>
-  )
-}
-
-export { Slider, SliderRoot, SliderTrack, SliderFill, SliderThumb, SliderLabel, SliderValueLabel }
+export { Slider, SliderTrack, SliderFill, SliderThumb, SliderLabel, SliderValueLabel }

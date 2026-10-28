@@ -1,5 +1,5 @@
 import type { JSX, ValidComponent } from "solid-js"
-import { For, createContext, splitProps, useContext } from "solid-js"
+import { createContext, splitProps, useContext } from "solid-js"
 
 import type { PolymorphicProps } from "@kobalte/core/polymorphic"
 import * as ToggleGroupPrimitive from "@kobalte/core/toggle-group"
@@ -20,9 +20,7 @@ type ToggleGroupRootProps<T extends ValidComponent = "div"> =
   ToggleGroupPrimitive.ToggleGroupRootProps<T> &
     VariantProps<typeof toggleVariants> & { class?: string | undefined; children?: JSX.Element }
 
-// Exported as ToggleGroupRoot until the reader moves off the ToggleGroup
-// wrapper below; then it takes solid-ui's name.
-const ToggleGroupRoot = <T extends ValidComponent = "div">(
+const ToggleGroup = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, ToggleGroupRootProps<T>>,
 ) => {
   const [local, others] = splitProps(props as ToggleGroupRootProps, [
@@ -80,38 +78,4 @@ const ToggleGroupItem = <T extends ValidComponent = "button">(
   )
 }
 
-/**
- * A labeled choice of one of a few options, drawn as segments. The reader's
- * controls still use this; elsewhere, compose ToggleGroupRoot and
- * ToggleGroupItem.
- */
-function ToggleGroup<T extends string>(props: {
-  class?: string
-  label: string
-  value: T
-  options: readonly { value: T; label: JSX.Element }[]
-  onChange: (value: T) => void
-}) {
-  return (
-    <div class={cn("grid gap-2", props.class)}>
-      <span class="text-sm font-semibold">{props.label}</span>
-      <ToggleGroupRoot
-        variant="segmented"
-        aria-label={props.label}
-        value={props.value}
-        // Kobalte lets a pressed segment be unpressed; a choice always has one.
-        onChange={(value: string | null) => value && props.onChange(value as T)}
-      >
-        <For each={props.options}>
-          {(option) => (
-            <ToggleGroupItem value={option.value} class="px-2">
-              {option.label}
-            </ToggleGroupItem>
-          )}
-        </For>
-      </ToggleGroupRoot>
-    </div>
-  )
-}
-
-export { ToggleGroup, ToggleGroupRoot, ToggleGroupItem }
+export { ToggleGroup, ToggleGroupItem }

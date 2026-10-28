@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "../components/ui/select.tsx"
-import { ToggleGroup } from "../components/ui/toggle-group.tsx"
+import { Choice } from "../components/Choice.tsx"
 import { type Account, accountKey, accounts, host } from "./accounts.ts"
 import { Screen } from "./AppShell.tsx"
 import { type PublicationSummary, comicFormats, coverPath, search } from "./client.ts"
@@ -120,7 +120,7 @@ export function Search() {
           </SelectTrigger>
           <SelectContent />
         </Select>
-        <ToggleGroup
+        <Choice
           label="Kind"
           class="w-64 [&>span]:sr-only"
           value={kind()}

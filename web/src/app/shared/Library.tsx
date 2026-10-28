@@ -3,7 +3,7 @@ import { createResource } from "../../lib/resource.ts"
 import { useNavigate, useParams } from "@tanstack/solid-router"
 import { AlertCircle, Search as SearchIcon } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
-import { Input } from "../../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import { accountKey } from "../accounts.ts"
 import { BackButton, Screen } from "../AppShell.tsx"
 import { coverPath, librarySeries, search } from "../client.ts"
@@ -71,17 +71,15 @@ export function Library() {
       >
         {(current) => (
           <>
-            <label class="relative mb-8 block max-w-md [&>svg]:absolute [&>svg]:top-1/2 [&>svg]:left-3.5 [&>svg]:size-[18px] [&>svg]:-translate-y-1/2 [&>svg]:text-muted-foreground">
+            <TextField
+              value={typed()}
+              onChange={type}
+              class="relative mb-8 block max-w-md [&>svg]:absolute [&>svg]:top-1/2 [&>svg]:left-3.5 [&>svg]:size-[18px] [&>svg]:-translate-y-1/2 [&>svg]:text-muted-foreground"
+            >
               <SearchIcon />
-              <span class="sr-only">Search {name()}</span>
-              <Input
-                type="search"
-                class="ps-10"
-                placeholder={`Search ${name()}`}
-                value={typed()}
-                onInput={(event) => type(event.currentTarget.value)}
-              />
-            </label>
+              <TextFieldLabel class="sr-only">Search {name()}</TextFieldLabel>
+              <TextFieldInput type="search" class="ps-10" placeholder={`Search ${name()}`} />
+            </TextField>
             <Show
               when={query()}
               fallback={

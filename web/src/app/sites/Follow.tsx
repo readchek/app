@@ -12,7 +12,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog.tsx"
-import { Input } from "../../components/ui/input.tsx"
+import {
+  TextField,
+  TextFieldDescription,
+  TextFieldInput,
+  TextFieldLabel,
+} from "../../components/ui/text-field.tsx"
 import {
   Select,
   SelectContent,
@@ -160,20 +165,14 @@ export function Follow(props: { account: Account; extensionId: string; series: R
                     </p>
                   </Match>
                   <Match when={true}>
-                    <div class="grid gap-2">
-                      <label for="follow-library" class="text-sm font-semibold">
-                        New library's name
-                      </label>
-                      <Input
-                        id="follow-library"
-                        value={name()}
-                        onInput={(event) => setName(event.currentTarget.value)}
-                      />
-                      <p class="text-sm text-muted-foreground">
+                    <TextField value={name()} onChange={setName}>
+                      <TextFieldLabel>New library's name</TextFieldLabel>
+                      <TextFieldInput />
+                      <TextFieldDescription>
                         No library reads from this site yet, so one is made for it. Give people
                         access to it in the admin panel.
-                      </p>
-                    </div>
+                      </TextFieldDescription>
+                    </TextField>
                   </Match>
                 </Switch>
                 <DialogFooter>
