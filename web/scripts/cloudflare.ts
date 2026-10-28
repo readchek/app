@@ -1,5 +1,7 @@
 // Prepares Vite's build in dist/ for `cf deploy --prebuilt`, as static
-// assets only: no server code is deployed.
+// assets only: no server code is deployed. `bun scripts/cloudflare.ts demo`
+// only writes the headers, for the demo, which wrangler deploys from dist/
+// with its Worker (wrangler.demo.jsonc).
 import { resolve } from "node:path"
 import {
   cleanBuildOutputDir,
@@ -44,6 +46,9 @@ await Bun.write(
   `/assets/*
   Cache-Control: public, max-age=31536000, immutable
 
+/demo-data/files/*
+  Cache-Control: public, max-age=31536000, immutable
+
 /*
   Content-Security-Policy: ${app}
   X-Frame-Options: DENY
@@ -56,6 +61,8 @@ await Bun.write(
   Content-Security-Policy: ${frame}
 `,
 )
+
+if (Bun.argv[2] === "demo") process.exit(0)
 
 await cleanBuildOutputDir(root)
 await writeRootConfig(root, { accountId: config.accountId }, { isPreview: false, mode: undefined })

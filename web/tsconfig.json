@@ -15,5 +15,11 @@
     "noUncheckedIndexedAccess": true,
     "allowImportingTsExtensions": true
   },
-  "include": ["src", "scripts", "vite.config.ts", "cloudflare.config.ts"]
+  "include": [
+    "src",
+    "scripts",
+    "vite.config.ts",
+    "cloudflare.config.ts",
+    "cloudflare.demo.config.ts"
+  ]
 }

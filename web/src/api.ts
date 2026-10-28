@@ -19,8 +19,11 @@ export type User = {
 
 export type Session = { server: string; token: string; user: User }
 
-export const demoServer = "https://demo.chek.page"
-export const demoAccount = { name: "demo", password: "demochekreader" }
+/** Whether this build is the demo, which answers the API itself from a snapshot; see demo/server.ts. */
+export const demo = import.meta.env.MODE === "demo"
+
+/** Where the demo lives. The demo build is its own server, at its own address. */
+export const demoServer = demo ? location.origin : "https://demo.chek.page"
 const device = "Chek on the web"
 
 export class ApiError extends Error {
@@ -111,8 +114,9 @@ export async function signIn(server: string, name: string, password: string): Pr
   return withDemo(server, session.token)
 }
 
+/** Signs in to the demo build's own server, which takes any name. */
 export function signInToDemo(): Promise<Session> {
-  return signIn(demoServer, demoAccount.name, demoAccount.password)
+  return signIn(demoServer, "demo", "demo")
 }
 
 // Only `/me` says whether the account is a demo.

@@ -1,0 +1,19 @@
+// The demo at demo.chek.page: the web app built with `--mode demo`, which
+// answers the API in the browser from the snapshot in dist/demo-data, and a
+// Worker (src/demo/worker.ts) that answers the same API for apps, such as
+// the iOS app's Try the Demo. Deployed with `bun run deploy:demo`.
+{
+  "name": "chek-demo",
+  "account_id": "bf288a8d0e450c22157076593bc1f6be",
+  "main": "src/demo/worker.ts",
+  "compatibility_date": "2026-10-08",
+  "workers_dev": false,
+  "routes": [{ "pattern": "demo.chek.page", "custom_domain": true }],
+  "assets": {
+    "directory": "dist",
+    "binding": "ASSETS",
+    // Every other path is a screen of the one-page app, which routes in the browser.
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/health"],
+  },
+}

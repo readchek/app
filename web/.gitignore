@@ -3,3 +3,6 @@ dist/
 dist-server/
 .cloudflare/
 *.tsbuildinfo
+demo-data/
+demo-pack/
+.wrangler/

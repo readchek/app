@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:demo": "bun scripts/demo-data.ts && vite --mode demo",
     "build": "vite build",
     "build:server": "vite build --mode server --outDir dist-server",
     "preview": "vite preview",
     "typecheck": "tsc",
     "deploy": "vite build && bun scripts/cloudflare.ts && cf deploy --prebuilt",
+    "deploy:demo": "bun scripts/demo-data.ts && vite build --mode demo && bun scripts/cloudflare.ts demo && bunx wrangler@4 deploy -c wrangler.demo.jsonc",
     "lint": "oxlint --deny-warnings .",
     "format": "oxfmt --write .",
     "format:check": "oxfmt --check ."

@@ -1,6 +1,6 @@
-import { readFileSync, readdirSync, statSync } from "node:fs"
+import { cpSync, existsSync, readFileSync, readdirSync, statSync } from "node:fs"
 import { createRequire } from "node:module"
-import { dirname, join } from "node:path"
+import { dirname, join, resolve } from "node:path"
 import { type Plugin, defineConfig } from "vite"
 import solid from "vite-plugin-solid"
 import tailwindcss from "@tailwindcss/vite"
@@ -26,6 +26,13 @@ const types: Record<string, string> = {
   html: "text/html",
   js: "text/javascript",
   mjs: "text/javascript",
+  json: "application/json",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  gif: "image/gif",
+  epub: "application/epub+zip",
+  pdf: "application/pdf",
 }
 
 // Serves `files` at /`folder`/ in development and copies them into the
@@ -73,7 +80,43 @@ const pdfFiles = new Map([
   ),
 ])
 
-export default defineConfig({
-  plugins: [solid(), tailwindcss(), served("reader-frame", readerFrame), served("pdfjs", pdfFiles)],
+// The demo's snapshot of a server's library, which the demo build answers
+// the API from (src/demo/server.ts). It's hundreds of megabytes, so the
+// build copies it beside the app as it is rather than through the bundle.
+// scripts/demo-data.ts downloads it.
+const demoData = resolve(import.meta.dirname, "demo-data")
+
+function demo(): Plugin[] {
+  const files = existsSync(demoData) ? filesIn(demoData) : new Map<string, string>()
+  let outDir = ""
+  return [
+    { ...served("demo-data", files), apply: "serve" },
+    {
+      name: "demo-data-copy",
+      apply: "build",
+      configResolved(config) {
+        outDir = resolve(config.root, config.build.outDir)
+      },
+      closeBundle() {
+        if (!files.has("catalog.json")) {
+          throw new Error(
+            "The demo needs its library in web/demo-data. Run bun scripts/demo-data.ts.",
+          )
+        }
+        cpSync(join(demoData, "catalog.json"), join(outDir, "demo-data/catalog.json"))
+        cpSync(join(demoData, "files"), join(outDir, "demo-data/files"), { recursive: true })
+      },
+    },
+  ]
+}
+
+export default defineConfig(({ mode }) => ({
+  plugins: [
+    solid(),
+    tailwindcss(),
+    served("reader-frame", readerFrame),
+    served("pdfjs", pdfFiles),
+    ...(mode === "demo" ? demo() : []),
+  ],
   server: { port: 18358 },
-})
+}))
