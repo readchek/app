@@ -2,7 +2,7 @@ import { createEffect, createSignal, on, onCleanup } from "solid-js"
 import { useLocation, useNavigate, useRouter } from "@tanstack/solid-router"
 import { Search } from "../components/icons.tsx"
 import { Input } from "../components/ui/input.tsx"
-import { keepRecentSearch } from "./searches.ts"
+import { keepRecentSearch, submitSearch } from "./searches.ts"
 
 const searchPath = "/search"
 
@@ -90,7 +90,10 @@ export function SearchField(props: { class?: string }) {
         event.preventDefault()
         clearTimeout(timer)
         run(typed())
-        if (typed().trim()) keepRecentSearch(typed().trim())
+        if (typed().trim()) {
+          keepRecentSearch(typed().trim())
+          submitSearch(typed().trim())
+        }
       }}
     >
       <label class="relative block [&>svg]:absolute [&>svg]:top-1/2 [&>svg]:left-3.5 [&>svg]:size-[18px] [&>svg]:-translate-y-1/2 [&>svg]:text-muted-foreground">
