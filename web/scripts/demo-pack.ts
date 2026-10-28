@@ -1,5 +1,5 @@
 // Packs the demo's library snapshot in demo-data/ for assets.chek.page, in
-// parts small enough to upload from Cloudflare's dashboard, and pins it in
+// parts small enough for any upload tool, and pins it in
 // demo-snapshot.json for scripts/demo-data.ts.
 //
 //   bun scripts/demo-pack.ts [out]
@@ -12,7 +12,8 @@ import { resolve } from "node:path"
 
 const root = resolve(import.meta.dir, "..")
 const out = resolve(Bun.argv[2] ?? resolve(root, "demo-pack"))
-const partSize = 32 * 1024 * 1024
+// Small enough for any upload tool to take in one request.
+const partSize = 24 * 1024 * 1024
 const sha256 = (bytes: Uint8Array) => createHash("sha256").update(bytes).digest("hex")
 
 // Sorted names and fixed owners and times, so the same library packs to the same bytes.
