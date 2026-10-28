@@ -2,7 +2,7 @@ import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js"
 import { createResource } from "../../lib/resource.ts"
 import { useNavigate, useParams, useSearch } from "@tanstack/solid-router"
 import { Search as SearchIcon } from "../../components/icons.tsx"
-import { Input } from "../../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import { accountKey } from "../accounts.ts"
 import { BackButton, Screen } from "../AppShell.tsx"
 import { Cover } from "../Cover.tsx"
@@ -72,17 +72,19 @@ export function Site() {
       >
         {(current) => (
           <>
-            <label class="relative mb-8 block max-w-md [&>svg]:absolute [&>svg]:top-1/2 [&>svg]:left-3.5 [&>svg]:size-[18px] [&>svg]:-translate-y-1/2 [&>svg]:text-muted-foreground">
+            <TextField
+              value={typed()}
+              onChange={type}
+              class="relative mb-8 block max-w-md [&>svg]:absolute [&>svg]:top-1/2 [&>svg]:left-3.5 [&>svg]:size-[18px] [&>svg]:-translate-y-1/2 [&>svg]:text-muted-foreground"
+            >
               <SearchIcon />
-              <span class="sr-only">Search {name()}</span>
-              <Input
+              <TextFieldLabel class="sr-only">Search {name()}</TextFieldLabel>
+              <TextFieldInput
                 type="search"
                 class="ps-10"
                 placeholder={name() ? `Search ${name()}` : "Search"}
-                value={typed()}
-                onInput={(event) => type(event.currentTarget.value)}
               />
-            </label>
+            </TextField>
             <Switch>
               <Match when={info.error}>
                 <Failure error={info.error} />

@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../../components/ui/dialog.tsx"
-import { Input } from "../../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import type { Account } from "../accounts.ts"
 import { loadLiveImage } from "../images.ts"
 import { browserFramePath, clickBrowser, closeBrowser, resumeBrowser, startBrowser } from "./api.ts"
@@ -152,24 +152,18 @@ export function Verify(props: {
                 void start()
               }}
             >
-              <label for="verify-address" class="text-sm font-semibold">
-                Site address
-              </label>
-              <div class="flex gap-3">
-                <Input
-                  id="verify-address"
-                  type="url"
-                  required
-                  value={address()}
-                  onInput={(event) => setAddress(event.currentTarget.value)}
-                />
-                <Button type="submit" disabled={phase() === "starting"}>
-                  <Show when={phase() === "starting"}>
-                    <Spinner class="size-4" />
-                  </Show>
-                  Open
-                </Button>
-              </div>
+              <TextField value={address()} onChange={setAddress} required class="grid gap-2">
+                <TextFieldLabel>Site address</TextFieldLabel>
+                <div class="flex gap-3">
+                  <TextFieldInput type="url" />
+                  <Button type="submit" disabled={phase() === "starting"}>
+                    <Show when={phase() === "starting"}>
+                      <Spinner class="size-4" />
+                    </Show>
+                    Open
+                  </Button>
+                </div>
+              </TextField>
             </form>
           }
         >

@@ -3,7 +3,7 @@ import { Link } from "@tanstack/solid-router"
 import { ChevronRight, Plus } from "../../components/icons.tsx"
 import { Badge } from "../../components/ui/badge.tsx"
 import { Button, buttonVariants } from "../../components/ui/button.tsx"
-import { ToggleGroup } from "../../components/ui/toggle-group.tsx"
+import { Choice } from "../../components/Choice.tsx"
 import { accountKey, accounts, host, removeAccount } from "../accounts.ts"
 import { Screen } from "../AppShell.tsx"
 import { clearFiles } from "../files.ts"
@@ -102,7 +102,7 @@ export function Settings() {
         detail="How books and comics open. You can change these as you read."
       >
         <div class="grid gap-5">
-          <ToggleGroup
+          <Choice
             label="Book theme"
             value={bookSettings().theme}
             options={[
@@ -113,7 +113,7 @@ export function Settings() {
             ]}
             onChange={(theme) => changeBookSettings({ theme })}
           />
-          <ToggleGroup
+          <Choice
             label="Book font"
             value={bookSettings().font}
             options={[
@@ -123,7 +123,7 @@ export function Settings() {
             ]}
             onChange={(font) => changeBookSettings({ font })}
           />
-          <ToggleGroup
+          <Choice
             label="Comic pages"
             value={comicSettings().flow}
             options={[
@@ -133,7 +133,7 @@ export function Settings() {
             ]}
             onChange={(flow) => changeComicSettings({ flow })}
           />
-          <ToggleGroup
+          <Choice
             label="Two comic pages at once"
             value={comicSettings().spreads}
             options={[

@@ -2,7 +2,7 @@ import { For, type JSX, Show, createMemo, createSignal } from "solid-js"
 import type { TocItem } from "@readchek/reader"
 import { Search } from "../../components/icons.tsx"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog.tsx"
-import { Input } from "../../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import { cn } from "../../lib/cn.ts"
 
 /** Folds case and accents, so "etude" finds "Étude". */
@@ -101,18 +101,20 @@ export function ContentsDialog(props: {
               if (first) choose(first.item)
             }}
           >
-            <label class="relative block [&>svg]:absolute [&>svg]:top-1/2 [&>svg]:left-3.5 [&>svg]:size-[18px] [&>svg]:-translate-y-1/2 [&>svg]:text-muted-foreground">
+            <TextField
+              value={filter()}
+              onChange={setFilter}
+              class="relative block [&>svg]:absolute [&>svg]:top-1/2 [&>svg]:left-3.5 [&>svg]:size-[18px] [&>svg]:-translate-y-1/2 [&>svg]:text-muted-foreground"
+            >
               <Search />
-              <span class="sr-only">Find a chapter</span>
-              <Input
+              <TextFieldLabel class="sr-only">Find a chapter</TextFieldLabel>
+              <TextFieldInput
                 type="search"
                 class="ps-10"
                 placeholder="Find a chapter"
                 enterkeyhint="go"
-                value={filter()}
-                onInput={(event) => setFilter(event.currentTarget.value)}
               />
-            </label>
+            </TextField>
           </form>
         </Show>
         <nav aria-label="Contents" class="-mx-2">
