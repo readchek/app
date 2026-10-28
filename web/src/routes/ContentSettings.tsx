@@ -6,6 +6,8 @@ import {
   type Rating,
   type Session,
   contentRatings,
+  demo,
+  demoServer,
   openLink,
   ratings,
   serverAddress,
@@ -18,7 +20,7 @@ import { Page } from "../components/Page.tsx"
 import { AlertCircle, CheckCircle, Lock, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Badge } from "../components/ui/badge.tsx"
-import { Button } from "../components/ui/button.tsx"
+import { Button, buttonVariants } from "../components/ui/button.tsx"
 import { Checkbox, CheckboxLabel } from "../components/ui/checkbox.tsx"
 import { TextField, TextFieldInput, TextFieldLabel } from "../components/ui/text-field.tsx"
 import {
@@ -201,14 +203,26 @@ function SignIn(props: { server?: string; notice: string }) {
       </form>
       <p class="border-t pt-6 text-[15px] text-muted-foreground">
         No server of your own?{" "}
-        <Button
-          variant="link"
-          size="inline"
-          disabled={busy()}
-          onClick={() => void run(signInToDemo)}
+        <Show
+          when={demo}
+          fallback={
+            <a
+              href={`${demoServer}/settings/content`}
+              class={buttonVariants({ variant: "link", size: "inline" })}
+            >
+              Try the demo
+            </a>
+          }
         >
-          Try the demo
-        </Button>
+          <Button
+            variant="link"
+            size="inline"
+            disabled={busy()}
+            onClick={() => void run(signInToDemo)}
+          >
+            Try the demo
+          </Button>
+        </Show>
       </p>
     </div>
   )

@@ -4,7 +4,7 @@ import {
   ApiError,
   type Session,
   bundled,
-  demoAccount,
+  demo,
   demoServer,
   openLink,
   serverAddress,
@@ -14,14 +14,10 @@ import {
 import { Page } from "../components/Page.tsx"
 import { AlertCircle, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
-import { Button } from "../components/ui/button.tsx"
+import { Button, buttonVariants } from "../components/ui/button.tsx"
 import { TextField, TextFieldInput, TextFieldLabel } from "../components/ui/text-field.tsx"
 import { addAccount } from "./accounts.ts"
 import { Screen } from "./AppShell.tsx"
-
-// demo.chek.page serves this build itself, and its account's password is
-// public, so visitors find the form filled in and only press Sign in.
-const demo = bundled && location.origin === demoServer
 
 function message(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong. Try again."
@@ -34,7 +30,7 @@ export function Welcome() {
       title="Welcome to Chek"
       lead={
         demo
-          ? "This is the Chek demo. Its account is filled in, so sign in to look around."
+          ? "This is the Chek demo, with a library of free books and comics to look around."
           : "Read the books and comics your Chek server shares with you."
       }
     >
@@ -101,6 +97,27 @@ function SignInForm() {
     )
   }
 
+  // The demo has no other server to sign in to.
+  if (demo) {
+    return (
+      <div class="grid gap-4">
+        <Show when={error()}>
+          <Alert variant="destructive">
+            <AlertCircle />
+            <p>{error()}</p>
+          </Alert>
+        </Show>
+        <Button
+          class="w-full sm:w-auto sm:justify-self-start sm:px-8"
+          disabled={busy()}
+          onClick={() => void run(signInToDemo)}
+        >
+          Open the demo
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div class="grid gap-8">
       <form class="grid gap-4" onSubmit={submit}>
@@ -116,11 +133,11 @@ function SignInForm() {
             />
           </TextField>
         </Show>
-        <TextField name="name" defaultValue={demo ? demoAccount.name : ""} required>
+        <TextField name="name" required>
           <TextFieldLabel>Name</TextFieldLabel>
           <TextFieldInput autocomplete="username" autocapitalize="off" />
         </TextField>
-        <TextField name="password" defaultValue={demo ? demoAccount.password : ""} required>
+        <TextField name="password" required>
           <TextFieldLabel>Password</TextFieldLabel>
           <TextFieldInput type="password" autocomplete="current-password" />
         </TextField>
@@ -140,23 +157,16 @@ function SignInForm() {
           </Show>
           Sign in
         </Button>
-        <Show when={!demo}>
-          <p class="text-sm text-muted-foreground">
-            If you sign in to Chek with another service, set a password in the Chek app first.
-          </p>
-        </Show>
+        <p class="text-sm text-muted-foreground">
+          If you sign in to Chek with another service, set a password in the Chek app first.
+        </p>
       </form>
       <Show when={!bundled}>
         <p class="border-t pt-6 text-[15px] text-muted-foreground">
           No server of your own?{" "}
-          <Button
-            variant="link"
-            size="inline"
-            disabled={busy()}
-            onClick={() => void run(signInToDemo)}
-          >
+          <a href={demoServer} class={buttonVariants({ variant: "link", size: "inline" })}>
             Try the demo
-          </Button>
+          </a>
         </p>
       </Show>
     </div>

@@ -284,7 +284,15 @@ declare module "@tanstack/solid-router" {
   }
 }
 
-render(() => <RouterProvider router={router} />, document.getElementById("root")!)
+// The demo build answers the API itself, so that starts before any screen asks.
+const ready =
+  import.meta.env.MODE === "demo"
+    ? import("./demo/open.ts").then((demo) => demo.openDemo())
+    : Promise.resolve()
+
+void ready.then(() =>
+  render(() => <RouterProvider router={router} />, document.getElementById("root")!),
+)
 
 // A tab left open across a release asks for screens' code by the old
 // release's names, which no longer exist. Loading the page again picks up
