@@ -48,6 +48,9 @@ private struct ReaderToolbars: ViewModifier {
                 }
                 ToolbarItem(placement: .bottomBar) {
                     ReaderScrubber(controller: session.controller)
+                        // A smaller thumb, so the shorter track beside the
+                        // chapter buttons still reads as a track.
+                        .controlSize(session.item.series == nil ? .regular : .small)
                         .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
                 }
                 if session.item.series != nil {
@@ -235,8 +238,7 @@ private struct PlaceLabel: View {
                 Text(progress, format: .percent.precision(.fractionLength(0)))
             }
         }
-        .font(.footnote.monospacedDigit())
-        .foregroundStyle(.secondary)
+        .font(.footnote.weight(.medium).monospacedDigit())
         .fixedSize()
     }
 }

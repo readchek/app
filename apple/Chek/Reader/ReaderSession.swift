@@ -95,10 +95,15 @@ final class ReaderSession {
     /// Whether the last page is showing. Only the views that change on it
     /// read it, since it reads the location.
     var isOnLastPage: Bool {
-        guard let count = controller.positions?.count, count > 0,
-              let position = controller.location?.locations.position
-        else { return false }
-        return position >= count
+        guard let location = controller.location else { return false }
+        if let count = controller.positions?.count, count > 0,
+           let position = location.locations.position, position >= count {
+            return true
+        }
+        // Text that reflows has more screens than positions near its end,
+        // so its last screen can still be on an earlier position. How far
+        // through the book it is says so instead.
+        return showsTextSettings && (location.locations.totalProgression ?? 0) >= ReadingStatus.finishedThreshold
     }
 
     /// Text settings only reach text that reflows, so comics and PDFs

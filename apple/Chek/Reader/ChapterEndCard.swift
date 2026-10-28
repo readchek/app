@@ -51,7 +51,7 @@ struct ChapterEndCard: View {
             .font(.subheadline.weight(.medium))
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
-            .glassEffect(.regular, in: .capsule)
+            .readerCardGlass(kind: session.item.kind, in: .capsule)
         case .unknown:
             // Offline, most likely: not the end, just not known.
             HStack(spacing: 12) {
@@ -67,14 +67,19 @@ struct ChapterEndCard: View {
                 }
                 .buttonStyle(.glassProminent)
                 doneButton
+                    .buttonStyle(.glass)
             }
             .controlSize(.large)
+            .padding(10)
+            .readerCardGlass(kind: session.item.kind, in: .capsule)
         case .end:
             CaughtUp(item: session.item) {
                 router.closeReader()
             }
         case .none:
+            // The one thing left to do, so it stands out from the page.
             doneButton
+                .buttonStyle(.glassProminent)
                 .controlSize(.large)
         }
     }
@@ -88,7 +93,6 @@ struct ChapterEndCard: View {
                 .padding(.horizontal, 6)
                 .padding(.vertical, 4)
         }
-        .buttonStyle(.glass)
     }
 }
 
@@ -171,7 +175,7 @@ private struct CaughtUp: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity)
-        .glassEffect(.regular, in: .rect(cornerRadius: 28))
+        .readerCardGlass(kind: item.kind, in: .rect(cornerRadius: 28))
     }
 }
 
@@ -180,8 +184,9 @@ private struct CaughtUp: View {
 private struct FollowSeriesButton: View {
     let chapter: SourceChapterRef
     @Environment(FollowStore.self) private var follows
-    /// What's kept of the series, which following needs.
-    @State private var snapshot: SeriesCache.Snapshot?
+    @Environment(ServerStore.self) private var servers
+    /// The series and how many chapters it has, which following needs.
+    @State private var series: (series: ChekAPI.SourceSeries, count: Int)?
     @State private var isFollowing = false
 
     var body: some View {
@@ -191,9 +196,9 @@ private struct FollowSeriesButton: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 6)
-            } else if let snapshot {
+            } else if let series {
                 Button {
-                    follows.follow(snapshot.series, count: snapshot.total ?? 0, server: chapter.server, source: chapter.source)
+                    follows.follow(series.series, count: series.count, server: chapter.server, source: chapter.source)
                     isFollowing = true
                 } label: {
                     Label("Follow", systemImage: "bell")
@@ -208,8 +213,53 @@ private struct FollowSeriesButton: View {
         .task(id: chapter.seriesID) {
             isFollowing = follows.followed(server: chapter.server, source: chapter.source, series: chapter.seriesID) != nil
             if !isFollowing {
-                snapshot = await SeriesCache.read(server: chapter.server, source: chapter.source, series: chapter.seriesID)
+                series = await lookUpSeries()
             }
+        }
+    }
+}
+
+extension FollowSeriesButton {
+    /// The series from what's kept of it, or from its source when nothing
+    /// is, as when the chapter was opened from Home rather than the series.
+    private func lookUpSeries() async -> (series: ChekAPI.SourceSeries, count: Int)? {
+        if let kept = await SeriesCache.read(server: chapter.server, source: chapter.source, series: chapter.seriesID), let total = kept.total {
+            return (kept.series, total)
+        }
+        let seriesID = chapter.seriesID
+        let source = chapter.source
+        guard let series = try? await servers.request(chapter.server, { client throws(ChekError) in
+            try await client.series(seriesID, inSource: source)
+        }), let page = try? await servers.request(chapter.server, { client throws(ChekError) in
+            try await client.chapterPage(ofSeries: seriesID, inSource: source, order: .newestFirst, limit: 1)
+        }) else { return nil }
+        return (series, page.total)
+    }
+}
+
+extension View {
+    /// Glass for the cards over the last page, tinted toward the reader's
+    /// own colors. Plain glass takes on the page under it, which over a
+    /// white page is a grey that nothing on it reads against.
+    fileprivate func readerCardGlass(kind: PublicationKind, in shape: some Shape) -> some View {
+        modifier(ReaderCardGlass(kind: kind, shape: shape))
+    }
+}
+
+private struct ReaderCardGlass<CardShape: Shape>: ViewModifier {
+    let kind: PublicationKind
+    let shape: CardShape
+    @Environment(ReaderSettings.self) private var settings
+
+    func body(content: Content) -> some View {
+        content.glassEffect(.regular.tint(tint), in: shape)
+    }
+
+    private var tint: Color {
+        switch kind {
+        // Comics always read in dark mode, whatever the page's colors.
+        case .comic: .black.opacity(0.6)
+        case .book: ReaderTheme(settings.theme).background.opacity(0.85)
         }
     }
 }
