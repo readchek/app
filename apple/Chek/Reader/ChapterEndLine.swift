@@ -1,11 +1,13 @@
 import ChekReader
 import SwiftUI
 
-/// On the last page, one quiet line at the foot of the page saying what
-/// comes next, which a tap opens. It reads like the running footer of a
-/// book rather than a prompt, so it's there for anyone looking for the
-/// way on and easy to read past for anyone who isn't. While the controls
-/// show, their next button says the same, so the line steps aside.
+/// On a book's last page, one quiet line at the foot of the page saying
+/// what comes next, which a tap opens. It reads like the running footer
+/// of a book rather than a prompt, so it's there for anyone looking for
+/// the way on and easy to read past for anyone who isn't. While the
+/// controls show, their next button says the same, so the line steps
+/// aside. Comics have no empty margin to put it in, so they show
+/// ``ChapterEndPage`` after their last page instead.
 struct ChapterEndLine: View {
     let session: ReaderSession
     /// What's being got ready to open, if anything.
@@ -23,9 +25,6 @@ struct ChapterEndLine: View {
                     .font(.footnote.weight(.medium))
                     .lineLimit(1)
                     .foregroundStyle(foreground)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .background(background, in: .capsule)
                     .transition(.opacity)
             }
         }
@@ -37,7 +36,7 @@ struct ChapterEndLine: View {
     }
 
     private var isShowing: Bool {
-        guard session.controller.state == .ready, session.isOnLastPage, !session.isShowingControls else { return false }
+        guard session.item.kind == .book, session.controller.state == .ready, session.isOnLastPage, !session.isShowingControls else { return false }
         switch session.next {
         case .found, .unknown, .end: return true
         case .looking, .none: return false
@@ -78,26 +77,14 @@ struct ChapterEndLine: View {
             .buttonStyle(.plain)
             .accessibilityHint(Text("Checks again."))
         case .end:
-            session.item.sourceChapter == nil ? Text("End of the series") : Text("You're caught up")
+            Text("That's the last one")
         case .looking, .none:
             EmptyView()
         }
     }
 
-    /// Over a comic's artwork, light text on a small shade so it reads
-    /// whatever's drawn there. Under a book's text, the text's own color,
-    /// dimmed, like a page number.
+    /// The text's own color, dimmed, like a page number.
     private var foreground: Color {
-        switch session.item.kind {
-        case .comic: .white
-        case .book: ReaderTheme(settings.theme).text.opacity(0.6)
-        }
-    }
-
-    private var background: Color {
-        switch session.item.kind {
-        case .comic: .black.opacity(0.55)
-        case .book: .clear
-        }
+        ReaderTheme(settings.theme).text.opacity(0.6)
     }
 }

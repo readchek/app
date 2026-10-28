@@ -37,6 +37,10 @@ final class ReaderSession {
     private(set) var next: NeighborLookup = .looking
     /// What comes before it, for going back a chapter.
     private(set) var previous: NeighborLookup = .looking
+    /// Whether a comic has been turned past its last page, which shows what
+    /// you've finished and what's next, off the artwork. Turning on again
+    /// opens it.
+    private(set) var isShowingChapterEnd = false
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         self.item = item
@@ -104,6 +108,25 @@ final class ReaderSession {
         // so its last screen can still be on an earlier position. How far
         // through the book it is says so instead.
         return showsTextSettings && (location.locations.totalProgression ?? 0) >= ReadingStatus.finishedThreshold
+    }
+
+    /// What a page turn past the last page goes on to, if anything. A comic
+    /// first steps onto its chapter end, as Mihon does, so the next one
+    /// never opens by surprise. A book already says what's next on its
+    /// last page, so it goes straight on.
+    func turnedPastEnd() -> ReadingTarget? {
+        guard isOnLastPage, next != .none else { return nil }
+        if item.kind == .comic, !isShowingChapterEnd {
+            isShowingChapterEnd = true
+            hideControls()
+            return nil
+        }
+        return next.target
+    }
+
+    /// Back from the chapter end to the page, after turning back a page.
+    func leaveChapterEnd() {
+        isShowingChapterEnd = false
     }
 
     /// Text settings only reach text that reflows, so comics and PDFs

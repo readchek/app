@@ -125,9 +125,14 @@ As a publication opens, `ReaderSession` asks `NeighborFinder` what's
 either side of it in its series: the source's chapters, the server
 series' publications in its order, or the device's books by their place
 in the series. The bottom bar gets previous and next buttons beside the
-scrubber, and the last page names the next one in a quiet line at its
-foot (`ChapterEndLine`) that a tap opens, or says you're caught up. The
-next opens in place, from the start if you'd finished it.
+scrubber. A book's last page names the next one in a quiet line at its
+foot (`ChapterEndLine`) that a tap opens. Comics have no empty margin
+for it, so a turn past their last page shows the chapter end
+(`ChapterEndPage`): what you finished and what's next, in plain type on
+black. Turning on again opens it, as Chek Reader reports each turn past
+the end in `turnsPastEnd`. A book goes straight on with that turn. The
+next opens in place, from the start if you'd finished it, with the
+chapter end covering the switch so the screen never goes blank.
 Reaching the last page counts as finishing, even though a position's
 progress is where its page starts.
 

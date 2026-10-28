@@ -421,9 +421,6 @@
     "Downloads" : {
 
     },
-    "End of the series" : {
-
-    },
     "Enter the address you were given, such as books.example.com." : {
 
     },
@@ -586,6 +583,9 @@
     "Newest First" : {
 
     },
+    "Next" : {
+
+    },
     "Next: %@" : {
 
     },
@@ -692,6 +692,9 @@
 
     },
     "Position Saved on Another Device" : {
+
+    },
+    "Previous" : {
 
     },
     "Previous Chapter" : {
@@ -979,6 +982,9 @@
     "Text" : {
       "comment" : "Plain text files, and the text settings section in the reader"
     },
+    "That's the last one" : {
+
+    },
     "The address of the folder containing its index.json, or a GitHub repository as github:owner/repo. Everyone with access to this library can add sites from it." : {
 
     },
@@ -1081,6 +1087,9 @@
     "Turn On Notifications" : {
 
     },
+    "Turn the page to keep reading" : {
+
+    },
     "Turned Off" : {
 
     },
@@ -1139,9 +1148,6 @@
 
     },
     "Your password is sent only to this library." : {
-
-    },
-    "You're caught up" : {
 
     }
   },

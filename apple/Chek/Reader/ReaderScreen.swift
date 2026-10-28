@@ -13,6 +13,10 @@ struct ReaderScreen: View {
     @State private var pull: CGFloat = 0
     /// The chapter or volume being got ready to read next, if any.
     @State private var opening: ReadingTarget?
+    /// What the chapter end shows while the next chapter opens. It stays up
+    /// across the switch to the new chapter until its page is ready, so
+    /// there's no blank screen in between.
+    @State private var handoff: ChapterHandoff?
     /// Why it couldn't be opened, until that's been seen.
     @State private var openingFailure: DisplayError?
     @Environment(AppRouter.self) private var router
@@ -34,9 +38,16 @@ struct ReaderScreen: View {
                     if session.item.kind == .comic {
                         ControlsScrim(isShowing: session.isShowingControls)
                     }
-                    ChapterEndLine(session: session, opening: opening, open: open) {
-                        Task { await session.findNeighbors(with: finder) }
+                    ChapterEndLine(session: session, opening: opening, open: open, retry: findNeighbors)
+                    Group {
+                        if let handoff {
+                            ChapterEndPage(kind: session.item.kind, finished: handoff.finished, next: .found(handoff.target), isNext: handoff.isNext, isOpening: true, retry: findNeighbors)
+                        } else if session.isShowingChapterEnd {
+                            ChapterEndPage(kind: session.item.kind, finished: session.item.title, next: session.next, isOpening: false, retry: findNeighbors)
+                        }
                     }
+                    .transition(.opacity)
+                    .animation(.easeInOut(duration: 0.2), value: session.isShowingChapterEnd)
                     if session.controller.state == .ready {
                         ReadingHint(session: session)
                     }
@@ -89,6 +100,19 @@ struct ReaderScreen: View {
         .task(id: session.item.id) {
             await session.findNeighbors(with: finder)
         }
+        // A turn past the last page goes on to what's next.
+        .onChange(of: session.controller.turnsPastEnd) {
+            if let target = session.turnedPastEnd() {
+                open(target)
+            }
+        }
+        .onChange(of: isSettled) {
+            if isSettled {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    handoff = nil
+                }
+            }
+        }
         .sensoryFeedback(.impact(weight: .light), trigger: session.item.id)
         .alert(isPresented: Binding(get: { openingFailure != nil }, set: { if !$0 { openingFailure = nil } }), error: openingFailure) {
             Button("OK", role: .cancel) {}
@@ -99,16 +123,37 @@ struct ReaderScreen: View {
         NeighborFinder(sync: sync, library: library, progress: progress)
     }
 
+    private func findNeighbors() {
+        Task { await session.findNeighbors(with: finder) }
+    }
+
+    /// Whether the open chapter is showing, or showing why it can't be, so
+    /// the chapter end that covered the switch to it can go.
+    private var isSettled: Bool {
+        guard session.phase == .reading else { return true }
+        switch session.controller.state {
+        case .ready, .failed: return true
+        case .idle, .opening, .closing, .closed: return false
+        }
+    }
+
     /// Gets `target` ready and goes on to it in place. A second tap while
     /// one is opening is ignored.
     private func open(_ target: ReadingTarget) {
         guard opening == nil else { return }
         opening = target
+        let isNext = target == session.next.target
+        // Read here rather than in the body, so page turns don't redraw it.
+        let hasFinished = isNext && (session.isShowingChapterEnd || session.isOnLastPage)
+        withAnimation(.easeInOut(duration: 0.2)) {
+            handoff = ChapterHandoff(finished: hasFinished ? session.item.title : nil, target: target, isNext: isNext)
+        }
         Task {
             defer { opening = nil }
             do {
                 continueReading(try await finder.readingItem(for: target))
             } catch {
+                handoff = nil
                 openingFailure = DisplayError(error)
             }
         }
@@ -120,6 +165,14 @@ struct ReaderScreen: View {
         Task { await finished.controller.close() }
         session = ReaderSession(item: item, preferences: settings.preferences(for: item.settingsKey))
     }
+}
+
+/// What's on the chapter end while the next chapter opens.
+private struct ChapterHandoff: Equatable {
+    var finished: String?
+    var target: ReadingTarget
+    /// Whether it's the next chapter, rather than the previous one.
+    var isNext: Bool
 }
 
 extension ReaderScreen {
