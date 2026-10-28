@@ -1,6 +1,9 @@
 import { type JSX, splitProps } from "solid-js"
 import { cn } from "../../lib/cn.ts"
 
+// The plain input the reader's Contents filter still uses. Everything else
+// uses solid-ui's TextField; this goes once the reader moves over too.
+
 export function Input(props: JSX.InputHTMLAttributes<HTMLInputElement>) {
   const [local, rest] = splitProps(props, ["class"])
   return (
@@ -12,9 +15,4 @@ export function Input(props: JSX.InputHTMLAttributes<HTMLInputElement>) {
       {...rest}
     />
   )
-}
-
-export function Label(props: JSX.LabelHTMLAttributes<HTMLLabelElement>) {
-  const [local, rest] = splitProps(props, ["class"])
-  return <label class={cn("grid gap-1.5 text-sm font-semibold", local.class)} {...rest} />
 }

@@ -4,7 +4,14 @@ import { Link, useNavigate, useParams, useSearch } from "@tanstack/solid-router"
 import { ArrowUpDown } from "../../components/icons.tsx"
 import { Badge } from "../../components/ui/badge.tsx"
 import { Button, buttonVariants } from "../../components/ui/button.tsx"
-import { Select } from "../../components/ui/select.tsx"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { cn } from "../../lib/cn.ts"
 import { type Account, accountKey } from "../accounts.ts"
@@ -271,13 +278,27 @@ function SeriesBody(props: { account: Account; extensionId: string; series: Remo
         </h2>
         <div class="flex items-center gap-2">
           <Show when={groups().length > 1}>
-            <Select
-              label="Releases from"
+            <Select<{ value: string; label: string }>
               class="max-w-52"
               options={groupOptions()}
+              optionValue="value"
+              optionTextValue="label"
               value={groupOptions().find((option) => option.value === (preferred() ?? ""))}
-              onChange={(option) => void chooseGroup(option.value)}
-            />
+              onChange={(option) => option && void chooseGroup(option.value)}
+              disallowEmptySelection
+              gutter={6}
+              itemComponent={(item) => (
+                <SelectItem item={item.item}>{item.item.rawValue.label}</SelectItem>
+              )}
+            >
+              <SelectLabel class="sr-only">Releases from</SelectLabel>
+              <SelectTrigger>
+                <SelectValue<{ value: string; label: string }>>
+                  {(state) => state.selectedOption().label}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent />
+            </Select>
           </Show>
           <Button
             variant="ghost"

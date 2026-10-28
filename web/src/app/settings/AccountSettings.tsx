@@ -5,7 +5,7 @@ import { AlertCircle, CheckCircle, Spinner } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
 import { Badge } from "../../components/ui/badge.tsx"
 import { Button } from "../../components/ui/button.tsx"
-import { Input, Label } from "../../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { ContentRatingsForm } from "../../routes/ContentSettings.tsx"
 import { type Account, accountByKey, expire, host } from "../accounts.ts"
@@ -282,24 +282,18 @@ function Password(props: { account: Account }) {
   return (
     <Section title="Password" detail="Changing it signs out every other device.">
       <form class="grid gap-4" onSubmit={(event) => void submit(event)}>
-        <Label>
-          Current password
-          <Input name="current" type="password" autocomplete="current-password" />
-        </Label>
-        <Label>
-          New password
-          <Input name="new" type="password" autocomplete="new-password" minLength={8} required />
-        </Label>
-        <Label>
-          New password again
-          <Input
-            name="confirm"
-            type="password"
-            autocomplete="new-password"
-            minLength={8}
-            required
-          />
-        </Label>
+        <TextField name="current">
+          <TextFieldLabel>Current password</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="current-password" />
+        </TextField>
+        <TextField name="new" required>
+          <TextFieldLabel>New password</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="new-password" minLength={8} />
+        </TextField>
+        <TextField name="confirm" required>
+          <TextFieldLabel>New password again</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="new-password" minLength={8} />
+        </TextField>
         <p class="text-sm text-muted-foreground">
           At least 8 characters. If you've only signed in with another service, leave the current
           password empty.

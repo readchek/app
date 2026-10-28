@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../components/ui/text-field.tsx"
 import { Skeleton } from "../components/ui/skeleton.tsx"
 import { Heading, adminSession } from "./AdminShell.tsx"
 import { SCAN_POLL_MS, ScanStatus, origin } from "./Libraries.tsx"
@@ -162,10 +162,10 @@ export function LibraryDetail() {
 
               <Section title="Name">
                 <form class="flex flex-col gap-3 sm:flex-row" onSubmit={rename}>
-                  <Label class="flex-1">
-                    <span class="sr-only">Name</span>
-                    <Input name="name" value={current().name} required />
-                  </Label>
+                  <TextField name="name" defaultValue={current().name} required class="flex-1">
+                    <TextFieldLabel class="sr-only">Name</TextFieldLabel>
+                    <TextFieldInput />
+                  </TextField>
                   <Button
                     type="submit"
                     variant="outline"

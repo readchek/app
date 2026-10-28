@@ -15,7 +15,7 @@ import { Page } from "../components/Page.tsx"
 import { AlertCircle, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Button } from "../components/ui/button.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
+import { TextField, TextFieldInput, TextFieldLabel } from "../components/ui/text-field.tsx"
 import { addAccount } from "./accounts.ts"
 import { Screen } from "./AppShell.tsx"
 
@@ -105,40 +105,25 @@ function SignInForm() {
     <div class="grid gap-8">
       <form class="grid gap-4" onSubmit={submit}>
         <Show when={!bundled}>
-          <Label>
-            Server address
-            <Input
-              name="server"
-              value={search().server ?? ""}
+          <TextField name="server" defaultValue={search().server ?? ""} required>
+            <TextFieldLabel>Server address</TextFieldLabel>
+            <TextFieldInput
               placeholder="chek.example.com"
               autocomplete="url"
               inputmode="url"
               autocapitalize="off"
               spellcheck={false}
-              required
             />
-          </Label>
+          </TextField>
         </Show>
-        <Label>
-          Name
-          <Input
-            name="name"
-            value={demo ? demoAccount.name : ""}
-            autocomplete="username"
-            autocapitalize="off"
-            required
-          />
-        </Label>
-        <Label>
-          Password
-          <Input
-            name="password"
-            type="password"
-            value={demo ? demoAccount.password : ""}
-            autocomplete="current-password"
-            required
-          />
-        </Label>
+        <TextField name="name" defaultValue={demo ? demoAccount.name : ""} required>
+          <TextFieldLabel>Name</TextFieldLabel>
+          <TextFieldInput autocomplete="username" autocapitalize="off" />
+        </TextField>
+        <TextField name="password" defaultValue={demo ? demoAccount.password : ""} required>
+          <TextFieldLabel>Password</TextFieldLabel>
+          <TextFieldInput type="password" autocomplete="current-password" />
+        </TextField>
         <Show when={error()}>
           <Alert variant="destructive">
             <AlertCircle />

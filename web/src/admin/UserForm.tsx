@@ -5,7 +5,7 @@ import type { Role, User } from "../api.ts"
 import { AlertCircle, CheckCircle, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"
-import { Checkbox } from "../components/ui/checkbox.tsx"
+import { Checkbox, CheckboxLabel } from "../components/ui/checkbox.tsx"
 import {
   Dialog,
   DialogContent,
@@ -14,8 +14,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
-import { RadioGroup, RadioGroupLabel, RadioRow } from "../components/ui/radio-group.tsx"
+import {
+  TextField,
+  TextFieldDescription,
+  TextFieldInput,
+  TextFieldLabel,
+} from "../components/ui/text-field.tsx"
+import {
+  RadioGroup,
+  RadioGroupItem,
+  RadioGroupItemDescription,
+  RadioGroupItemLabel,
+  RadioGroupLabel,
+} from "../components/ui/radio-group.tsx"
 import { Skeleton } from "../components/ui/skeleton.tsx"
 import { Heading, adminSession } from "./AdminShell.tsx"
 import { Section } from "./LibraryDetail.tsx"
@@ -149,23 +160,17 @@ function UserForm(props: { user?: User }) {
       <form class="grid gap-8" onSubmit={submit}>
         <Show when={!editing()}>
           <div class="grid gap-4">
-            <Label>
-              Name
-              <Input name="name" autocomplete="off" autocapitalize="off" maxlength={64} required />
-            </Label>
-            <Label>
-              Password
-              <Input
-                name="password"
-                type="password"
-                autocomplete="new-password"
-                minlength={8}
-                required
-              />
-              <span class="text-sm font-normal text-muted-foreground">
+            <TextField name="name" required>
+              <TextFieldLabel>Name</TextFieldLabel>
+              <TextFieldInput autocomplete="off" autocapitalize="off" maxlength={64} />
+            </TextField>
+            <TextField name="password" required>
+              <TextFieldLabel>Password</TextFieldLabel>
+              <TextFieldInput type="password" autocomplete="new-password" minlength={8} />
+              <TextFieldDescription>
                 At least 8 characters. They can change it in the app.
-              </span>
-            </Label>
+              </TextFieldDescription>
+            </TextField>
           </div>
         </Show>
 
@@ -176,16 +181,18 @@ function UserForm(props: { user?: User }) {
         >
           <RadioGroupLabel class="mb-1">Role</RadioGroupLabel>
           <div class="divide-y border-y">
-            <RadioRow
-              value="reader"
-              title="Reader"
-              description="Reads the libraries you choose below."
-            />
-            <RadioRow
-              value="admin"
-              title="Admin"
-              description="Reads every library, and manages libraries, people and extensions."
-            />
+            <RadioGroupItem value="reader">
+              <RadioGroupItemLabel>Reader</RadioGroupItemLabel>
+              <RadioGroupItemDescription>
+                Reads the libraries you choose below.
+              </RadioGroupItemDescription>
+            </RadioGroupItem>
+            <RadioGroupItem value="admin">
+              <RadioGroupItemLabel>Admin</RadioGroupItemLabel>
+              <RadioGroupItemDescription>
+                Reads every library, and manages libraries, people and extensions.
+              </RadioGroupItemDescription>
+            </RadioGroupItem>
           </div>
           <Show when={yourself()}>
             <p class="mt-2 text-sm text-muted-foreground">Another admin can change your role.</p>
@@ -219,7 +226,7 @@ function UserForm(props: { user?: User }) {
                           checked={granted().includes(library.id)}
                           onChange={(on) => grant(library.id, on)}
                         >
-                          <span class="font-semibold">{library.name}</span>
+                          <CheckboxLabel class="font-semibold">{library.name}</CheckboxLabel>
                         </Checkbox>
                       )}
                     </For>
@@ -237,15 +244,15 @@ function UserForm(props: { user?: User }) {
         </Show>
 
         <Show when={editing()}>
-          <Label>
-            New password
-            <Input name="password" type="password" autocomplete="new-password" minlength={8} />
-            <span class="text-sm font-normal text-muted-foreground">
+          <TextField name="password">
+            <TextFieldLabel>New password</TextFieldLabel>
+            <TextFieldInput type="password" autocomplete="new-password" minlength={8} />
+            <TextFieldDescription>
               {yourself()
                 ? "Leave empty to keep yours. Your other devices are signed out when it changes."
                 : "Leave empty to keep theirs. Setting one signs them out everywhere."}
-            </span>
-          </Label>
+            </TextFieldDescription>
+          </TextField>
         </Show>
 
         <Show when={status()}>

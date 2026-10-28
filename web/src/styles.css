@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* solid-ui's enter and exit animations, as solid-ui itself uses. */
+@import "tw-animate-css";
 
 /* Chek's brand, shared with the iOS app and chek.page: electric blue, paper
    and mist, butter for the odd aside, Bricolage headlines and DM Sans text.
@@ -89,6 +91,13 @@
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-ring: var(--ring);
+  /* The names solid-ui's components use for the same surfaces. */
+  --color-popover: var(--card);
+  --color-popover-foreground: var(--card-foreground);
+  --color-accent: var(--muted);
+  --color-accent-foreground: var(--foreground);
+  --color-secondary: var(--muted);
+  --color-secondary-foreground: var(--foreground);
 }
 
 @layer base {
@@ -112,5 +121,15 @@
      draws empty boxes instead of falling back. The system font has it. */
   input[type="password"] {
     font-family: system-ui, -apple-system, sans-serif;
+  }
+}
+
+/* Panels fade and grow in a little rather than sliding; with reduced motion
+   they appear at once. Kobalte unmounts a panel straight away when it has no
+   animation, so closing doesn't wait either. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-in,
+  .animate-out {
+    animation: none !important;
   }
 }

@@ -3,9 +3,20 @@ import { Link, useNavigate, useSearch } from "@tanstack/solid-router"
 import { AlertCircle, Spinner } from "../components/icons.tsx"
 import { Alert } from "../components/ui/alert.tsx"
 import { Button, buttonVariants } from "../components/ui/button.tsx"
-import { Checkbox } from "../components/ui/checkbox.tsx"
-import { Input, Label } from "../components/ui/input.tsx"
-import { RadioGroup, RadioGroupLabel, RadioRow } from "../components/ui/radio-group.tsx"
+import { Checkbox, CheckboxLabel } from "../components/ui/checkbox.tsx"
+import {
+  TextField,
+  TextFieldDescription,
+  TextFieldInput,
+  TextFieldLabel,
+} from "../components/ui/text-field.tsx"
+import {
+  RadioGroup,
+  RadioGroupItem,
+  RadioGroupItemDescription,
+  RadioGroupItemLabel,
+  RadioGroupLabel,
+} from "../components/ui/radio-group.tsx"
 import { Heading, adminSession } from "./AdminShell.tsx"
 import { FolderPicker } from "./FolderPicker.tsx"
 import { type NewLibrary, addLibrary } from "./api.ts"
@@ -96,40 +107,39 @@ export function AddLibrary() {
         >
           <RadioGroupLabel class="mb-1">Where your library is</RadioGroupLabel>
           <div class="divide-y border-y">
-            <RadioRow
-              value="folder"
-              title="A folder on this server"
-              description="EPUB, PDF, CBZ, CBR and more, in folders the server can read."
-            />
-            <RadioRow
-              value="komga"
-              title="A Komga server"
-              description="Read what one Komga account sees. Komga keeps the files."
-            />
-            <RadioRow
-              value="kavita"
-              title="A Kavita server"
-              description="Read what one Kavita account sees. Kavita keeps the files."
-            />
+            <RadioGroupItem value="folder">
+              <RadioGroupItemLabel>A folder on this server</RadioGroupItemLabel>
+              <RadioGroupItemDescription>
+                EPUB, PDF, CBZ, CBR and more, in folders the server can read.
+              </RadioGroupItemDescription>
+            </RadioGroupItem>
+            <RadioGroupItem value="komga">
+              <RadioGroupItemLabel>A Komga server</RadioGroupItemLabel>
+              <RadioGroupItemDescription>
+                Read what one Komga account sees. Komga keeps the files.
+              </RadioGroupItemDescription>
+            </RadioGroupItem>
+            <RadioGroupItem value="kavita">
+              <RadioGroupItemLabel>A Kavita server</RadioGroupItemLabel>
+              <RadioGroupItemDescription>
+                Read what one Kavita account sees. Kavita keeps the files.
+              </RadioGroupItemDescription>
+            </RadioGroupItem>
           </div>
         </RadioGroup>
 
         <div class="grid gap-4">
           <Switch>
             <Match when={kind() === "folder"}>
-              <Label>
-                Folder
+              <TextField name="path" value={path()} onChange={setPath} required>
+                <TextFieldLabel>Folder</TextFieldLabel>
                 <span class="flex gap-2">
-                  <Input
-                    name="path"
-                    value={path()}
-                    onInput={(e) => setPath(e.currentTarget.value)}
+                  <TextFieldInput
                     placeholder="/books"
                     autocapitalize="off"
                     spellcheck={false}
                     class="font-mono text-[15px]"
                     dir="ltr"
-                    required
                   />
                   <Button
                     type="button"
@@ -140,10 +150,10 @@ export function AddLibrary() {
                     Browse
                   </Button>
                 </span>
-                <span class="text-sm font-normal text-muted-foreground">
+                <TextFieldDescription>
                   The path on the server. With Docker, the path inside the container.
-                </span>
-              </Label>
+                </TextFieldDescription>
+              </TextField>
               <FolderPicker
                 open={picking()}
                 onOpenChange={setPicking}
@@ -155,34 +165,32 @@ export function AddLibrary() {
               />
             </Match>
             <Match when={kind() !== "folder"}>
-              <Label>
-                {source()} address
-                <Input
-                  name="url"
+              <TextField name="url" required>
+                <TextFieldLabel>{source()} address</TextFieldLabel>
+                <TextFieldInput
                   type="url"
                   placeholder={
                     kind() === "komga" ? "https://komga.example.com" : "https://kavita.example.com"
                   }
                   autocapitalize="off"
                   spellcheck={false}
-                  required
                 />
-                <span class="text-sm font-normal text-muted-foreground">
+                <TextFieldDescription>
                   As the Chek server reaches it, such as http://komga:25600 on the same Docker
                   network.
-                </span>
-              </Label>
+                </TextFieldDescription>
+              </TextField>
               <Show
                 when={kind() === "komga"}
                 fallback={
-                  <Label>
-                    API key
-                    <Input name="apiKey" autocomplete="off" spellcheck={false} required />
-                    <span class="text-sm font-normal text-muted-foreground">
+                  <TextField name="apiKey" required>
+                    <TextFieldLabel>API key</TextFieldLabel>
+                    <TextFieldInput autocomplete="off" spellcheck={false} />
+                    <TextFieldDescription>
                       From the account's settings page in Kavita. The account needs the download
                       role.
-                    </span>
-                  </Label>
+                    </TextFieldDescription>
+                  </TextField>
                 }
               >
                 <RadioGroup
@@ -191,35 +199,37 @@ export function AddLibrary() {
                 >
                   <RadioGroupLabel class="mb-1">Sign in to Komga with</RadioGroupLabel>
                   <div class="divide-y border-y">
-                    <RadioRow
-                      value="key"
-                      title="An API key"
-                      description="Made in Komga's account settings."
-                    />
-                    <RadioRow
-                      value="password"
-                      title="Email and password"
-                      description="Use an account made for Chek."
-                    />
+                    <RadioGroupItem value="key">
+                      <RadioGroupItemLabel>An API key</RadioGroupItemLabel>
+                      <RadioGroupItemDescription>
+                        Made in Komga's account settings.
+                      </RadioGroupItemDescription>
+                    </RadioGroupItem>
+                    <RadioGroupItem value="password">
+                      <RadioGroupItemLabel>Email and password</RadioGroupItemLabel>
+                      <RadioGroupItemDescription>
+                        Use an account made for Chek.
+                      </RadioGroupItemDescription>
+                    </RadioGroupItem>
                   </div>
                 </RadioGroup>
                 <Show
                   when={komgaSignIn() === "password"}
                   fallback={
-                    <Label>
-                      API key
-                      <Input name="apiKey" autocomplete="off" spellcheck={false} required />
-                    </Label>
+                    <TextField name="apiKey" required>
+                      <TextFieldLabel>API key</TextFieldLabel>
+                      <TextFieldInput autocomplete="off" spellcheck={false} />
+                    </TextField>
                   }
                 >
-                  <Label>
-                    Email
-                    <Input name="username" type="email" autocomplete="off" required />
-                  </Label>
-                  <Label>
-                    Password
-                    <Input name="password" type="password" autocomplete="off" required />
-                  </Label>
+                  <TextField name="username" required>
+                    <TextFieldLabel>Email</TextFieldLabel>
+                    <TextFieldInput type="email" autocomplete="off" />
+                  </TextField>
+                  <TextField name="password" required>
+                    <TextFieldLabel>Password</TextFieldLabel>
+                    <TextFieldInput type="password" autocomplete="off" />
+                  </TextField>
                 </Show>
                 <p class="text-sm text-muted-foreground">
                   The account needs Komga's page streaming and file download roles. Chek keeps these
@@ -228,23 +238,17 @@ export function AddLibrary() {
               </Show>
             </Match>
           </Switch>
-          <Label>
-            Name
-            <Input
-              name="name"
-              value={name()}
-              onInput={(e) => setName(e.currentTarget.value)}
-              placeholder={kind() === "folder" ? "Comics" : source()}
-              required
-            />
-            <span class="text-sm font-normal text-muted-foreground">
-              What readers see this library called.
-            </span>
-          </Label>
+          <TextField name="name" value={name()} onChange={setName} required>
+            <TextFieldLabel>Name</TextFieldLabel>
+            <TextFieldInput placeholder={kind() === "folder" ? "Comics" : source()} />
+            <TextFieldDescription>What readers see this library called.</TextFieldDescription>
+          </TextField>
           <Show when={kind() !== "folder"}>
             <Checkbox checked={writeProgress()} onChange={setWriteProgress} class="mt-2">
-              Write my reading progress back to {source()}, so its own apps resume where Chek left
-              off.
+              <CheckboxLabel>
+                Write my reading progress back to {source()}, so its own apps resume where Chek left
+                off.
+              </CheckboxLabel>
             </Checkbox>
           </Show>
         </div>
