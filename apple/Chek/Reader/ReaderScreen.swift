@@ -106,7 +106,7 @@ struct ReaderScreen: View {
             do {
                 continueReading(try await finder.readingItem(for: target))
             } catch {
-                openingFailure = error
+                openingFailure = DisplayError(error)
             }
         }
     }
