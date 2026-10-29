@@ -22,6 +22,13 @@ struct AppearanceSettingsTests {
         #expect(AppearanceSettings(defaults: defaults, alternateIconName: nil).theme == .chibiManga)
     }
 
+    @Test func chibiMangaLookFollowsTheTheme() {
+        let settings = AppearanceSettings(defaults: freshDefaults(), alternateIconName: nil)
+        #expect(!settings.looksLikeChibiManga)
+        settings.theme = .chibiManga
+        #expect(settings.looksLikeChibiManga)
+    }
+
     @Test func iconFollowsTheNameIOSReports() {
         #expect(AppearanceSettings(defaults: freshDefaults(), alternateIconName: "ChibiManga").icon == .chibiManga)
         #expect(AppearanceSettings(defaults: freshDefaults(), alternateIconName: nil).icon == .chek)

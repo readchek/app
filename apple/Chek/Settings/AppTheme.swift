@@ -9,13 +9,6 @@ enum AppTheme: String, CaseIterable, Identifiable {
 
     var id: Self { self }
 
-    var name: LocalizedStringResource {
-        switch self {
-        case .chek: "Chek"
-        case .chibiManga: "Chibi Manga"
-        }
-    }
-
     /// The tint every control takes. It lives in the asset catalog so it
     /// has a lighter shade in dark mode.
     var tint: Color { Color(colorName) }
@@ -43,13 +36,6 @@ enum AppIcon: String, CaseIterable, Identifiable {
     /// primary icon. A name Chek no longer ships falls back to it too.
     init(alternateName: String?) {
         self = Self.allCases.first { $0.alternateName == alternateName } ?? .chek
-    }
-
-    var name: LocalizedStringResource {
-        switch self {
-        case .chek: "Chek"
-        case .chibiManga: "Chibi Manga"
-        }
     }
 
     /// The icon set's name in the asset catalog, listed in the target's

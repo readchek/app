@@ -24,6 +24,16 @@ final class AppearanceSettings {
         icon = AppIcon(alternateName: alternateIconName)
     }
 
+    /// Whether Chek looks like Chibi Manga, with its green and its cat
+    /// icon, for readers who came from it and miss it.
+    var looksLikeChibiManga: Bool { theme == .chibiManga }
+
+    /// Switches the theme and the home screen icon together.
+    func setLooksLikeChibiManga(_ on: Bool) async {
+        theme = on ? .chibiManga : .chek
+        await setIcon(on ? .chibiManga : .chek)
+    }
+
     /// Whether iOS lets this device change the icon.
     var canChangeIcon: Bool { UIApplication.shared.supportsAlternateIcons }
 

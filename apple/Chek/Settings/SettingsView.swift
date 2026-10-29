@@ -5,6 +5,7 @@ import UserNotifications
 /// App settings: reading defaults and information about Chek.
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(AppearanceSettings.self) private var appearance
 
     var body: some View {
         NavigationStack {
@@ -17,13 +18,15 @@ struct SettingsView: View {
                     } label: {
                         Label("Reading", systemImage: "textformat.size")
                     }
-                    NavigationLink {
-                        AppearanceForm()
-                            .navigationTitle("Appearance")
-                            .navigationBarTitleDisplayMode(.inline)
-                    } label: {
-                        Label("Appearance", systemImage: "paintpalette")
+                    Toggle(isOn: Binding {
+                        appearance.looksLikeChibiManga
+                    } set: { on in
+                        Task { await appearance.setLooksLikeChibiManga(on) }
+                    }) {
+                        Label("Chibi Manga Look", systemImage: "cat")
                     }
+                } footer: {
+                    Text("Chibi Manga’s green and its cat on your Home Screen.")
                 }
                 NewChapterAlertsSection()
                 ServersSection()
