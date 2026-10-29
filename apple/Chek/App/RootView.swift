@@ -80,6 +80,7 @@ struct RootView: View {
         .importFailureAlert()
         .openingFailureAlert()
         .syncTriggers()
+        .appTheme()
     }
 }
 

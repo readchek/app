@@ -284,7 +284,7 @@ private struct SelectableCell: ViewModifier {
                 Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                     .font(.title2)
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(.white, isSelected ? Color.accentColor : Color.black.opacity(0.35))
+                    .foregroundStyle(.white, isSelected ? AnyShapeStyle(.tint) : AnyShapeStyle(Color.black.opacity(0.35)))
                     .shadow(radius: 1)
                     .padding(6)
             }

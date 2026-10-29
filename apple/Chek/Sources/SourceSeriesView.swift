@@ -153,6 +153,8 @@ private struct SourceSeriesContent: View {
     @Environment(FollowStore.self) private var followStore
     @Environment(ProgressStore.self) private var progress
     @Environment(Downloads.self) private var downloads
+    // Color.accentColor is the asset's color, not the theme's.
+    @Environment(AppearanceSettings.self) private var appearance
     /// The chapter the header's button opens, worked out from your places.
     @State private var next: (chapter: SourceChapterRef, status: ReadingStatus)?
 
@@ -299,7 +301,7 @@ private struct SourceSeriesContent: View {
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     if SourceFormats.canDownload(source, on: account) {
                         DownloadAction(item: .chapter(ref), state: download)
-                            .tint(download == .downloaded ? .secondary : .accentColor)
+                            .tint(download == .downloaded ? .secondary : appearance.theme.tint)
                     }
                 }
                 .onAppear {
@@ -469,6 +471,7 @@ struct SourceSeriesHeader: View {
     @Environment(AppRouter.self) private var router
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(AppearanceSettings.self) private var appearance
 
     var body: some View {
         let isRegular = sizeClass == .regular
@@ -562,7 +565,7 @@ struct SourceSeriesHeader: View {
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
-                .tint(isFollowing ? .secondary : .accentColor)
+                .tint(isFollowing ? .secondary : appearance.theme.tint)
             }
             .buttonBorderShape(.capsule)
             .fixedSize(horizontal: false, vertical: true)
