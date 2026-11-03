@@ -1,11 +1,11 @@
 import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js"
 import { createResource } from "../../lib/resource.ts"
-import { useNavigate, useParams } from "@tanstack/solid-router"
+import { useParams } from "@tanstack/solid-router"
 import { AlertCircle, Search as SearchIcon } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
 import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import { accountKey } from "../accounts.ts"
-import { BackButton, Screen } from "../AppShell.tsx"
+import { Breadcrumbs, Screen } from "../AppShell.tsx"
 import { coverPath, librarySeries, search } from "../client.ts"
 import { Cover } from "../Cover.tsx"
 import { createPagedList } from "../paged.ts"
@@ -17,7 +17,6 @@ const pageSize = 60
 
 /** A library's series in a grid, with a search of the library above them. */
 export function Library() {
-  const navigate = useNavigate()
   const params = useParams({ from: "/app/shared/$server/libraries/$libraryId" })
   const account = createMemo(() => {
     try {
@@ -46,6 +45,7 @@ export function Library() {
     () => (account() && !query() ? { account: account()!, id: libraryId() } : undefined),
     (key, cursor, signal) =>
       librarySeries(key.account, key.id, { cursor, limit: pageSize }, signal),
+    (key) => `library:${accountKey(key.account)}:${key.id}`,
   )
   const found = createPagedList(
     () => (account() && query() ? { account: account()!, id: libraryId(), q: query() } : undefined),
@@ -58,7 +58,7 @@ export function Library() {
   return (
     <Screen
       title={name() || "Library"}
-      back={<BackButton label="Shared" fallback={() => void navigate({ to: "/shared" })} />}
+      back={<Breadcrumbs trail={[{ label: "Shared", to: { to: "/shared" } }]} />}
     >
       <Show
         when={account()}

@@ -9,7 +9,7 @@ import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/t
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { ContentRatingsForm } from "../../routes/ContentSettings.tsx"
 import { type Account, accountByKey, expire, host } from "../accounts.ts"
-import { BackButton, Screen } from "../AppShell.tsx"
+import { Breadcrumbs, Screen } from "../AppShell.tsx"
 import {
   type DeviceSession,
   changePassword,
@@ -41,7 +41,7 @@ export function AccountSettings() {
           </>
         )
       }
-      back={<BackButton label="Settings" fallback={toSettings} />}
+      back={<Breadcrumbs trail={[{ label: "Settings", to: { to: "/settings" } }]} />}
       narrow
     >
       <Switch>

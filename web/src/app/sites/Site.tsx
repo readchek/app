@@ -4,7 +4,7 @@ import { useNavigate, useParams, useSearch } from "@tanstack/solid-router"
 import { Search as SearchIcon } from "../../components/icons.tsx"
 import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import { accountKey } from "../accounts.ts"
-import { BackButton, Screen } from "../AppShell.tsx"
+import { Breadcrumbs, Screen } from "../AppShell.tsx"
 import { Cover } from "../Cover.tsx"
 import { createPagedList } from "../paged.ts"
 import { CoverGrid, GridItem, GridPlaceholder } from "../Shelf.tsx"
@@ -53,6 +53,7 @@ export function Site() {
   const series = createPagedList(
     () => account() && { account: account()!, id: params().extensionId, q: query() || undefined },
     (key, cursor, signal) => siteSeriesPage(key.account, key.id, key.q, cursor, signal),
+    (key) => `site:${accountKey(key.account)}:${key.id}:${key.q ?? ""}`,
   )
 
   const name = () => info()?.name ?? ""
@@ -60,7 +61,7 @@ export function Site() {
   return (
     <Screen
       title={name() || (info.loading ? "" : "Site")}
-      back={<BackButton label="Sites" fallback={() => void navigate({ to: "/sites" })} />}
+      back={<Breadcrumbs trail={[{ label: "Sites", to: { to: "/sites" } }]} />}
     >
       <Show
         when={account()}

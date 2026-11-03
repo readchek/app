@@ -1,6 +1,6 @@
 import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js"
 import { createResource } from "../../lib/resource.ts"
-import { Link, useNavigate, useParams, useSearch } from "@tanstack/solid-router"
+import { Link, useParams, useSearch } from "@tanstack/solid-router"
 import { ArrowUpDown } from "../../components/icons.tsx"
 import { Badge } from "../../components/ui/badge.tsx"
 import { Button, buttonVariants } from "../../components/ui/button.tsx"
@@ -15,11 +15,13 @@ import {
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { cn } from "../../lib/cn.ts"
 import { type Account, accountKey } from "../accounts.ts"
-import { BackButton, Screen } from "../AppShell.tsx"
+import { Breadcrumbs, Screen, row } from "../AppShell.tsx"
 import { Cover } from "../Cover.tsx"
 import { createPagedList } from "../paged.ts"
 import { paragraphs } from "../shared/Book.tsx"
 import { Failure } from "../shared/Library.tsx"
+import { Detail, DetailPlaceholder } from "../shared/Series.tsx"
+import { useTitle } from "../title.ts"
 import { routeAccount } from "../shared/data.ts"
 import {
   type ChapterOrder,
@@ -37,7 +39,6 @@ import { chapterTitle, statusLabel } from "./titles.ts"
 
 /** A series on a site: what the site says about it, the button that picks up where you are, and its chapters. */
 export function SiteSeries() {
-  const navigate = useNavigate()
   const params = useParams({ from: "/app/sites/$server/$extensionId/series" })
   const search = useSearch({ from: "/app/sites/$server/$extensionId/series" })
   const account = createMemo(() => {
@@ -59,21 +60,30 @@ export function SiteSeries() {
     ({ account, id, seriesId }) => siteSeries(account, id, seriesId),
   )
 
+  useTitle(() => series()?.title)
+
   return (
     <Screen
       title=""
       back={
-        <BackButton
-          label={info()?.name ?? "Back"}
-          fallback={() =>
-            void navigate({
-              to: "/sites/$server/$extensionId",
-              params: { server: params().server, extensionId: extensionId() },
-            })
-          }
+        <Breadcrumbs
+          trail={[
+            { label: "Sites", to: { to: "/sites" } },
+            ...(info()
+              ? [
+                  {
+                    label: info()!.name,
+                    to: {
+                      to: "/sites/$server/$extensionId" as const,
+                      params: { server: params().server, extensionId: extensionId() },
+                    },
+                  },
+                ]
+              : []),
+          ]}
         />
       }
-      narrow
+      detail
     >
       <Switch>
         <Match when={!account()}>
@@ -95,13 +105,7 @@ export function SiteSeries() {
           )}
         </Match>
         <Match when={true}>
-          <div class="flex items-end gap-5" aria-hidden="true">
-            <Skeleton class="aspect-[2/3] w-32 rounded-md sm:w-40" />
-            <div class="grid gap-3 pb-1">
-              <Skeleton class="h-8 w-48" />
-              <Skeleton class="h-4 w-28" />
-            </div>
-          </div>
+          <DetailPlaceholder />
         </Match>
       </Switch>
     </Screen>
@@ -184,93 +188,99 @@ function SeriesBody(props: { account: Account; extensionId: string; series: Remo
   })
 
   return (
-    <>
-      <div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-7">
-        <div class="w-40 shrink-0">
-          <Cover
-            account={props.account}
-            path={props.series.coverUrl ?? undefined}
-            title={props.series.title}
-          />
-        </div>
-        <div class="min-w-0 pb-1">
+    <Detail
+      cover={
+        <Cover
+          account={props.account}
+          path={props.series.coverUrl ?? undefined}
+          title={props.series.title}
+        />
+      }
+      heading={
+        <>
           <h1 class="text-[30px] leading-[1.05] tracking-[-0.04em] [overflow-wrap:anywhere] sm:text-[40px]">
             {props.series.title}
           </h1>
           <Show when={authors().length > 0}>
-            <p class="mt-2 text-[17px]">{authors().join(", ")}</p>
+            <p class="mt-2 text-[17px] lg:text-[15px]">{authors().join(", ")}</p>
           </Show>
           <Show when={facts()}>
             <p class="mt-1 text-[15px] text-muted-foreground">{facts()}</p>
           </Show>
-        </div>
-      </div>
-
-      <div class="mt-6 flex flex-col gap-3 sm:flex-row">
-        <Switch>
-          <Match when={last()}>
-            {(place) => (
-              <Link
-                to="/chapter/$server/$extensionId"
-                params={{ server, extensionId: props.extensionId }}
-                search={{
-                  series: props.series.id,
-                  chapter: place().chapterId,
-                  title: place().chapterTitle,
-                }}
-                class={buttonVariants({ class: "w-full sm:w-auto sm:px-8" })}
-              >
-                <span class="truncate">Continue {place().chapterTitle}</span>
-              </Link>
-            )}
-          </Match>
-          <Match when={first()}>
-            {(chapter) => (
-              <Link
-                {...chapterLink(chapter())}
-                class={buttonVariants({ class: "w-full sm:w-auto sm:px-8" })}
-              >
-                Start Reading
-              </Link>
-            )}
-          </Match>
-        </Switch>
-        <Show when={props.account.user.role === "admin" && !props.account.user.demo}>
-          <Follow account={props.account} extensionId={props.extensionId} series={props.series} />
-        </Show>
-      </div>
-
-      <Show when={props.series.tags.length > 0}>
-        <ul class="mt-6 flex flex-wrap gap-2" aria-label="Genres and themes">
-          <For each={props.series.tags}>
-            {(tag) => (
-              <li>
-                <Badge variant="secondary">{tag}</Badge>
-              </li>
-            )}
-          </For>
-        </ul>
-      </Show>
-
-      <Show when={summary().length > 0}>
-        <div class="mt-8 text-[17px] leading-relaxed">
-          <div class={cn("grid gap-3", !expanded() && "line-clamp-4")}>
-            <For each={summary()}>{(text) => <p class="[overflow-wrap:anywhere]">{text}</p>}</For>
-          </div>
-          <Show when={!expanded()}>
-            <Button
-              variant="link"
-              size="inline"
-              class="mt-1 text-[15px]"
-              onClick={() => setExpanded(true)}
-            >
-              More
-            </Button>
+        </>
+      }
+      actions={
+        <>
+          <Switch>
+            <Match when={last()}>
+              {(place) => (
+                <Link
+                  to="/chapter/$server/$extensionId"
+                  params={{ server, extensionId: props.extensionId }}
+                  search={{
+                    series: props.series.id,
+                    chapter: place().chapterId,
+                    title: place().chapterTitle,
+                  }}
+                  class={buttonVariants({ class: "w-full sm:w-auto sm:px-8" })}
+                >
+                  <span class="truncate">Continue {place().chapterTitle}</span>
+                </Link>
+              )}
+            </Match>
+            <Match when={first()}>
+              {(chapter) => (
+                <Link
+                  {...chapterLink(chapter())}
+                  class={buttonVariants({ class: "w-full sm:w-auto sm:px-8" })}
+                >
+                  Start Reading
+                </Link>
+              )}
+            </Match>
+          </Switch>
+          <Show when={props.account.user.role === "admin" && !props.account.user.demo}>
+            <Follow account={props.account} extensionId={props.extensionId} series={props.series} />
           </Show>
-        </div>
-      </Show>
+        </>
+      }
+      about={
+        <>
+          <Show when={props.series.tags.length > 0}>
+            <ul class="mt-6 flex flex-wrap gap-2" aria-label="Genres and themes">
+              <For each={props.series.tags}>
+                {(tag) => (
+                  <li>
+                    <Badge variant="secondary">{tag}</Badge>
+                  </li>
+                )}
+              </For>
+            </ul>
+          </Show>
 
-      <div class="mt-10 flex flex-wrap items-center justify-between gap-3">
+          <Show when={summary().length > 0}>
+            <div class="mt-8 text-[17px] leading-relaxed lg:text-[15px]">
+              <div class={cn("grid gap-3", !expanded() && "line-clamp-4")}>
+                <For each={summary()}>
+                  {(text) => <p class="[overflow-wrap:anywhere]">{text}</p>}
+                </For>
+              </div>
+              <Show when={!expanded()}>
+                <Button
+                  variant="link"
+                  size="inline"
+                  class="mt-1 text-[15px]"
+                  onClick={() => setExpanded(true)}
+                >
+                  More
+                </Button>
+              </Show>
+            </div>
+          </Show>
+        </>
+      }
+    >
+      <div class="flex flex-wrap items-center justify-between gap-3">
         <h2 class="text-[22px] leading-tight tracking-[-0.03em]">
           <Show when={counts()?.chapterCount} fallback="Chapters">
             {(count) => (count() === 1 ? "1 chapter" : `${count()} chapters`)}
@@ -333,14 +343,11 @@ function SeriesBody(props: { account: Account; extensionId: string; series: Remo
                 const finished = () => (place()?.progression ?? 0) >= 1
                 return (
                   <li>
-                    <Link
-                      {...chapterLink(chapter)}
-                      class="group flex items-center gap-3 py-3 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
-                    >
+                    <Link {...chapterLink(chapter)} class={cn(row, "group py-3 lg:py-2.5")}>
                       <span class="grid min-w-0 flex-1 gap-0.5">
                         <span
                           class={cn(
-                            "truncate text-[17px] group-hover:text-link",
+                            "truncate text-[17px] lg:text-[15px]",
                             finished() && "text-muted-foreground",
                           )}
                         >
@@ -384,7 +391,7 @@ function SeriesBody(props: { account: Account; extensionId: string; series: Remo
           <div ref={chapters.sentinel} class="h-px" />
         </Match>
       </Switch>
-    </>
+    </Detail>
   )
 }
 

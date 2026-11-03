@@ -42,11 +42,11 @@ export const ArrowUpRight = () => (
   </svg>
 )
 
-export const ChevronRight = () => (
+export const ChevronRight = (props: { class?: string }) => (
   <svg
     viewBox="0 0 24 24"
     aria-hidden="true"
-    class="size-4 shrink-0 text-muted-foreground"
+    class={`size-4 shrink-0 text-muted-foreground ${props.class ?? ""}`}
     {...stroke}
   >
     <path d="m9 6 6 6-6 6" />
