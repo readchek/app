@@ -37,8 +37,10 @@ struct SettingsView: View {
                     Link(destination: URL(string: "https://chek.page")!) {
                         Label("chek.page", systemImage: "safari")
                     }
-                    // Email or GitHub, so reporting needs no GitHub account.
-                    Link(destination: URL(string: "https://chek.page/support")!) {
+                    // Straight to the bug form, with the version and device
+                    // filled in. The footer keeps email for anyone without
+                    // a GitHub account.
+                    Link(destination: ProblemReport.url(version: Bundle.main.versionDescription, device: ProblemReport.currentDevice, system: ProblemReport.currentSystem)) {
                         Label("Report a Problem", systemImage: "exclamationmark.bubble")
                     }
                     Link(destination: URL(string: "https://chek.page/privacy")!) {
@@ -47,7 +49,7 @@ struct SettingsView: View {
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("Chek replaces Chibi Manga.")
+                    Text("Chek replaces Chibi Manga. To report a problem by email instead, write to support@chek.page.")
                 }
             }
             .navigationTitle("Settings")

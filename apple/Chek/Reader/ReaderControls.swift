@@ -47,7 +47,7 @@ private struct ReaderToolbars: ViewModifier {
                     }
                 }
                 ToolbarItem(placement: .bottomBar) {
-                    ReaderScrubber(controller: session.controller)
+                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.isShowingChapterEnd)
                         .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
                 }
                 if session.item.series != nil {
@@ -177,6 +177,8 @@ private struct ReaderTitle: View {
 /// A slider through the whole publication, with where you are beside it.
 private struct ReaderScrubber: View {
     let controller: ReaderController
+    /// Whether the chapter end shows, past the last page.
+    let isAtChapterEnd: Bool
     /// Where the slider is while you drag it, before the reader moves.
     @State private var scrubbing: Double?
 
@@ -211,7 +213,14 @@ private struct ReaderScrubber: View {
             } else {
                 ProgressView(value: controller.location?.locations.totalProgression ?? 0)
             }
-            PlaceLabel(showsPages: showsPages, position: Int(scrubbing ?? position), count: count, progress: progress(count: count))
+            PlaceLabel(place: ScrubberPlace.make(
+                showsPages: showsPages,
+                position: Int(scrubbing ?? position),
+                count: count,
+                progress: progress(count: count),
+                // Dragging the thumb is choosing a page again.
+                isAtChapterEnd: isAtChapterEnd && scrubbing == nil
+            ))
         }
         .padding(.horizontal, 8)
     }
@@ -225,21 +234,22 @@ private struct ReaderScrubber: View {
 }
 
 private struct PlaceLabel: View {
-    let showsPages: Bool
-    let position: Int
-    let count: Int
-    let progress: Double?
+    let place: ScrubberPlace
 
     var body: some View {
         Group {
-            if showsPages, count > 0 {
+            switch place {
+            case .page(let position, let count):
                 Text("\(position) of \(count)")
-            } else if let progress {
+            case .progress(let progress):
                 Text(progress, format: .percent.precision(.fractionLength(0)))
+            case .finished:
+                Text("Finished")
+            case .none:
+                EmptyView()
             }
         }
         .font(.footnote.weight(.medium).monospacedDigit())
         .fixedSize()
     }
 }
-
