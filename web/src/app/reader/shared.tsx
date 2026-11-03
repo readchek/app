@@ -12,6 +12,7 @@ import {
 } from "../../components/ui/dialog.tsx"
 import { cn } from "../../lib/cn.ts"
 import { type Locator, type Progress, ProgressConflict } from "../client.ts"
+import { useTitle } from "../title.ts"
 
 // What the comic and book readers share: keeping the reader's place, the
 // prompt when another device read on, the bars over the page, and what to
@@ -320,6 +321,7 @@ export function TopBar(props: {
 }) {
   const close = useCloseReader()
   const ref = useControl(props.controls, "top")
+  useTitle(() => props.title)
   return (
     <header
       ref={ref}

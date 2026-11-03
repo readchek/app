@@ -1,12 +1,12 @@
 import { For, Match, Show, Switch, createMemo, createSignal } from "solid-js"
 import { createResource } from "../../lib/resource.ts"
-import { useNavigate, useParams } from "@tanstack/solid-router"
+import { useParams } from "@tanstack/solid-router"
 import { Spinner } from "../../components/icons.tsx"
 import { Badge } from "../../components/ui/badge.tsx"
 import { Button } from "../../components/ui/button.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { type Account, host } from "../accounts.ts"
-import { BackButton, Screen } from "../AppShell.tsx"
+import { Breadcrumbs, Screen } from "../AppShell.tsx"
 import { Failure } from "../shared/Library.tsx"
 import { routeAccount } from "../shared/data.ts"
 import {
@@ -37,7 +37,6 @@ const formatNames: Record<ContentFormat, string> = {
 
 /** The sites your server's repositories offer, to add, update or remove. */
 export function ManageSites() {
-  const navigate = useNavigate()
   const params = useParams({ from: "/app/sites/$server/manage" })
   const account = createMemo(() => {
     try {
@@ -51,7 +50,7 @@ export function ManageSites() {
     <Screen
       title="Add or remove sites"
       lead={account() && `The sites ${host(account()!.server)} can read from.`}
-      back={<BackButton label="Sites" fallback={() => void navigate({ to: "/sites" })} />}
+      back={<Breadcrumbs trail={[{ label: "Sites", to: { to: "/sites" } }]} />}
       narrow
     >
       <Show

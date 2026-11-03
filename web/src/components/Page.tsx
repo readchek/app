@@ -1,9 +1,11 @@
 import type { JSX } from "solid-js"
+import { useTitle } from "../app/title.ts"
 import { Wordmark } from "./Wordmark.tsx"
 
 /** A screen of the web app: the wordmark, the screen's title, and its
     content in one narrow column on paper. */
 export function Page(props: { title: string; lead?: JSX.Element; children: JSX.Element }) {
+  useTitle(() => props.title)
   return (
     <div class="mx-auto flex min-h-dvh w-full max-w-lg flex-col px-5 sm:px-6">
       <header class="pt-6 sm:pt-10">

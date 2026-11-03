@@ -1,6 +1,8 @@
-import { For, type JSX, Match, Show, Switch } from "solid-js"
+import { For, type JSX, Match, Show, Switch, createSignal, onCleanup, onMount } from "solid-js"
 import { Link } from "@tanstack/solid-router"
 import { cn } from "../lib/cn.ts"
+import { ChevronLeft, ChevronRight } from "../components/icons.tsx"
+import { Button } from "../components/ui/button.tsx"
 import { Skeleton } from "../components/ui/skeleton.tsx"
 
 /**
@@ -81,6 +83,10 @@ function CoverCard(props: { to: Destination; cover: JSX.Element; title: string; 
   )
 }
 
+// Shelves hide their scrollbar and move by swipe. A mouse can't swipe, so
+// on a device with one each shelf that overflows gets a pair of arrows.
+const mouse = matchMedia("(hover: hover) and (pointer: fine)")
+
 /** A titled row of covers that scrolls sideways, as the iOS app's shelves, with an `action` such as "See all". */
 export function Shelf(props: {
   title: string
@@ -88,6 +94,56 @@ export function Shelf(props: {
   action?: JSX.Element
   children: JSX.Element
 }) {
+  let row: HTMLUListElement | undefined
+  const [reach, setReach] = createSignal({ back: false, forward: false })
+
+  onMount(() => {
+    if (!row || !mouse.matches) return
+    const list = row
+    // Which way the row can still move. `scrollLeft` runs negative in a
+    // right-to-left page, so the distance from each end is what counts.
+    const measure = () => {
+      const left = Math.abs(list.scrollLeft)
+      const room = list.scrollWidth - list.clientWidth
+      setReach({ back: left > 1, forward: room - left > 1 })
+    }
+    measure()
+    list.addEventListener("scroll", measure, { passive: true })
+    const observer = new ResizeObserver(measure)
+    observer.observe(list)
+    for (const child of list.children) observer.observe(child)
+    const children = new MutationObserver(() => {
+      for (const child of list.children) observer.observe(child)
+      measure()
+    })
+    children.observe(list, { childList: true })
+    onCleanup(() => {
+      list.removeEventListener("scroll", measure)
+      observer.disconnect()
+      children.disconnect()
+    })
+  })
+
+  // Most of a screenful at a time, so the last cover seen stays in view as a landmark.
+  const turn = (direction: 1 | -1) => {
+    if (!row) return
+    const sign = getComputedStyle(row).direction === "rtl" ? -1 : 1
+    row.scrollBy({ left: direction * sign * row.clientWidth * 0.8, behavior: "smooth" })
+  }
+
+  const arrow = (direction: 1 | -1) => (
+    <Button
+      variant="outline"
+      size="sm"
+      class="size-8 rounded-full px-0 [&_svg]:size-4"
+      aria-label={direction > 0 ? "Scroll forward" : "Scroll back"}
+      disabled={direction > 0 ? !reach().forward : !reach().back}
+      onClick={() => turn(direction)}
+    >
+      {direction > 0 ? <ChevronRight /> : <ChevronLeft />}
+    </Button>
+  )
+
   return (
     <section class="mb-10">
       <div class="mb-4 flex items-baseline justify-between gap-4">
@@ -99,9 +155,20 @@ export function Shelf(props: {
             </span>
           </Show>
         </h2>
-        {props.action}
+        <div class="flex items-center gap-3 self-center">
+          {props.action}
+          <Show when={reach().back || reach().forward}>
+            <div class="hidden gap-1.5 md:flex">
+              {arrow(-1)}
+              {arrow(1)}
+            </div>
+          </Show>
+        </div>
       </div>
-      <ul class="-mx-5 flex snap-x scroll-px-5 gap-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8">
+      <ul
+        ref={(element) => (row = element)}
+        class="-mx-5 flex snap-x scroll-px-5 gap-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] sm:-mx-8 sm:scroll-px-8 sm:px-8"
+      >
         {props.children}
       </ul>
     </section>

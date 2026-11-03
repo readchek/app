@@ -1,15 +1,15 @@
 import { For, Match, Show, Switch, createMemo } from "solid-js"
 import { createResource } from "../../lib/resource.ts"
-import { Link, useNavigate, useParams } from "@tanstack/solid-router"
+import { Link, useParams } from "@tanstack/solid-router"
 import { buttonVariants } from "../../components/ui/button.tsx"
-import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { accountByKey, accountKey } from "../accounts.ts"
-import { BackButton, Screen } from "../AppShell.tsx"
+import { Breadcrumbs, type Crumb, Screen } from "../AppShell.tsx"
 import { coverPath, progress, publication } from "../client.ts"
 import { Cover } from "../Cover.tsx"
+import { useTitle } from "../title.ts"
 import { progressCaption, publicationTitle, seriesTitle } from "../titles.ts"
 import { Failure } from "./Library.tsx"
-import { bookDetail } from "./Series.tsx"
+import { Detail, DetailPlaceholder, bookDetail } from "./Series.tsx"
 
 const roles: Record<string, string> = {
   author: "Author",
@@ -26,7 +26,6 @@ const roles: Record<string, string> = {
 
 /** About a book: its cover, who made it, its description and details, and the button to read it. */
 export function Book() {
-  const navigate = useNavigate()
   const params = useParams({ from: "/app/shared/$server/books/$publicationId" })
   const account = createMemo(() => {
     const found = accountByKey(params().server)
@@ -40,12 +39,29 @@ export function Book() {
     },
   )
 
+  useTitle(() => (book() ? publicationTitle(book()!.detail) : undefined))
+
+  const trail = (): Crumb[] => {
+    const detail = book()?.detail
+    const series = detail && seriesTitle(detail)
+    return [
+      { label: "Shared", to: { to: "/shared" } },
+      ...(series && account()
+        ? [
+            {
+              label: series,
+              to: {
+                to: "/shared/$server/series/$seriesId",
+                params: { server: accountKey(account()!), seriesId: String(detail.series.id) },
+              },
+            } satisfies Crumb,
+          ]
+        : []),
+    ]
+  }
+
   return (
-    <Screen
-      title=""
-      back={<BackButton label="Back" fallback={() => void navigate({ to: "/shared" })} />}
-      narrow
-    >
+    <Screen title="" back={<Breadcrumbs trail={trail()} />} detail>
       <Switch>
         <Match when={!account()}>
           <Failure
@@ -64,21 +80,21 @@ export function Book() {
                 .map((c) => c.name)
             const status = () => progressCaption(loaded().saved)
             return (
-              <>
-                <div class="flex flex-col gap-6 sm:flex-row sm:items-end sm:gap-8">
-                  <div class="w-40 shrink-0 sm:w-48">
-                    <Cover
-                      account={account()!}
-                      path={detail().hasCover ? coverPath(detail()) : undefined}
-                      title={publicationTitle(detail())}
-                    />
-                  </div>
-                  <div class="min-w-0">
+              <Detail
+                cover={
+                  <Cover
+                    account={account()!}
+                    path={detail().hasCover ? coverPath(detail()) : undefined}
+                    title={publicationTitle(detail())}
+                  />
+                }
+                heading={
+                  <>
                     <h1 class="text-[30px] leading-[1.05] tracking-[-0.04em] [overflow-wrap:anywhere] sm:text-[40px]">
                       {publicationTitle(detail())}
                     </h1>
                     <Show when={authors().length > 0}>
-                      <p class="mt-2 text-[17px]">{authors().join(", ")}</p>
+                      <p class="mt-2 text-[17px] lg:text-[15px]">{authors().join(", ")}</p>
                     </Show>
                     <Show when={seriesTitle(detail())}>
                       <Link
@@ -92,26 +108,29 @@ export function Book() {
                         {seriesTitle(detail())}
                       </Link>
                     </Show>
-                    <Link
-                      to="/read/$server/$publicationId"
-                      params={{
-                        server: accountKey(account()!),
-                        publicationId: String(detail().id),
-                      }}
-                      class={buttonVariants({ class: "mt-5 w-full sm:w-auto sm:px-8" })}
-                    >
-                      {status() && status() !== "Finished" ? `Continue · ${status()}` : "Read"}
-                    </Link>
-                  </div>
-                </div>
+                  </>
+                }
+                actions={
+                  <Link
+                    to="/read/$server/$publicationId"
+                    params={{
+                      server: accountKey(account()!),
+                      publicationId: String(detail().id),
+                    }}
+                    class={buttonVariants({ class: "w-full sm:w-auto sm:px-8" })}
+                  >
+                    {status() && status() !== "Finished" ? `Continue · ${status()}` : "Read"}
+                  </Link>
+                }
+              >
                 <Show when={detail().description}>
                   {(description) => (
-                    <div class="mt-10 grid gap-3 text-[17px] leading-relaxed">
+                    <div class="mb-10 grid gap-3 text-[17px] leading-relaxed lg:text-[15px]">
                       <For each={paragraphs(description())}>{(text) => <p>{text}</p>}</For>
                     </div>
                   )}
                 </Show>
-                <dl class="mt-10 divide-y border-y text-[15px]">
+                <dl class="divide-y border-y text-[15px]">
                   <Row label="Kind" value={bookDetail(detail())} />
                   <For each={credits(detail().contributors)}>
                     {(credit) => <Row label={credit.label} value={credit.names} />}
@@ -120,19 +139,12 @@ export function Book() {
                   <Row label="Published" value={published(detail().published)} />
                   <Row label="Language" value={language(detail().language)} />
                 </dl>
-              </>
+              </Detail>
             )
           }}
         </Match>
         <Match when={true}>
-          <div class="flex flex-col gap-6 sm:flex-row sm:items-end" aria-hidden="true">
-            <Skeleton class="aspect-[2/3] w-40 rounded-md sm:w-48" />
-            <div class="grid gap-3">
-              <Skeleton class="h-8 w-56" />
-              <Skeleton class="h-4 w-32" />
-              <Skeleton class="mt-3 h-11 w-32 rounded-full" />
-            </div>
-          </div>
+          <DetailPlaceholder />
         </Match>
       </Switch>
     </Screen>

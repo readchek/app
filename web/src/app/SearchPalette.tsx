@@ -36,21 +36,24 @@ export function openSearch(q?: string) {
 
 const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
 
-/** What opens the palette, drawn as a search field in the sidebar or the phone's top bar. */
-export function SearchButton(props: { class?: string }) {
+/** What opens the palette, drawn as a search field in the sidebar or the phone's top bar. `compact` ones are only the icon where the sidebar is a rail. */
+export function SearchButton(props: { class?: string; compact?: boolean }) {
   return (
     <button
       type="button"
       class={cn(
         "flex h-10 w-full items-center gap-2.5 rounded-xl border border-input bg-background px-3.5 text-start text-base text-muted-foreground/80 transition-[border-color,box-shadow] hover:border-ring/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/25 focus-visible:outline-none [&>svg]:size-[18px] [&>svg]:text-muted-foreground",
+        props.compact && "justify-center px-0 lg:justify-start lg:px-3.5",
         props.class,
       )}
       aria-keyshortcuts="/ Control+K Meta+K"
       aria-haspopup="dialog"
+      aria-label="Search"
+      title={props.compact ? "Search" : undefined}
       onClick={() => openSearch()}
     >
       <Search />
-      <span class="flex-1">Search</span>
+      <span class={cn("flex-1", props.compact && "hidden lg:inline")}>Search</span>
       <Kbd class="hidden lg:inline-flex">{isMac ? "⌘K" : "Ctrl K"}</Kbd>
     </button>
   )

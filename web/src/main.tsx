@@ -245,6 +245,8 @@ const router = createRouter({
   // A link's code starts loading when it's hovered or touched, so a reader
   // loaded on first use is usually ready by the click.
   defaultPreload: "intent",
+  // Back returns to where the page was scrolled, as it does on any website.
+  scrollRestoration: true,
   routeTree: root.addChildren([
     app.addChildren([
       home,

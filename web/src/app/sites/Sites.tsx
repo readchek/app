@@ -6,7 +6,8 @@ import { Badge } from "../../components/ui/badge.tsx"
 import { buttonVariants } from "../../components/ui/button.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { type Account, accountKey, accounts, host } from "../accounts.ts"
-import { Screen } from "../AppShell.tsx"
+import { Screen, row } from "../AppShell.tsx"
+import { cn } from "../../lib/cn.ts"
 import { coverPath, recentlyAdded } from "../client.ts"
 import { Cover } from "../Cover.tsx"
 import { Shelf, ShelfItem, ShelfPlaceholder } from "../Shelf.tsx"
@@ -78,11 +79,16 @@ function ServerSites(props: { account: Account; showHost: boolean }) {
                       <Link
                         to="/sites/$server/$extensionId"
                         params={{ server: accountKey(props.account), extensionId: extension.id }}
-                        class="flex items-center gap-3.5 py-3.5 transition-colors hover:text-link focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none [&>svg:first-child]:size-6 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-link"
+                        class={cn(
+                          row,
+                          "py-3.5 lg:py-3 [&>svg:first-child]:size-6 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-link",
+                        )}
                       >
                         <Globe />
                         <span class="min-w-0 flex-1">
-                          <span class="block truncate text-[17px]">{extension.name}</span>
+                          <span class="block truncate text-[17px] lg:text-[15px]">
+                            {extension.name}
+                          </span>
                           <span class="block truncate text-[13px] text-muted-foreground">
                             {extension.sites.map(siteHost).join(", ")}
                           </span>
@@ -93,7 +99,7 @@ function ServerSites(props: { account: Account; showHost: boolean }) {
                         <Show when={extension.usable && extension.update}>
                           <Badge variant="butter">Update</Badge>
                         </Show>
-                        <ChevronRight />
+                        <ChevronRight class="lg:hidden" />
                       </Link>
                     </li>
                   )}
