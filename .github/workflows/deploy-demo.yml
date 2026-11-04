@@ -44,7 +44,7 @@ jobs:
       - run: bun run format:check
       # The snapshot is the same from one deploy to the next until
       # demo-snapshot.json changes, so it's kept rather than downloaded again.
-      - uses: actions/cache@v4
+      - uses: actions/cache@v6
         with:
           path: web/demo-data
           key: demo-data-${{ hashFiles('web/demo-snapshot.json') }}
