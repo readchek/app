@@ -1,8 +1,8 @@
-import { For, Match, Show, Switch } from "solid-js"
+import { For, Match, Show, Switch, createSignal } from "solid-js"
 import { createResource } from "../../lib/resource.ts"
 import { Link } from "@tanstack/solid-router"
 import { ChevronRight, Globe } from "../../components/icons.tsx"
-import { Badge } from "../../components/ui/badge.tsx"
+import { Badge, badgeVariants } from "../../components/ui/badge.tsx"
 import { buttonVariants } from "../../components/ui/button.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { type Account, accountKey, accounts, host } from "../accounts.ts"
@@ -14,7 +14,7 @@ import { Shelf, ShelfItem, ShelfPlaceholder } from "../Shelf.tsx"
 import { Failure } from "../shared/Library.tsx"
 import { readableLibraries } from "../shared/data.ts"
 import { publicationTitle, seriesTitle } from "../titles.ts"
-import { installedExtensions } from "./api.ts"
+import { type InstalledExtension, installExtension, installedExtensions } from "./api.ts"
 import { siteHost } from "./titles.ts"
 
 /** Sites: the extensions you've added on each server, and the new chapters of series it follows. */
@@ -30,10 +30,26 @@ export function Sites() {
 }
 
 function ServerSites(props: { account: Account; showHost: boolean }) {
-  const [list] = createResource(
+  const [list, { refetch }] = createResource(
     () => props.account,
     (account) => installedExtensions(account),
   )
+  // Updating happens here, where the badge says one is waiting, rather
+  // than only from the screen for adding and removing sites.
+  const [updating, setUpdating] = createSignal<string>()
+  const [updateError, setUpdateError] = createSignal<unknown>()
+  const update = async (extension: InstalledExtension) => {
+    setUpdating(extension.id)
+    setUpdateError(undefined)
+    try {
+      await installExtension(props.account, extension.id, extension.repositoryId)
+      await refetch()
+    } catch (failure) {
+      setUpdateError(failure)
+    } finally {
+      setUpdating(undefined)
+    }
+  }
   // Series followed from a site land in a library that runs on its
   // extension; their newest chapters show here, as on iOS's Updates.
   const [followed] = createResource(
@@ -72,16 +88,21 @@ function ServerSites(props: { account: Account; showHost: boolean }) {
                 </p>
               }
             >
+              <Show when={updateError()}>
+                <div class="mb-4 max-w-2xl">
+                  <Failure error={updateError()} />
+                </div>
+              </Show>
               <ul class="max-w-2xl divide-y border-y">
                 <For each={extensions()}>
                   {(extension) => (
-                    <li>
+                    <li class="flex items-center gap-3">
                       <Link
                         to="/sites/$server/$extensionId"
                         params={{ server: accountKey(props.account), extensionId: extension.id }}
                         class={cn(
                           row,
-                          "py-3.5 lg:py-3 [&>svg:first-child]:size-6 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-link",
+                          "min-w-0 flex-1 py-3.5 lg:py-3 [&>svg:first-child]:size-6 [&>svg:first-child]:shrink-0 [&>svg:first-child]:text-link",
                         )}
                       >
                         <Globe />
@@ -90,17 +111,30 @@ function ServerSites(props: { account: Account; showHost: boolean }) {
                             {extension.name}
                           </span>
                           <span class="block truncate text-[13px] text-muted-foreground">
-                            {extension.sites.map(siteHost).join(", ")}
+                            Version {extension.version} · {extension.sites.map(siteHost).join(", ")}
                           </span>
                         </span>
                         <Show when={!extension.usable}>
                           <Badge variant="destructive">Turned off</Badge>
                         </Show>
-                        <Show when={extension.usable && extension.update}>
-                          <Badge variant="butter">Update</Badge>
-                        </Show>
                         <ChevronRight class="lg:hidden" />
                       </Link>
+                      <Show when={extension.usable && extension.update}>
+                        {(version) => (
+                          <button
+                            type="button"
+                            class={cn(
+                              badgeVariants({ variant: "butter" }),
+                              "cursor-pointer disabled:cursor-default disabled:opacity-60",
+                            )}
+                            disabled={updating() !== undefined}
+                            aria-label={`Update ${extension.name} to ${version()}`}
+                            onClick={() => void update(extension)}
+                          >
+                            {updating() === extension.id ? "Updating…" : `Update to ${version()}`}
+                          </button>
+                        )}
+                      </Show>
                     </li>
                   )}
                 </For>
