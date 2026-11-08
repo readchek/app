@@ -21,6 +21,11 @@ export type InstalledExtension = {
   usable: boolean
   /** The version the repository lists, when it differs from the installed one. */
   update: string | null
+  /**
+   * The orders readers' comments come in, the site's default first; empty
+   * when the source gives only a count. Absent when there are none to show.
+   */
+  comments?: CommentOrder[]
 }
 
 export type AvailableExtension = {
@@ -94,6 +99,41 @@ export type ChapterContent = {
   rights: Rights | null
 }
 
+export type CommentOrder = "top" | "newest" | "oldest"
+
+/** A stretch of a comment's text in one style. Line breaks are `\n`. */
+export type CommentRun = {
+  text: string
+  bold?: boolean
+  italic?: boolean
+  strike?: boolean
+  code?: boolean
+  spoiler?: boolean
+  quote?: boolean
+  link?: string
+}
+
+/** A reader's comment as the source's site shows it. Read-only. */
+export type Comment = {
+  id: string
+  author: { name: string; avatarUrl: string | null; badge: string | null }
+  published: string | null
+  edited: boolean
+  body: CommentRun[]
+  images: string[]
+  spoiler: boolean
+  score: number | null
+  replyTo: string | null
+  replyCount: number
+  url: string | null
+}
+
+export type CommentPage = {
+  items: Comment[]
+  next: string | null
+  total: number | null
+}
+
 const base = (id: string) => `/api/v1/me/extensions/${encodeURIComponent(id)}`
 
 export async function installedExtensions(
@@ -108,8 +148,11 @@ export async function availableExtensions(
   account: Account,
   signal?: AbortSignal,
 ): Promise<AvailableExtension[]> {
-  return (await call<{ items: AvailableExtension[] }>(account, "/api/v1/extensions", { signal }))
-    .items
+  return (
+    await call<{ items: AvailableExtension[] }>(account, "/api/v1/extensions", {
+      signal,
+    })
+  ).items
 }
 
 /** Installs an extension, or updates it, from a repository. */
@@ -180,7 +223,9 @@ export function chapterContent(
   chapterId: string,
   signal?: AbortSignal,
 ): Promise<ChapterContent> {
-  return call(account, `${base(id)}/content${query({ chapterId })}`, { signal })
+  return call(account, `${base(id)}/content${query({ chapterId })}`, {
+    signal,
+  })
 }
 
 /** Follows a series into an extension library, adding a publication per chapter. Admins only. */
@@ -211,7 +256,10 @@ export function addExtensionLibrary(
 // shown as frames and clicked through, for sites that check for a person.
 
 export function startBrowser(account: Account, id: string, url: string): Promise<void> {
-  return call(account, `${base(id)}/browser`, { method: "POST", body: { url } })
+  return call(account, `${base(id)}/browser`, {
+    method: "POST",
+    body: { url },
+  })
 }
 
 export function browserFramePath(id: string): string {
@@ -219,7 +267,10 @@ export function browserFramePath(id: string): string {
 }
 
 export function clickBrowser(account: Account, id: string, x: number, y: number): Promise<void> {
-  return call(account, `${base(id)}/browser/click`, { method: "POST", body: { x, y } })
+  return call(account, `${base(id)}/browser/click`, {
+    method: "POST",
+    body: { x, y },
+  })
 }
 
 export function resumeBrowser(account: Account, id: string): Promise<void> {
@@ -228,4 +279,41 @@ export function resumeBrowser(account: Account, id: string): Promise<void> {
 
 export function closeBrowser(account: Account, id: string): Promise<void> {
   return call(account, `${base(id)}/browser`, { method: "DELETE" })
+}
+
+/** How many comments a chapter has on the site, or null when it has no thread. */
+export async function commentSummary(
+  account: Account,
+  id: string,
+  chapterId: string,
+  signal?: AbortSignal,
+): Promise<{ count: number; url: string | null } | null> {
+  const summary = await call<{ count: number; url: string | null } | undefined>(
+    account,
+    `${base(id)}/comments/summary${query({ chapterId })}`,
+    { signal },
+  )
+  return summary ?? null
+}
+
+/** A page of a chapter's top-level comments. */
+export function chapterComments(
+  account: Account,
+  id: string,
+  options: { chapterId: string; order?: CommentOrder; cursor?: string },
+  signal?: AbortSignal,
+): Promise<CommentPage> {
+  return call(account, `${base(id)}/comments${query(options)}`, { signal })
+}
+
+/** A page of the replies to one comment. */
+export function commentReplies(
+  account: Account,
+  id: string,
+  options: { chapterId: string; commentId: string; cursor?: string },
+  signal?: AbortSignal,
+): Promise<CommentPage> {
+  return call(account, `${base(id)}/comments/replies${query(options)}`, {
+    signal,
+  })
 }
