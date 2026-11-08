@@ -133,12 +133,14 @@ private struct OrderMenu: View {
                 }
             }
         } label: {
-            Label {
+            // A toolbar draws a Label as its icon alone, which left a bare
+            // chevron, so the order's name is spelled out beside it.
+            HStack(spacing: 4) {
                 Text((comments.order ?? .top).title)
-            } icon: {
                 Image(systemName: "chevron.down")
+                    .imageScale(.small)
+                    .fontWeight(.semibold)
             }
-            .labelStyle(.titleAndIcon)
         }
         .accessibilityLabel(Text("Order"))
         .accessibilityValue(Text((comments.order ?? .top).title))
