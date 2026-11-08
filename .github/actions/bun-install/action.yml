@@ -1,0 +1,32 @@
+name: Install web dependencies
+description: >
+  Installs web/'s packages with Bun, keeping Bun's download cache between
+  runs and retrying when a download fails.
+
+# @readchek/reader is a GitHub dependency, so every install without a cache
+# downloads its tarball from api.github.com, and a 504 there failed CI. The
+# cache is keyed by the lockfile, so a run whose lockfile hasn't changed
+# installs without downloading anything.
+runs:
+  using: composite
+  steps:
+    - uses: actions/cache@v6
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('web/bun.lock') }}
+        restore-keys: bun-${{ runner.os }}-
+    - name: bun install
+      shell: bash
+      working-directory: web
+      run: |
+        for attempt in 1 2 3 4; do
+          if bun install --frozen-lockfile; then
+            exit 0
+          fi
+          if [ "$attempt" -lt 4 ]; then
+            echo "::warning::bun install failed (attempt $attempt of 4), retrying in $((attempt * 15)) seconds"
+            sleep $((attempt * 15))
+          fi
+        done
+        echo "::error::bun install failed 4 times. A registry or GitHub is likely down; re-run the job once it's back."
+        exit 1
