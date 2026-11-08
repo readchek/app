@@ -30,6 +30,16 @@ private struct ReaderToolbars: ViewModifier {
                 ToolbarItem(placement: .principal) {
                     ReaderTitle(title: session.item.title, controller: session.controller, isOverArtwork: session.item.kind == .comic)
                 }
+                // Comments sit beside the contents, and only on a chapter
+                // that has some, so every other book keeps one button
+                // either side of the title.
+                if let comments = session.comments, comments.count != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        CommentsButton(comments: comments) {
+                            session.show(.comments)
+                        }
+                    }
+                }
                 // One button either side, so the title sits in the visual
                 // middle, not just the measured one. Appearance goes with
                 // the scrubber at the bottom, as in Books.
@@ -82,10 +92,15 @@ private struct ReaderToolbars: ViewModifier {
                     } else {
                         ContentsPanel(session: session)
                     }
+                case .comments:
+                    if let comments = session.comments {
+                        CommentsPanel(comments: comments)
+                    }
                 case .appearance:
                     AppearancePanel(
                         showsTextSettings: session.showsTextSettings,
                         showsComicSettings: session.item.kind == .comic,
+                        showsCommentSettings: session.item.sourceChapter != nil,
                         // Only pictures have a direction to get wrong;
                         // text follows its language.
                         directionKey: session.showsTextSettings ? nil : session.item.settingsKey

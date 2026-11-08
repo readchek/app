@@ -24,6 +24,7 @@ struct ReaderScreen: View {
     @Environment(ServerSync.self) private var sync
     @Environment(LibraryStore.self) private var library
     @Environment(ProgressStore.self) private var progress
+    @Environment(ServerStore.self) private var servers
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         _session = State(initialValue: ReaderSession(item: item, preferences: preferences))
@@ -43,7 +44,9 @@ struct ReaderScreen: View {
                         if let handoff {
                             ChapterEndPage(kind: session.item.kind, finished: handoff.finished, next: .found(handoff.target), isNext: handoff.isNext, isOpening: true, retry: findNeighbors)
                         } else if session.isShowingChapterEnd {
-                            ChapterEndPage(kind: session.item.kind, finished: session.item.title, next: session.next, isOpening: false, retry: findNeighbors)
+                            ChapterEndPage(kind: session.item.kind, finished: session.item.title, next: session.next, isOpening: false, retry: findNeighbors, comments: session.comments) {
+                                session.show(.comments)
+                            }
                         }
                     }
                     .transition(.opacity)
@@ -99,6 +102,17 @@ struct ReaderScreen: View {
         // Alongside opening, so the way on is known before the last page.
         .task(id: session.item.id) {
             await session.findNeighbors(with: finder)
+        }
+        // Whether the chapter has comments, so their button is ready with
+        // the page. Turning comments off takes it away and asks nothing.
+        .task(id: CommentsLookup(item: session.item.id, isOn: settings.showsComments)) {
+            guard settings.showsComments, let chapter = session.item.sourceChapter else {
+                session.comments = nil
+                return
+            }
+            let comments = ChapterComments(chapter: chapter, servers: servers)
+            session.comments = comments
+            await comments.look()
         }
         // A turn past the last page goes on to what's next.
         .onChange(of: session.controller.turnsPastEnd) {
@@ -165,6 +179,12 @@ struct ReaderScreen: View {
         Task { await finished.controller.close() }
         session = ReaderSession(item: item, preferences: settings.preferences(for: item.settingsKey))
     }
+}
+
+/// What the comments are looked up for: the chapter, and whether they're on.
+private struct CommentsLookup: Equatable {
+    var item: PublicationRef
+    var isOn: Bool
 }
 
 /// What's on the chapter end while the next chapter opens.

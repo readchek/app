@@ -335,6 +335,43 @@ nonisolated struct ChekClient: Sendable {
         return authorize(URLRequest(url: url, timeoutInterval: 60))
     }
 
+    // MARK: - Comments
+
+    /// How many comments a chapter has on its source's site, or nil when it
+    /// has no thread or the source gives none here.
+    func commentSummary(ofChapter chapter: String, inSource source: String) async throws(ChekError) -> ChekAPI.CommentSummary? {
+        do {
+            return try await Self.send(authorized("api/v1/me/extensions/\(source)/comments/summary", query: [URLQueryItem(name: "chapterId", value: chapter)]), session: session)
+        } catch .notFound {
+            return nil
+        }
+    }
+
+    /// A page of a chapter's comments, in one of the source's orders.
+    func comments(ofChapter chapter: String, inSource source: String, order: ChekAPI.CommentOrder?, cursor: String?) async throws(ChekError) -> ChekAPI.CommentPage {
+        var query = [URLQueryItem(name: "chapterId", value: chapter)]
+        if let order {
+            query.append(URLQueryItem(name: "order", value: order.rawValue))
+        }
+        if let cursor {
+            query.append(URLQueryItem(name: "cursor", value: cursor))
+        }
+        var request = authorized("api/v1/me/extensions/\(source)/comments", query: query)
+        request.timeoutInterval = 60
+        return try await Self.send(request, session: session)
+    }
+
+    /// A page of the replies to one comment.
+    func replies(to comment: String, ofChapter chapter: String, inSource source: String, cursor: String?) async throws(ChekError) -> ChekAPI.CommentPage {
+        var query = [URLQueryItem(name: "chapterId", value: chapter), URLQueryItem(name: "commentId", value: comment)]
+        if let cursor {
+            query.append(URLQueryItem(name: "cursor", value: cursor))
+        }
+        var request = authorized("api/v1/me/extensions/\(source)/comments/replies", query: query)
+        request.timeoutInterval = 60
+        return try await Self.send(request, session: session)
+    }
+
     // MARK: - Reading
 
     func pageCount(of publication: Int64) async throws(ChekError) -> Int {
@@ -459,7 +496,9 @@ nonisolated struct ChekClient: Sendable {
         switch http.statusCode {
         case 200..<300:
             do {
-                return try decoder.decode(Value.self, from: data)
+                // No content reads as null, which an optional answer takes
+                // for nothing, as a chapter with no comment thread is.
+                return try decoder.decode(Value.self, from: http.statusCode == 204 ? Data("null".utf8) : data)
             } catch {
                 throw .invalidResponse
             }

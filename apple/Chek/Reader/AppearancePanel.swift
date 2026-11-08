@@ -5,13 +5,15 @@ import SwiftUI
 struct AppearancePanel: View {
     var showsTextSettings = true
     var showsComicSettings = false
+    /// Whether comments apply, which they do to chapters from sources.
+    var showsCommentSettings = false
     /// What a reading direction chosen here applies to, nil to offer none.
     var directionKey: String?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsComicSettings: showsComicSettings, directionKey: directionKey)
+            ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsComicSettings: showsComicSettings, showsCommentSettings: showsCommentSettings, directionKey: directionKey)
                 .navigationTitle("Appearance")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -37,6 +39,9 @@ struct ReaderAppearanceForm: View {
     var showsTextSettings = true
     /// Whether comic layouts apply, which they do to comics and Settings.
     var showsComicSettings = true
+    /// Whether to offer turning comments off and showing hidden
+    /// commenters again, which applies to chapters from sources and Settings.
+    var showsCommentSettings = true
     /// What a reading direction chosen here applies to, usually a series.
     /// Nil in Settings, where there's nothing open to choose it for.
     var directionKey: String?
@@ -111,6 +116,22 @@ struct ReaderAppearanceForm: View {
                         Text("Regular").tag(ReaderSettings.Margins.regular)
                         Text("Wide").tag(ReaderSettings.Margins.wide)
                     }
+                }
+            }
+            if showsCommentSettings {
+                Section {
+                    Toggle("Show Comments", isOn: $settings.showsComments)
+                    NavigationLink {
+                        HiddenCommentersView()
+                    } label: {
+                        LabeledContent("Hidden Commenters") {
+                            Text(settings.hiddenCommenters.values.reduce(0) { $0 + $1.count }, format: .number)
+                        }
+                    }
+                } header: {
+                    Text("Comments")
+                } footer: {
+                    Text("Comments come from each site and are read-only. To report one, use its menu to open it on its site.")
                 }
             }
             Section {

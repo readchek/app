@@ -19,7 +19,7 @@ final class ReaderSession {
     }
 
     enum Panel: String, Identifiable {
-        case contents, appearance
+        case contents, appearance, comments
 
         var id: Self { self }
     }
@@ -29,6 +29,9 @@ final class ReaderSession {
     private(set) var phase: Phase
     private(set) var isShowingControls = true
     var panel: Panel?
+    /// Readers' comments on the chapter from its site, for a chapter read
+    /// from a source while comments are on.
+    var comments: ChapterComments?
     /// Whether the sign-in form is up, for a server that ended its session
     /// while you were reading from it.
     var isSigningIn = false
