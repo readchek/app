@@ -173,11 +173,18 @@ private struct ThreadFooter: View {
 private struct CommentThread: View {
     let comment: ChekAPI.Comment
     let comments: ChapterComments
+    @Environment(ReaderSettings.self) private var settings
+
+    private var isHidden: Bool {
+        settings.isHidden(comment.author.name, on: comments.chapter.source)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             CommentRow(comment: comment, comments: comments) {
-                if comment.replyCount > 0 {
+                // Hiding someone folds their whole thread into one line, so
+                // the replies button and the replies go with the comment.
+                if comment.replyCount > 0, !isHidden {
                     Button {
                         if isOpen {
                             comments.closeReplies(of: comment)
@@ -194,7 +201,7 @@ private struct CommentThread: View {
                     .buttonStyle(.borderless)
                 }
             }
-            if let replies = comments.replies[comment.id] {
+            if !isHidden, let replies = comments.replies[comment.id] {
                 Group {
                     switch replies {
                     case .loading:
@@ -259,8 +266,6 @@ private struct CommentRow<Extra: View>: View {
                     .buttonStyle(.borderless)
                 }
                 .font(.footnote)
-                extra()
-                    .font(.subheadline)
             }
         } else {
             HStack(alignment: .top, spacing: 10) {
@@ -274,7 +279,19 @@ private struct CommentRow<Extra: View>: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 header
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Spacer(minLength: 8)
+                // A long name or badge used to wrap the time in the middle
+                // ("5" on one line, "hr ago" on the next). The time is kept
+                // whole, and the name gives way instead.
+                if let when {
+                    when
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize()
+                        .layoutPriority(1)
+                }
                 CommentMenu(comment: comment, comments: comments)
             }
             text
@@ -299,23 +316,33 @@ private struct CommentRow<Extra: View>: View {
         }
     }
 
+    /// Who wrote it, with their badge and who they answered.
     private var header: some View {
         var line = Text(comment.author.name).fontWeight(.semibold)
         if let badge = comment.author.badge, !badge.isEmpty {
             line = line + Text(" · \(badge)").foregroundStyle(.secondary)
-        }
-        if let date = comment.publishedDate {
-            line = line + Text("  ") + Text(date, format: .relative(presentation: .numeric, unitsStyle: .narrow)).foregroundStyle(.secondary)
-        }
-        if comment.edited {
-            line = line + Text(" · ") .foregroundStyle(.secondary) + Text("Edited").foregroundStyle(.secondary)
         }
         if let replyTo = comment.replyTo {
             line = line + Text(" · ").foregroundStyle(.secondary) + Text("to \(replyTo)").foregroundStyle(.secondary)
         }
         return line
             .font(.subheadline)
-            .lineLimit(2)
+    }
+
+    /// When it was written, and that it was edited since.
+    private var when: Text? {
+        var parts: [Text] = []
+        if let date = comment.publishedDate {
+            parts.append(Text(date, format: .relative(presentation: .numeric, unitsStyle: .narrow)))
+        }
+        if comment.edited {
+            parts.append(Text("Edited"))
+        }
+        guard var line = parts.first else { return nil }
+        for part in parts.dropFirst() {
+            line = line + Text(" · ") + part
+        }
+        return line
     }
 
     @ViewBuilder private var text: some View {
