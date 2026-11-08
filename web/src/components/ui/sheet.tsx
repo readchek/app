@@ -1,5 +1,5 @@
 import type { Component, ComponentProps, JSX, ValidComponent } from "solid-js"
-import { splitProps } from "solid-js"
+import { Show, splitProps } from "solid-js"
 
 import * as SheetPrimitive from "@kobalte/core/dialog"
 import type { PolymorphicProps } from "@kobalte/core/polymorphic"
@@ -11,6 +11,8 @@ import { cn } from "../../lib/cn.ts"
 // trailing edge on a desktop or the bottom on a phone. It fades in with a
 // short slide rather than solid-ui's long one. Kobalte keeps focus inside,
 // closes on Escape and a click outside, and labels it from its title.
+// Without its overlay, as a non-modal Sheet, it sits beside the page and
+// everything else stays usable.
 
 const Sheet = SheetPrimitive.Root
 const SheetTrigger = SheetPrimitive.Trigger
@@ -26,13 +28,23 @@ const portalVariants = cva("fixed inset-0 z-50 flex", {
   defaultVariants: { position: "right" },
 })
 
-type PortalProps = SheetPrimitive.DialogPortalProps & VariantProps<typeof portalVariants>
+type PortalProps = SheetPrimitive.DialogPortalProps &
+  VariantProps<typeof portalVariants> & { overlay?: boolean }
 
 const SheetPortal: Component<PortalProps> = (props) => {
-  const [local, others] = splitProps(props, ["position", "children"])
+  const [local, others] = splitProps(props, ["position", "children", "overlay"])
   return (
     <SheetPrimitive.Portal {...others}>
-      <div class={portalVariants({ position: local.position })}>{local.children}</div>
+      {/* Without an overlay, only the panel takes clicks; the page behind
+          it keeps them. */}
+      <div
+        class={cn(
+          portalVariants({ position: local.position }),
+          local.overlay === false && "pointer-events-none",
+        )}
+      >
+        {local.children}
+      </div>
     </SheetPrimitive.Portal>
   )
 }
@@ -56,17 +68,30 @@ type SheetContentProps<T extends ValidComponent = "div"> = SheetPrimitive.Dialog
   VariantProps<typeof sheetVariants> & {
     class?: string | undefined
     children?: JSX.Element
+    /** Dims and blocks the page behind; off for a panel read alongside it. */
+    overlay?: boolean
   }
 
 const SheetContent = <T extends ValidComponent = "div">(
   props: PolymorphicProps<T, SheetContentProps<T>>,
 ) => {
-  const [local, others] = splitProps(props as SheetContentProps, ["position", "class", "children"])
+  const [local, others] = splitProps(props as SheetContentProps, [
+    "position",
+    "class",
+    "children",
+    "overlay",
+  ])
   return (
-    <SheetPortal position={local.position}>
-      <SheetPrimitive.Overlay class="fixed inset-0 z-50 bg-foreground/30 data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:animate-in data-[expanded]:fade-in-0" />
+    <SheetPortal position={local.position} overlay={local.overlay}>
+      <Show when={local.overlay !== false}>
+        <SheetPrimitive.Overlay class="fixed inset-0 z-50 bg-foreground/30 data-[closed]:animate-out data-[closed]:fade-out-0 data-[expanded]:animate-in data-[expanded]:fade-in-0" />
+      </Show>
       <SheetPrimitive.Content
-        class={cn(sheetVariants({ position: local.position }), local.class)}
+        class={cn(
+          sheetVariants({ position: local.position }),
+          local.overlay === false && "pointer-events-auto",
+          local.class,
+        )}
         {...others}
       >
         {local.children}
