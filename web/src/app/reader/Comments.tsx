@@ -32,6 +32,7 @@ import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group.tsx"
 import type { Account } from "../accounts.ts"
 import { loadImage } from "../images.ts"
+import { Avatar, AvatarFallback, AvatarImage } from "../../components/ui/avatar.tsx"
 import {
   type Comment,
   type CommentOrder,
@@ -492,35 +493,38 @@ function Row(props: { comment: Comment; source: CommentSource; extra?: JSX.Eleme
         </div>
       }
     >
-      <article class="relative" aria-label={`Comment by ${name()}`}>
-        <header class="flex items-baseline gap-1.5 pr-9 text-[13px] text-muted-foreground">
-          <span class="text-[14px] font-semibold text-foreground">{name()}</span>
-          <Show when={props.comment.author.badge}>{(badge) => <span>· {badge()}</span>}</Show>
-          <Show when={props.comment.published}>
-            {(published) => (
-              <time datetime={published()} title={new Date(published()).toLocaleString()}>
-                {ago(published())}
-              </time>
-            )}
+      <article class="relative flex gap-2.5" aria-label={`Comment by ${name()}`}>
+        <CommentAvatar account={props.source.account} author={props.comment.author} />
+        <div class="min-w-0 flex-1">
+          <header class="flex items-baseline gap-1.5 pr-9 text-[13px] text-muted-foreground">
+            <span class="text-[14px] font-semibold text-foreground">{name()}</span>
+            <Show when={props.comment.author.badge}>{(badge) => <span>· {badge()}</span>}</Show>
+            <Show when={props.comment.published}>
+              {(published) => (
+                <time datetime={published()} title={new Date(published()).toLocaleString()}>
+                  {ago(published())}
+                </time>
+              )}
+            </Show>
+            <Show when={props.comment.edited}>
+              <span>· edited</span>
+            </Show>
+          </header>
+          <CommentMenu comment={props.comment} source={props.source} />
+          <Body comment={props.comment} />
+          <Show when={props.comment.images.length > 0}>
+            <div class="mt-2 flex flex-wrap gap-2">
+              <For each={props.comment.images}>
+                {(image) => <CommentImage account={props.source.account} path={image} />}
+              </For>
+            </div>
           </Show>
-          <Show when={props.comment.edited}>
-            <span>· edited</span>
-          </Show>
-        </header>
-        <CommentMenu comment={props.comment} source={props.source} />
-        <Body comment={props.comment} />
-        <Show when={props.comment.images.length > 0}>
-          <div class="mt-2 flex flex-wrap gap-2">
-            <For each={props.comment.images}>
-              {(image) => <CommentImage account={props.source.account} path={image} />}
-            </For>
+          <div class="mt-1.5 flex items-center gap-4 text-[13px] text-muted-foreground">
+            <Show when={props.comment.score !== null}>
+              <span aria-label={`${props.comment.score} upvotes`}>▲ {props.comment.score}</span>
+            </Show>
+            {props.extra}
           </div>
-        </Show>
-        <div class="mt-1.5 flex items-center gap-4 text-[13px] text-muted-foreground">
-          <Show when={props.comment.score !== null}>
-            <span aria-label={`${props.comment.score} upvotes`}>▲ {props.comment.score}</span>
-          </Show>
-          {props.extra}
         </div>
       </article>
     </Show>
@@ -639,6 +643,28 @@ function CommentMenu(props: { comment: Comment; source: CommentSource }) {
         </Show>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+/** The commenter's picture from the site, or their initial while it loads or without one. */
+function CommentAvatar(props: { account: Account; author: Comment["author"] }) {
+  const [url] = createResource(
+    () => props.author.avatarUrl,
+    async (path) => URL.createObjectURL(await loadImage(props.account, path)),
+  )
+  createEffect(() => {
+    const made = url.state === "ready" ? url() : undefined
+    if (made) onCleanup(() => URL.revokeObjectURL(made))
+  })
+  return (
+    <Avatar class="size-8" aria-hidden="true">
+      <Show when={url.state === "ready" && url()}>
+        {(src) => <AvatarImage src={src()} alt="" />}
+      </Show>
+      <AvatarFallback class="text-[13px] font-semibold text-muted-foreground">
+        {props.author.name.slice(0, 1).toUpperCase()}
+      </AvatarFallback>
+    </Avatar>
   )
 }
 
