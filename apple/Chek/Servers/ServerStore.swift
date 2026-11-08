@@ -22,8 +22,9 @@ final class ServerStore {
     /// Goes up whenever the content ratings of any server change, so
     /// screens that list a source's series ask again.
     private(set) var contentRatingsRevision = 0
-    /// Told when a server is removed, so what else was kept for it goes too.
-    @ObservationIgnored var onRemove: ((UUID) -> Void)?
+    /// Told when what was kept for a server goes, on removal or when
+    /// someone else signs in to it, so other stores drop theirs too.
+    @ObservationIgnored var onForget: ((UUID) -> Void)?
 
     private let context: ModelContext
     private let keychain: Keychain
@@ -175,7 +176,7 @@ final class ServerStore {
             throw DisplayError(title: String(localized: "Check the Address"), message: String(localized: "Enter the address you were given, such as books.example.com."))
         }
         if let existing = accounts().first(where: { $0.baseURL == baseURL && $0.userName.caseInsensitiveCompare(name) == .orderedSame }) {
-            try await signIn(existing, password: password)
+            try await signIn(existing, as: name, password: password)
             return existing
         }
         let session = try await signIn(at: baseURL, name: name, password: password)
@@ -195,10 +196,56 @@ final class ServerStore {
         return account
     }
 
-    /// Signs `account` in again after its session ended.
-    func signIn(_ account: ServerAccount, password: String) async throws(DisplayError) {
-        let session = try await signIn(at: account.baseURL, name: account.userName, password: password)
+    /// Signs in to `account`'s server as `name`, keeping the library where
+    /// it is in your list. Signing in as the same person again keeps your
+    /// places and downloads. Signing in as someone else drops what was kept
+    /// on this device for the person before, since it's theirs, not yours.
+    func signIn(_ account: ServerAccount, as name: String, password: String) async throws(DisplayError) {
+        let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let other = otherAccount(on: account, named: name) {
+            throw Self.alreadyAdded(as: name, in: other)
+        }
+        let session = try await signIn(at: account.baseURL, name: name, password: password)
+        // The server's own spelling, in case it matches names loosely.
+        if let other = otherAccount(on: account, named: session.user.name) {
+            await ChekClient(baseURL: account.baseURL, token: session.token).signOut()
+            throw Self.alreadyAdded(as: session.user.name, in: other)
+        }
+        // Taken before the new session replaces it, so it can be ended.
+        let previous = client(for: account.id)
+        if Self.isSomeoneElse(session.user, thanID: account.userID, named: account.userName) {
+            forgetKept(for: account.id)
+            account.userName = session.user.name
+            account.userID = session.user.id
+            try? context.save()
+            contentRatingsChanged(on: account.id)
+        }
         keep(session, for: account)
+        await previous?.signOut()
+    }
+
+    /// Whether `user` is a different person from the one an account was
+    /// signed in as. Accounts from older builds may have no user id, so the
+    /// name decides for those.
+    nonisolated static func isSomeoneElse(_ user: ChekAPI.User, thanID id: Int64?, named name: String) -> Bool {
+        if let id {
+            return user.id != id
+        }
+        return user.name.caseInsensitiveCompare(name) != .orderedSame
+    }
+
+    /// Another entry for the same server, signed in as `name`.
+    private func otherAccount(on account: ServerAccount, named name: String) -> ServerAccount? {
+        accounts().first {
+            $0.id != account.id && $0.baseURL == account.baseURL && $0.userName.caseInsensitiveCompare(name) == .orderedSame
+        }
+    }
+
+    private static func alreadyAdded(as name: String, in other: ServerAccount) -> DisplayError {
+        DisplayError(
+            title: String(localized: "Already Added"),
+            message: String(localized: "You're signed in as \(name) in “\(other.name)”.")
+        )
     }
 
     /// Stores a new session's token, and makes its client straight away so
@@ -223,8 +270,21 @@ final class ServerStore {
         // the session on the server can wait for the network.
         let client = client(for: id)
         sessionEnded(id)
+        forgetKept(for: id)
+        context.delete(account)
+        try? context.save()
+        signedOut.remove(id)
+        if id == DemoMode.accountID {
+            isDemo = false
+        }
+        await client?.signOut()
+    }
+
+    /// Drops your places, follows and downloads from `id`'s server, leaving
+    /// the account itself.
+    private func forgetKept(for id: UUID) {
         // One by one: a batch delete doesn't reach `@Query`, so the
-        // now-reading bar would keep showing a book from a server that's gone.
+        // now-reading bar would keep showing a book that's no longer yours.
         let states = (try? context.fetch(FetchDescriptor<RemoteReadingState>(predicate: #Predicate { $0.serverID == id }))) ?? []
         for state in states {
             context.delete(state)
@@ -236,15 +296,9 @@ final class ServerStore {
         for follow in (try? context.fetch(FetchDescriptor<FollowedSeries>(predicate: #Predicate { $0.serverID == id }))) ?? [] {
             context.delete(follow)
         }
-        context.delete(account)
         try? context.save()
-        signedOut.remove(id)
-        if id == DemoMode.accountID {
-            isDemo = false
-        }
         try? FileManager.default.removeItem(at: ServerFiles.folder(for: id))
-        onRemove?(id)
-        await client?.signOut()
+        onForget?(id)
     }
 
     /// Saves the order you arranged servers in.

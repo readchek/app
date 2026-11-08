@@ -135,16 +135,26 @@ extension AddServerView {
     }
 }
 
-/// Signs in again to a server whose session ended.
+/// Signs in to a library you've already added: again after its session
+/// ended, or as someone else, keeping the library in your list.
 struct SignInView: View {
     let account: UUID
+    /// Whether this was opened to sign in as another person, so the user
+    /// name starts empty rather than as the person signed in now.
+    var isChangingUser = false
     @Environment(ServerStore.self) private var servers
     @Environment(ServerSync.self) private var sync
+    @Environment(SiteUpdates.self) private var siteUpdates
     @Environment(AppRouter.self) private var router
     @Environment(\.dismiss) private var dismiss
+    @State private var name = ""
     @State private var password = ""
     @State private var phase = AddServerView.Phase.editing
-    @FocusState private var isFocused: Bool
+    @FocusState private var focus: AddServerView.Field?
+
+    private var canSignIn: Bool {
+        phase != .connecting && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !password.isEmpty
+    }
 
     var body: some View {
         NavigationStack {
@@ -152,22 +162,30 @@ struct SignInView: View {
                 Form {
                     Section {
                         LabeledContent("Library", value: server.name)
-                        LabeledContent("User Name", value: server.userName)
+                        TextField("User Name", text: $name)
+                            .textContentType(.username)
+                            .textInputAutocapitalization(.never)
+                            .autocorrectionDisabled()
+                            .focused($focus, equals: .name)
+                            .submitLabel(.next)
+                            .onSubmit { focus = .password }
                         SecureField("Password", text: $password)
                             .textContentType(.password)
-                            .focused($isFocused)
+                            .focused($focus, equals: .password)
                             .submitLabel(.go)
                             .onSubmit { signIn(server) }
                     } footer: {
                         if case .failed(let error) = phase {
                             FormError(error: error)
+                        } else if isChangingUser {
+                            Text("You stay signed in as \(server.userName) until this works. Places and downloads kept on this device for \(server.userName) are then removed. Their reading positions stay on the library.")
                         }
                     }
                 }
-                .onChange(of: password) {
+                .onChange(of: [name, password]) {
                     if case .failed = phase { phase = .editing }
                 }
-                .navigationTitle("Sign In")
+                .navigationTitle(isChangingUser ? "Change User" : "Sign In")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -183,26 +201,46 @@ struct SignInView: View {
                             Button("Sign In", role: .confirm) {
                                 signIn(server)
                             }
-                            .disabled(password.isEmpty)
+                            .disabled(!canSignIn)
                         }
                     }
                 }
-                .onAppear { isFocused = true }
+                .onAppear {
+                    if isChangingUser {
+                        focus = .name
+                    } else {
+                        name = server.userName
+                        focus = .password
+                    }
+                }
             }
         }
+        .interactiveDismissDisabled(phase == .connecting)
     }
 
     private func signIn(_ server: ServerAccount) {
-        guard !password.isEmpty, phase != .connecting else { return }
+        guard canSignIn else { return }
         phase = .connecting
+        let before = server.userID
         Task {
             do {
-                try await servers.signIn(server, password: password)
+                if isChangingUser {
+                    // Places still waiting to go up belong to the person
+                    // signed in now, and are dropped if someone else signs in.
+                    await sync.uploadPending()
+                }
+                try await servers.signIn(server, as: name, password: password)
+                if server.userID != before {
+                    // Screens open on this library showed the person before.
+                    router.serverUserChanged(server.id)
+                    Task { await siteUpdates.check(server.id, force: true) }
+                }
                 dismiss()
                 router.resumePendingOpen(using: sync)
             } catch {
-                phase = .failed(DisplayError(error))
-                isFocused = true
+                let shown = DisplayError(error)
+                phase = .failed(shown)
+                focus = shown.title == String(localized: "Already Added") ? .name : .password
             }
         }
     }

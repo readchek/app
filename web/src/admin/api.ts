@@ -54,7 +54,11 @@ export type Repository = {
   createdAt: string
 }
 
-export type Settings = { allowAnyRepository: boolean }
+export type Settings = {
+  allowAnyRepository: boolean
+  /** Absent from servers before readers' comments. */
+  extensionComments?: boolean
+}
 
 export type NewLibrary =
   | { name: string; path: string }
@@ -217,7 +221,7 @@ export function settings(session: Session): Promise<Settings> {
   return request<Settings>(session.server, "/api/v1/settings", auth(session))
 }
 
-export function updateSettings(session: Session, changes: Settings): Promise<Settings> {
+export function updateSettings(session: Session, changes: Partial<Settings>): Promise<Settings> {
   return request<Settings>(session.server, "/api/v1/settings", {
     ...auth(session),
     method: "PUT",

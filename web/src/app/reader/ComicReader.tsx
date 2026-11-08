@@ -28,6 +28,16 @@ import { Choice } from "../../components/Choice.tsx"
 import { cn } from "../../lib/cn.ts"
 import type { Account } from "../accounts.ts"
 import { loadImage } from "../images.ts"
+import {
+  type CommentSource,
+  CommentSettings,
+  CommentsButton,
+  CommentsLink,
+  CommentsPanel,
+  PANEL_WIDTH,
+  createComments,
+  isDocked,
+} from "./Comments.tsx"
 import { ContentsDialog } from "./Contents.tsx"
 import {
   changeComicSettings,
@@ -65,6 +75,8 @@ export type ComicBook = {
   direction: ReadingDirection | null
   positions: Positions
   next: () => Promise<UpNext | undefined>
+  /** Where readers' comments on it come from, for a chapter from a site that has them. */
+  comments?: CommentSource
 }
 
 /** Pages from paths on the account's server, such as a comic's. */
@@ -93,6 +105,7 @@ export function ComicReader(props: { book: ComicBook }) {
   const [location, setLocation] = createSignal<ComicLocation>()
   const [scrub, setScrub] = createSignal<number>()
   const controls = createControls()
+  const comments = book.comments && createComments(book.comments)
   const [finished, setFinished] = createSignal(false)
   const keeper = createKeeper(book.positions)
   const [next] = createResource(() => book.next())
@@ -151,7 +164,9 @@ export function ComicReader(props: { book: ComicBook }) {
 
   return (
     <div
-      class="relative h-full"
+      class="relative h-full transition-[margin] duration-200"
+      // The page makes room for the comments beside it rather than going under them.
+      style={{ "margin-right": isDocked(comments) ? `${PANEL_WIDTH}px` : "0" }}
       onPointerMove={(event) => {
         if (event.pointerType === "mouse" && (event.movementX || event.movementY)) controls.moved()
       }}
@@ -159,6 +174,7 @@ export function ComicReader(props: { book: ComicBook }) {
       <div ref={(node) => (element = node)} class="absolute inset-0" aria-label="Pages" />
 
       <TopBar controls={controls} title={book.title} subtitle={book.subtitle}>
+        <Show when={comments}>{(shown) => <CommentsButton comments={shown()} />}</Show>
         <Show when={(book.toc?.length ?? 0) > 0}>
           <Button
             variant="ghost"
@@ -231,11 +247,19 @@ export function ComicReader(props: { book: ComicBook }) {
               Turn pages with the arrow keys, a swipe, or a click at either side. Double-click or
               press + and − to zoom.
             </p>
+            <Show when={book.comments}>{(source) => <CommentSettings source={source()} />}</Show>
           </PopoverContent>
         </Popover>
       </TopBar>
 
-      <Show when={finished() && next()}>{(after) => <UpNextCard next={after()} />}</Show>
+      <Show when={finished() && next()}>
+        {(after) => (
+          <UpNextCard next={after()}>
+            <Show when={comments}>{(shown) => <CommentsLink comments={shown()} />}</Show>
+          </UpNextCard>
+        )}
+      </Show>
+      <Show when={comments}>{(shown) => <CommentsPanel comments={shown()} />}</Show>
 
       <PageButtons
         controls={controls}

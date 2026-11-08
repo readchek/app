@@ -222,4 +222,31 @@ struct SourceAPITests {
         #expect(SearchFilters.source(comics, matches: .book))
         #expect(!SearchFilters.source(comics, matches: .comic))
     }
+
+    /// Comments decode with styles that are off left out, and orders this
+    /// app doesn't know are dropped rather than failing the list.
+    @Test func commentsDecode() throws {
+        let json = Data("""
+        {"items":[{"id":"1","author":{"name":"Ana","avatarUrl":null,"badge":null},"published":"2026-11-08T07:00:00Z","edited":false,"body":[{"text":"Hi "},{"text":"there","bold":true},{"text":"it dies","spoiler":true}],"images":[],"spoiler":false,"score":4,"replyTo":null,"replyCount":2,"url":"https://example.com/c/1"}],"next":null,"total":1}
+        """.utf8)
+        let page = try JSONDecoder().decode(ChekAPI.CommentPage.self, from: json)
+        #expect(page.items[0].body.map(\.text) == ["Hi ", "there", "it dies"])
+        #expect(page.items[0].body[0].bold == nil)
+        #expect(page.items[0].body[2].spoiler == true)
+        #expect(page.items[0].publishedDate != nil)
+        #expect(page.next == nil)
+
+        let source = Data("""
+        {"id":"page.chek.a","name":"A","version":"1.0.0","repositoryId":1,"sites":[],"languages":[],"usable":true,"comments":["top","liked","newest"]}
+        """.utf8)
+        let installed = try JSONDecoder().decode(ChekAPI.InstalledExtension.self, from: source)
+        #expect(installed.commentOrders == [.top, .newest])
+    }
+
+    /// Only HTTPS links from a site are followed.
+    @Test func commentLinksMustBeHTTPS() {
+        #expect(ChapterComments.safeLink("https://example.com/c/1") != nil)
+        #expect(ChapterComments.safeLink("http://example.com/c/1") == nil)
+        #expect(ChapterComments.safeLink("javascript:alert(1)") == nil)
+    }
 }

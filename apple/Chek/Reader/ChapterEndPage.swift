@@ -19,6 +19,10 @@ struct ChapterEndPage: View {
     var isNext = true
     let isOpening: Bool
     let retry: () -> Void
+    /// Readers' comments on what you've finished, when it has some.
+    var comments: ChapterComments?
+    /// Opens the comments.
+    var showComments: () -> Void = {}
     @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
@@ -31,7 +35,10 @@ struct ChapterEndPage: View {
                     entry("Finished", finished)
                         .allowsHitTesting(false)
                 }
-                upNext
+                VStack(alignment: .leading, spacing: 16) {
+                    upNext
+                    commentsLine
+                }
             }
             .frame(maxWidth: 340, alignment: .leading)
             .padding(.horizontal, 32)
@@ -71,6 +78,27 @@ struct ChapterEndPage: View {
                 .allowsHitTesting(false)
         case .none:
             EmptyView()
+        }
+    }
+
+    /// How many comments the chapter has, as a quiet link to them, or to
+    /// the thread on the site when that's all it gives.
+    @ViewBuilder private var commentsLine: some View {
+        if let comments, let count = comments.count {
+            let label = Label {
+                Text("^[\(count) comment](inflect: true)")
+            } icon: {
+                Image(systemName: "bubble")
+            }
+            .font(.subheadline)
+            .foregroundStyle(secondary)
+            if comments.hasList {
+                Button(action: showComments) { label }
+                    .buttonStyle(.plain)
+            } else if let thread = comments.thread {
+                Link(destination: thread) { label }
+                    .buttonStyle(.plain)
+            }
         }
     }
 

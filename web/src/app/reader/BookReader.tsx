@@ -26,6 +26,16 @@ import {
 import { Choice } from "../../components/Choice.tsx"
 import { cn } from "../../lib/cn.ts"
 import type { Account } from "../accounts.ts"
+import {
+  type CommentSource,
+  CommentSettings,
+  CommentsButton,
+  CommentsLink,
+  CommentsPanel,
+  PANEL_WIDTH,
+  createComments,
+  isDocked,
+} from "./Comments.tsx"
 import { ContentsDialog } from "./Contents.tsx"
 import { type BookSettings, bookSettings, changeBookSettings } from "./settings.ts"
 import {
@@ -51,6 +61,8 @@ export type BookSource = {
   start: Locator | null
   positions: Positions
   next: () => Promise<UpNext | undefined>
+  /** Where readers' comments on it come from, for a chapter from a site that has them. */
+  comments?: CommentSource
 }
 
 // The page behind the book's own, for each theme. They match the reader
@@ -83,6 +95,7 @@ export function BookReader(props: { book: BookSource }) {
   const [location, setLocation] = createSignal<BookLocation>()
   const [scrub, setScrub] = createSignal<number>()
   const controls = createControls()
+  const comments = book.comments && createComments(book.comments)
   const [finished, setFinished] = createSignal(false)
   const [contents, setContents] = createSignal(false)
   const [failure, setFailure] = createSignal<string>()
@@ -192,8 +205,12 @@ export function BookReader(props: { book: BookSource }) {
 
   return (
     <div
-      class="relative h-full"
-      style={{ background: background() }}
+      class="relative h-full transition-[margin] duration-200"
+      // The page makes room for the comments beside it rather than going under them.
+      style={{
+        background: background(),
+        "margin-right": isDocked(comments) ? `${PANEL_WIDTH}px` : "0",
+      }}
       onPointerMove={(event) => {
         if (event.pointerType === "mouse" && (event.movementX || event.movementY)) controls.moved()
       }}
@@ -205,6 +222,7 @@ export function BookReader(props: { book: BookSource }) {
         title={book.title}
         subtitle={location()?.chapter?.title ?? book.subtitle}
       >
+        <Show when={comments}>{(shown) => <CommentsButton comments={shown()} />}</Show>
         <Show when={book.publication.toc.length > 0}>
           <Button
             variant="ghost"
@@ -305,6 +323,7 @@ export function BookReader(props: { book: BookSource }) {
               ]}
               onChange={(value) => changeBookSettings({ marginScale: Number(value) })}
             />
+            <Show when={book.comments}>{(source) => <CommentSettings source={source()} />}</Show>
           </PopoverContent>
         </Popover>
       </TopBar>
@@ -315,7 +334,14 @@ export function BookReader(props: { book: BookSource }) {
         </div>
       </Show>
 
-      <Show when={finished() && next()}>{(after) => <UpNextCard next={after()} />}</Show>
+      <Show when={finished() && next()}>
+        {(after) => (
+          <UpNextCard next={after()}>
+            <Show when={comments}>{(shown) => <CommentsLink comments={shown()} />}</Show>
+          </UpNextCard>
+        )}
+      </Show>
+      <Show when={comments}>{(shown) => <CommentsPanel comments={shown()} />}</Show>
 
       <PageButtons
         controls={controls}

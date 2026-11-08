@@ -45,9 +45,25 @@ async function fetchImage(account: Account, url: string): Promise<Blob> {
   return blob
 }
 
+/**
+ * The address of an image path on the account's server, or nothing when the
+ * path would lead anywhere else. Paths come from extensions' data, so one
+ * such as `@elsewhere.example/x` must not carry the token off the server.
+ */
+function imageURL(account: Account, path: string): string | undefined {
+  if (!path.startsWith("/") || path.startsWith("//")) return undefined
+  const url = `${account.server}${path}`
+  try {
+    return new URL(url).origin === new URL(account.server).origin ? url : undefined
+  } catch {
+    return undefined
+  }
+}
+
 /** An image from the account's server, by its API path. Concurrent asks for one image share a fetch. */
 export function loadImage(account: Account, path: string): Promise<Blob> {
-  const url = `${account.server}${path}`
+  const url = imageURL(account, path)
+  if (!url) return Promise.reject(new Error("That image isn't on the server."))
   const key = `${account.token}\n${url}`
   let pending = inFlight.get(key)
   if (!pending) {
@@ -59,7 +75,9 @@ export function loadImage(account: Account, path: string): Promise<Blob> {
 
 /** An image that changes each time it's asked for, such as a frame of the server's browser. It isn't kept. */
 export async function loadLiveImage(account: Account, path: string): Promise<Blob> {
-  const response = await fetch(`${account.server}${path}`, {
+  const url = imageURL(account, path)
+  if (!url) throw new Error("That image isn't on the server.")
+  const response = await fetch(url, {
     cache: "no-store",
     headers: { Authorization: `Bearer ${account.token}` },
   })

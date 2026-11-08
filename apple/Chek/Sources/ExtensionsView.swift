@@ -529,13 +529,17 @@ private struct ExtensionRow: View {
         }
     }
 
-    /// The site it reads from, which is what people know it by.
+    /// The site it reads from, which is what people know it by, and the
+    /// version: the one added, with the one an update brings.
     private var details: String {
         let site = item.sites.first(where: { !$0.hasPrefix("*") }) ?? item.sites.first
+        let version: String
         if let installed, installed.version != item.version {
-            return [site, String(localized: "Update Available")].compactMap(\.self).joined(separator: " · ")
+            version = String(localized: "Version \(installed.version), update to \(item.version)")
+        } else {
+            version = String(localized: "Version \(item.version)")
         }
-        return site ?? ""
+        return [site, version].compactMap(\.self).joined(separator: " · ")
     }
 }
 
@@ -549,7 +553,7 @@ private struct OrphanExtensionRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(item.name)
-                Text(item.usable ? String(localized: "No Longer Updated") : String(localized: "Turned Off"))
+                Text("Version \(item.version) · \(item.usable ? String(localized: "No Longer Updated") : String(localized: "Turned Off"))")
                     .font(.caption)
                     .foregroundStyle(item.usable ? AnyShapeStyle(.secondary) : AnyShapeStyle(.orange))
             }

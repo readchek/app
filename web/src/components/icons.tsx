@@ -42,11 +42,11 @@ export const ArrowUpRight = () => (
   </svg>
 )
 
-export const ChevronRight = () => (
+export const ChevronRight = (props: { class?: string }) => (
   <svg
     viewBox="0 0 24 24"
     aria-hidden="true"
-    class="size-4 shrink-0 text-muted-foreground"
+    class={`size-4 shrink-0 text-muted-foreground ${props.class ?? ""}`}
     {...stroke}
   >
     <path d="m9 6 6 6-6 6" />
@@ -166,5 +166,24 @@ export const ListBullet = () => (
 export const Minus = () => (
   <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
     <path d="M5 12h14" />
+  </svg>
+)
+
+export const Bubble = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M20 14.5a2 2 0 0 1-2 2H8l-4 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
+  </svg>
+)
+
+export const Ellipsis = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M8 12h.01M12 12h.01M16 12h.01" stroke-width="2.6" />
+  </svg>
+)
+
+export const Close = () => (
+  <svg viewBox="0 0 24 24" aria-hidden="true" {...stroke}>
+    <path d="M6 6l12 12M18 6 6 18" />
   </svg>
 )

@@ -21,6 +21,10 @@ nonisolated extension ChekAPI {
         /// What its chapters come in. Older servers leave it out, and
         /// their sources only read pages.
         var formats: [ContentFormat]?
+        /// The orders its readers' comments come in, when its site has
+        /// them and the server's admin turned them on. Kept as written, so
+        /// an order this app doesn't know doesn't fail the whole list.
+        var comments: [String]?
     }
 
     /// How a source's chapter is read: pages like a comic, or one file.

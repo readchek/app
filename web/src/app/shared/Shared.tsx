@@ -5,7 +5,8 @@ import { AlertCircle, Books, ChevronRight } from "../../components/icons.tsx"
 import { Alert } from "../../components/ui/alert.tsx"
 import { Skeleton } from "../../components/ui/skeleton.tsx"
 import { type Account, accountKey, accounts, host } from "../accounts.ts"
-import { Screen } from "../AppShell.tsx"
+import { Screen, row } from "../AppShell.tsx"
+import { cn } from "../../lib/cn.ts"
 import { readableLibraries } from "./data.ts"
 
 /** Shared: the libraries on every server you're signed in to. */
@@ -60,11 +61,14 @@ function ServerLibraries(props: { account: Account; showHost: boolean }) {
                           server: accountKey(props.account),
                           libraryId: String(library.id),
                         }}
-                        class="flex items-center gap-3.5 py-4 text-[17px] transition-colors hover:text-link focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none [&>svg:first-child]:size-6 [&>svg:first-child]:text-link"
+                        class={cn(
+                          row,
+                          "py-4 text-[17px] lg:py-3 lg:text-[15px] [&>svg:first-child]:size-6 [&>svg:first-child]:text-link",
+                        )}
                       >
                         <Books />
                         <span class="min-w-0 flex-1 truncate">{library.name}</span>
-                        <ChevronRight />
+                        <ChevronRight class="lg:hidden" />
                       </Link>
                     </li>
                   )}

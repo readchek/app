@@ -39,15 +39,52 @@ jobs:
           done
           echo "::error::Xcode 27 isn't installed in /Applications"
           exit 1
-      # The runner's shared SwiftPM repository cache can name clones that
-      # are gone, which fails package resolution before anything builds,
-      # so packages are fetched fresh into the workspace instead.
+      # Packages live in a folder of their own outside the workspace, so
+      # checkout doesn't delete them and a run only downloads what changed
+      # since the last one. Each run used to fetch every package fresh,
+      # including the libarchive binary from GitHub Releases, so any GitHub
+      # hiccup (a 504 there) failed the job before anything built. The
+      # runner's shared SwiftPM repository cache stays off, since it can
+      # name clones that are gone.
+      - name: Choose the package folder
+        run: echo "PACKAGES=$HOME/Library/Caches/ChekCI/app/SourcePackages" >> "$GITHUB_ENV"
+      # GitHub's runners start empty, so they keep the folder in the Actions
+      # cache instead. The maintainers' Mac keeps it on disk.
+      - uses: actions/cache@v6
+        if: runner.environment == 'github-hosted'
+        with:
+          path: ~/Library/Caches/ChekCI/app/SourcePackages
+          key: spm-${{ hashFiles('apple/Chek.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
+          restore-keys: spm-
+      # Downloads are retried with a pause, and before the last try the
+      # folder is cleared in case a half-finished download left it broken.
+      - name: Resolve packages
+        run: |
+          for attempt in 1 2 3 4; do
+            if [ "$attempt" -eq 4 ]; then
+              echo "::warning::Clearing $PACKAGES before the last try"
+              rm -rf "$PACKAGES"
+            fi
+            if xcodebuild -resolvePackageDependencies -project apple/Chek.xcodeproj -scheme Chek \
+              -disablePackageRepositoryCache -clonedSourcePackagesDirPath "$PACKAGES"; then
+              exit 0
+            fi
+            if [ "$attempt" -lt 4 ]; then
+              echo "::warning::Package resolution failed (attempt $attempt of 4), retrying in $((attempt * 20)) seconds"
+              sleep $((attempt * 20))
+            fi
+          done
+          echo "::error::Packages couldn't be downloaded after 4 tries. GitHub is likely down; re-run the job once it's back."
+          exit 1
+      # Packages are already resolved, so building and testing don't go
+      # back to the network for them.
       - name: Build for iOS Simulator
         run: >
           xcodebuild build -project apple/Chek.xcodeproj -scheme Chek
           -destination 'generic/platform=iOS Simulator'
           -disablePackageRepositoryCache
-          -clonedSourcePackagesDirPath .build/SourcePackages
+          -clonedSourcePackagesDirPath "$PACKAGES"
+          -skipPackageUpdates
           CODE_SIGNING_ALLOWED=NO
       # Unit tests need a simulator to host the app. An iPhone that isn't
       # booted is preferred, so a simulator someone is using on the
@@ -67,7 +104,8 @@ jobs:
           xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
             -destination "id=$UDID" \
             -disablePackageRepositoryCache \
-            -clonedSourcePackagesDirPath .build/SourcePackages \
+            -clonedSourcePackagesDirPath "$PACKAGES" \
+            -skipPackageUpdates \
             CODE_SIGNING_ALLOWED=NO
 
   web:
@@ -81,7 +119,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version-file: web/package.json
-      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/bun-install
       - run: bun run typecheck
       - run: bun run lint
       - run: bun run format:check

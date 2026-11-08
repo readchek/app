@@ -139,6 +139,9 @@
     "All Unread" : {
 
     },
+    "Already Added" : {
+
+    },
     "Always Show" : {
 
     },
@@ -200,6 +203,9 @@
 
     },
     "Canceled" : {
+
+    },
+    "Change User" : {
 
     },
     "Chapter" : {
@@ -1153,7 +1159,13 @@
     "You can download them again any time." : {
 
     },
+    "You stay signed in as %@ until this works. Places and downloads kept on this device for %@ are then removed. Their reading positions stay on the library." : {
+
+    },
     "You're caught up" : {
+
+    },
+    "You're signed in as %@ in “%@”." : {
 
     },
     "Your password is sent only to this library." : {

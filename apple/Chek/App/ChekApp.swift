@@ -70,7 +70,7 @@ final class AppDependencies {
         follows = FollowStore(context: container.mainContext, servers: servers)
         downloads = Downloads(servers: servers)
         siteUpdates = SiteUpdates(servers: servers, defaults: defaults)
-        servers.onRemove = { [downloads] account in
+        servers.onForget = { [downloads] account in
             downloads.removeAll(for: account)
             SeriesCache.removeAll(for: account)
             ChapterBooks.removeAll(for: account)

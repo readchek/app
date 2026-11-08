@@ -34,4 +34,24 @@ struct ReaderSettingsTests {
         for _ in 0..<40 { settings.makeTextSmaller() }
         #expect(settings.fontScale >= ReaderPreferences.fontScaleRange.lowerBound - 0.001)
     }
+
+    @Test func commentsAreOnUntilTurnedOff() {
+        let defaults = freshDefaults()
+        #expect(ReaderSettings(defaults: defaults).showsComments)
+        ReaderSettings(defaults: defaults).showsComments = false
+        #expect(!ReaderSettings(defaults: defaults).showsComments)
+    }
+
+    @Test func hiddenCommentersAreKeptPerSite() {
+        let defaults = freshDefaults()
+        let settings = ReaderSettings(defaults: defaults)
+        settings.setHidden(true, "Ana", on: "page.chek.a", siteName: "A")
+        #expect(settings.isHidden("Ana", on: "page.chek.a"))
+        #expect(!settings.isHidden("Ana", on: "page.chek.b"))
+        let relaunched = ReaderSettings(defaults: defaults)
+        #expect(relaunched.isHidden("Ana", on: "page.chek.a"))
+        #expect(relaunched.commentSites["page.chek.a"] == "A")
+        relaunched.setHidden(false, "Ana", on: "page.chek.a")
+        #expect(relaunched.hiddenCommenters.isEmpty)
+    }
 }
