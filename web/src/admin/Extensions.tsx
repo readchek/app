@@ -63,6 +63,8 @@ export function Extensions() {
   const [policyError, setPolicyError] = createSignal("")
   const [removing, setRemoving] = createSignal<Repository>()
 
+  const [commentsError, setCommentsError] = createSignal("")
+
   const toggle = async (allowAnyRepository: boolean) => {
     setPolicyError("")
     try {
@@ -71,6 +73,15 @@ export function Extensions() {
       void refetch()
     } catch (failure) {
       setPolicyError(message(failure))
+    }
+  }
+
+  const toggleComments = async (extensionComments: boolean) => {
+    setCommentsError("")
+    try {
+      setPolicy(await call(updateSettings(session, { extensionComments })))
+    } catch (failure) {
+      setCommentsError(message(failure))
     }
   }
 
@@ -160,6 +171,37 @@ export function Extensions() {
             </Alert>
           </Show>
         </Section>
+
+        {/* Servers before readers' comments don't have the setting. */}
+        <Show when={policy()?.extensionComments !== undefined}>
+          <Section title="Readers' comments">
+            <div class="border-y">
+              <Toggle
+                class="flex cursor-pointer items-start justify-between gap-4 py-4"
+                checked={policy()?.extensionComments ?? false}
+                onChange={(on) => void toggleComments(on)}
+              >
+                <span class="grid min-w-0 gap-0.5">
+                  <ToggleLabel>Show comments from sites</ToggleLabel>
+                  <ToggleDescription>
+                    Extensions from the repositories above can show the comments a site has under
+                    each chapter, read-only. Extensions from people's own repositories never do.
+                    Readers can still turn comments off for themselves.
+                  </ToggleDescription>
+                </span>
+                <ToggleControl class="mt-0.5">
+                  <ToggleThumb />
+                </ToggleControl>
+              </Toggle>
+            </div>
+            <Show when={commentsError()}>
+              <Alert variant="destructive">
+                <AlertCircle />
+                <p>{commentsError()}</p>
+              </Alert>
+            </Show>
+          </Section>
+        </Show>
       </div>
 
       <Dialog open={removing() !== undefined} onOpenChange={(open) => !open && setRemoving()}>
