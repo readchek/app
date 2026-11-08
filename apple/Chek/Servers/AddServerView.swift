@@ -238,8 +238,9 @@ struct SignInView: View {
                 dismiss()
                 router.resumePendingOpen(using: sync)
             } catch {
-                phase = .failed(DisplayError(error))
-                focus = error.title == String(localized: "Already Added") ? .name : .password
+                let shown = DisplayError(error)
+                phase = .failed(shown)
+                focus = shown.title == String(localized: "Already Added") ? .name : .password
             }
         }
     }
