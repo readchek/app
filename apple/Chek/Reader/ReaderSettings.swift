@@ -73,6 +73,20 @@ final class ReaderSettings {
     /// wrong, and the choice is about the series rather than how you read.
     private(set) var readingDirections: [String: Publication.ReadingProgression] = [:]
 
+    /// Whether chapters show readers' comments from their sites, where a
+    /// site has them. A reader can turn them off for every site at once.
+    var showsComments: Bool {
+        didSet { store(showsComments, for: .showsComments) }
+    }
+
+    /// Whose comments are hidden, by the extension they came through, so
+    /// one site's name never hides someone else on another.
+    private(set) var hiddenCommenters: [String: [String]] = [:]
+
+    /// Each extension's name, for listing the hidden commenters by site
+    /// when that site isn't open.
+    private(set) var commentSites: [String: String] = [:]
+
     private let defaults: UserDefaults
 
     init(defaults: UserDefaults = .standard) {
@@ -87,6 +101,9 @@ final class ReaderSettings {
         comicFlow = defaults.string(forKey: Key.comicFlow.rawValue).flatMap(ReaderPreferences.ComicFlow.init(rawValue:)) ?? .automatic
         let directions = defaults.dictionary(forKey: Key.readingDirections.rawValue) as? [String: String] ?? [:]
         readingDirections = directions.compactMapValues(Publication.ReadingProgression.init(rawValue:))
+        showsComments = defaults.object(forKey: Key.showsComments.rawValue) as? Bool ?? true
+        hiddenCommenters = defaults.dictionary(forKey: Key.hiddenCommenters.rawValue) as? [String: [String]] ?? [:]
+        commentSites = defaults.dictionary(forKey: Key.commentSites.rawValue) as? [String: String] ?? [:]
         update()
     }
 
@@ -107,6 +124,27 @@ final class ReaderSettings {
     func setReadingDirection(_ direction: Publication.ReadingProgression?, for settingsKey: String) {
         readingDirections[settingsKey] = direction
         store(readingDirections.mapValues(\.rawValue), for: .readingDirections)
+    }
+
+    /// Whether `name`'s comments from `site`, an extension's id, are hidden.
+    func isHidden(_ name: String, on site: String) -> Bool {
+        hiddenCommenters[site]?.contains(name) ?? false
+    }
+
+    /// Hides or shows again everything `name` writes on `site`, an
+    /// extension's id, named `siteName` for the list of hidden commenters.
+    func setHidden(_ isHidden: Bool, _ name: String, on site: String, siteName: String? = nil) {
+        var names = hiddenCommenters[site] ?? []
+        names.removeAll { $0 == name }
+        if isHidden {
+            names.append(name)
+        }
+        hiddenCommenters[site] = names.isEmpty ? nil : names
+        if let siteName {
+            commentSites[site] = siteName
+        }
+        store(hiddenCommenters, for: .hiddenCommenters)
+        store(commentSites, for: .commentSites)
     }
 
     var canMakeTextSmaller: Bool {
@@ -161,6 +199,9 @@ final class ReaderSettings {
         case pageTransition = "reader.pageTransition"
         case comicFlow = "reader.comicFlow"
         case readingDirections = "reader.readingDirections"
+        case showsComments = "reader.showsComments"
+        case hiddenCommenters = "reader.hiddenCommenters"
+        case commentSites = "reader.commentSites"
     }
 
     private func store(_ value: Any, for key: Key) {
