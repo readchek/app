@@ -29,6 +29,8 @@ enum AppSheet: Identifiable, Hashable {
     case addServer
     /// Signing back in to an account whose session ended.
     case signIn(UUID)
+    /// Signing in to an account's library as someone else.
+    case changeUser(UUID)
 
     var id: Self { self }
 }
@@ -66,6 +68,15 @@ final class AppRouter {
 
     /// A server is gone, so nothing points at it any more: its tab, if
     /// selected, gives way to Browse, and its stack goes.
+    /// Someone else signed in to `account`, so screens deep in its library
+    /// go back to its top, where what they see is asked for again.
+    func serverUserChanged(_ account: UUID) {
+        serverPaths[account] = nil
+        if let index = browsePath.firstIndex(of: .server(account)) {
+            browsePath.removeSubrange(browsePath.index(after: index)...)
+        }
+    }
+
     func serverRemoved(_ account: UUID) {
         serverPaths[account] = nil
         if tab == .server(account) {

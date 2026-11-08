@@ -223,6 +223,9 @@ private struct ServerAccountForm: View {
             } else {
                 Section {
                     if servers.state(of: account.id) == .signedIn {
+                        Button("Change User") {
+                            router.sheet = .changeUser(account.id)
+                        }
                         Button("Sign Out") {
                             Task { await servers.signOut(account) }
                         }

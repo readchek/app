@@ -26,9 +26,9 @@ struct ServerHomeView: View {
                 EmptyState("This library has been removed.", systemImage: "building.columns")
             }
         }
-        // Signing back in loads the home again, rather than leaving what
-        // failed while signed out on screen.
-        .task(id: LoadKey(account: account, isSignedIn: servers.state(of: account) == .signedIn)) {
+        // Signing back in, or in as someone else, loads the home again,
+        // rather than leaving what failed or someone else's shelves on screen.
+        .task(id: LoadKey(account: account, isSignedIn: servers.state(of: account) == .signedIn, user: servers.account(account)?.userName)) {
             let model = model ?? ServerHomeModel(account: account, servers: servers)
             self.model = model
             await model.load()
@@ -38,6 +38,7 @@ struct ServerHomeView: View {
     private struct LoadKey: Hashable {
         var account: UUID
         var isSignedIn: Bool
+        var user: String?
     }
 }
 

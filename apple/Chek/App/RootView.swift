@@ -63,6 +63,8 @@ struct RootView: View {
                 AddServerView()
             case .signIn(let account):
                 SignInView(account: account)
+            case .changeUser(let account):
+                SignInView(account: account, isChangingUser: true)
             }
         }
         .onOpenURL { url in
