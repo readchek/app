@@ -66,6 +66,10 @@ struct CommentsPanel: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        // At the medium height the sheet's glass picks up the page behind
+        // it, so the bar took on the page's colour while the list stayed
+        // plain. Comments are text to read, so the whole sheet is solid.
+        .presentationBackground(.background)
         .task {
             await comments.loadIfNeeded()
         }
