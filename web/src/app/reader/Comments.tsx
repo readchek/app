@@ -49,6 +49,22 @@ import {
 } from "../../components/ui/switch.tsx"
 import { commentSettings, hideCommenter, isHiddenCommenter, showComments } from "./settings.ts"
 
+/**
+ * A link a site gave us, if it is a plain https address. Comments and their
+ * links come from third-party sites, so anything else, such as a
+ * `javascript:` URL, is dropped rather than put in an `href`. The iOS
+ * reader applies the same rule.
+ */
+function safeLink(text: string | null | undefined): string | undefined {
+  if (!text) return undefined
+  try {
+    const url = new URL(text)
+    return url.protocol === "https:" && url.hostname ? url.href : undefined
+  } catch {
+    return undefined
+  }
+}
+
 // Readers' comments on a chapter, as the source's site shows them. They're
 // read-only: Chek passes them on and never posts. They open from the top
 // bar or the end of the chapter into a panel along the side, or the bottom
@@ -113,7 +129,7 @@ function Entry(props: {
         <Show
           when={props.comments.source.orders.length > 0}
           fallback={
-            <Show when={summary().url}>
+            <Show when={safeLink(summary().url)}>
               {(url) => (
                 <a
                   href={url()}
@@ -364,7 +380,11 @@ export function CommentsPanel(props: { comments: Comments }) {
           </Switch>
         </div>
 
-        <Show when={phase() !== "loading" && phase() !== "failed" && props.comments.summary()?.url}>
+        <Show
+          when={
+            phase() !== "loading" && phase() !== "failed" && safeLink(props.comments.summary()?.url)
+          }
+        >
           {(url) => (
             <footer class="flex items-center justify-between gap-4 border-t px-5 pt-3 pb-4 text-[13px] text-muted-foreground">
               <span>From {source().site} · read-only</span>
@@ -562,7 +582,7 @@ function RunText(props: { run: CommentRun; revealed: boolean; reveal: () => void
           Spoiler
         </button>
       </Match>
-      <Match when={props.run.link}>
+      <Match when={safeLink(props.run.link)}>
         {(link) => (
           <a
             href={link()}
@@ -599,7 +619,7 @@ function CommentMenu(props: { comment: Comment; source: CommentSource }) {
         >
           Hide comments from {props.comment.author.name}
         </DropdownMenuItem>
-        <Show when={props.comment.url}>
+        <Show when={safeLink(props.comment.url)}>
           {(url) => (
             <>
               <DropdownMenuItem onSelect={() => visit(url())}>
