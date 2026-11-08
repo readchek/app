@@ -32,7 +32,9 @@ import {
   CommentsButton,
   CommentsLink,
   CommentsPanel,
+  PANEL_WIDTH,
   createComments,
+  isDocked,
 } from "./Comments.tsx"
 import { ContentsDialog } from "./Contents.tsx"
 import { type BookSettings, bookSettings, changeBookSettings } from "./settings.ts"
@@ -94,8 +96,6 @@ export function BookReader(props: { book: BookSource }) {
   const [scrub, setScrub] = createSignal<number>()
   const controls = createControls()
   const comments = book.comments && createComments(book.comments)
-  // The bars stay up while the comments are open, as they do for the contents.
-  createEffect(() => comments && controls.hold("comments", comments.open()))
   const [finished, setFinished] = createSignal(false)
   const [contents, setContents] = createSignal(false)
   const [failure, setFailure] = createSignal<string>()
@@ -205,8 +205,12 @@ export function BookReader(props: { book: BookSource }) {
 
   return (
     <div
-      class="relative h-full"
-      style={{ background: background() }}
+      class="relative h-full transition-[margin] duration-200"
+      // The page makes room for the comments beside it rather than going under them.
+      style={{
+        background: background(),
+        "margin-right": isDocked(comments) ? `${PANEL_WIDTH}px` : "0",
+      }}
       onPointerMove={(event) => {
         if (event.pointerType === "mouse" && (event.movementX || event.movementY)) controls.moved()
       }}

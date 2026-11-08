@@ -1,4 +1,4 @@
-import { Show, createEffect, createSignal, onCleanup, onMount } from "solid-js"
+import { Show, createSignal, onCleanup, onMount } from "solid-js"
 import { createResource } from "../../lib/resource.ts"
 import {
   type ComicLocation,
@@ -34,7 +34,9 @@ import {
   CommentsButton,
   CommentsLink,
   CommentsPanel,
+  PANEL_WIDTH,
   createComments,
+  isDocked,
 } from "./Comments.tsx"
 import { ContentsDialog } from "./Contents.tsx"
 import {
@@ -104,8 +106,6 @@ export function ComicReader(props: { book: ComicBook }) {
   const [scrub, setScrub] = createSignal<number>()
   const controls = createControls()
   const comments = book.comments && createComments(book.comments)
-  // The bars stay up while the comments are open, as they do for the contents.
-  createEffect(() => comments && controls.hold("comments", comments.open()))
   const [finished, setFinished] = createSignal(false)
   const keeper = createKeeper(book.positions)
   const [next] = createResource(() => book.next())
@@ -164,7 +164,9 @@ export function ComicReader(props: { book: ComicBook }) {
 
   return (
     <div
-      class="relative h-full"
+      class="relative h-full transition-[margin] duration-200"
+      // The page makes room for the comments beside it rather than going under them.
+      style={{ "margin-right": isDocked(comments) ? `${PANEL_WIDTH}px` : "0" }}
       onPointerMove={(event) => {
         if (event.pointerType === "mouse" && (event.movementX || event.movementY)) controls.moved()
       }}

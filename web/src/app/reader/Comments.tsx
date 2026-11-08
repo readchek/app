@@ -175,15 +175,28 @@ export function CommentsLink(props: { comments: Comments }) {
   )
 }
 
-const wide = matchMedia("(min-width: 640px)")
+const wideQuery = matchMedia("(min-width: 640px)")
+const [wide, setWide] = createSignal(wideQuery.matches)
+wideQuery.addEventListener("change", () => setWide(wideQuery.matches))
 
-/** The panel of comments, along the trailing side or, on a phone, the bottom. */
+/** The width the panel takes beside the page on a wide window. */
+export const PANEL_WIDTH = 420
+
+/**
+ * Whether the panel is open beside the page, which the reader makes room
+ * for so the page stays whole and readable next to it.
+ */
+export const isDocked = (comments: Comments | undefined) =>
+  comments !== undefined && comments.open() && wide()
+
+/**
+ * The panel of comments, along the trailing side or, on a phone, the
+ * bottom. It's read alongside the page, never over it: nothing dims, and
+ * the page keeps turning with taps, swipes and keys while it's open.
+ */
 export function CommentsPanel(props: { comments: Comments }) {
   const source = () => props.comments.source
-  const [side, setSide] = createSignal<"right" | "bottom">(wide.matches ? "right" : "bottom")
-  const follow = () => setSide(wide.matches ? "right" : "bottom")
-  wide.addEventListener("change", follow)
-  onCleanup(() => wide.removeEventListener("change", follow))
+  const side = () => (wide() ? "right" : "bottom")
 
   const [order, setOrder] = createSignal<CommentOrder | undefined>(source().orders[0])
   const [items, setItems] = createSignal<Comment[]>([])
@@ -240,8 +253,28 @@ export function CommentsPanel(props: { comments: Comments }) {
   const count = () => props.comments.summary()?.count
 
   return (
-    <Sheet open={props.comments.open()} onOpenChange={props.comments.setOpen}>
-      <SheetContent position={side()} aria-describedby={undefined}>
+    <Sheet
+      open={props.comments.open()}
+      onOpenChange={props.comments.setOpen}
+      modal={false}
+      preventScroll={false}
+    >
+      <SheetContent
+        position={side()}
+        overlay={false}
+        aria-describedby={undefined}
+        class="max-sm:max-h-[60dvh]"
+        // Reading on doesn't close it; only its close button and Escape do.
+        onInteractOutside={(event) => event.preventDefault()}
+        // The page keeps the keyboard: opening the panel doesn't take it.
+        onOpenAutoFocus={(event) => event.preventDefault()}
+        // Escape closes only the panel. Marking it handled keeps the reader
+        // from also taking it as "leave the chapter".
+        onEscapeKeyDown={(event) => {
+          event.preventDefault()
+          props.comments.setOpen(false)
+        }}
+      >
         <Show when={side() === "bottom"}>
           <div class="mx-auto mt-2 h-1 w-10 shrink-0 rounded-full bg-border" aria-hidden="true" />
         </Show>
