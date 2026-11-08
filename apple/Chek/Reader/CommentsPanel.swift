@@ -261,32 +261,39 @@ private struct CommentRow<Extra: View>: View {
                     .font(.subheadline)
             }
         } else {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    header
-                    Spacer(minLength: 8)
-                    CommentMenu(comment: comment, comments: comments)
-                }
-                text
-                if !comment.images.isEmpty, !(comment.spoiler && !revealed.contains(-1)) {
-                    CommentImages(paths: comment.images, server: comments.chapter.server)
-                }
-                HStack(spacing: 16) {
-                    if let score = comment.score {
-                        Label {
-                            Text(score, format: .number)
-                        } icon: {
-                            Image(systemName: "arrowtriangle.up.fill")
-                                .imageScale(.small)
-                        }
-                        .labelStyle(.titleAndIcon)
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel(Text("Score \(score)"))
-                    }
-                    extra()
-                }
-                .font(.subheadline)
+            HStack(alignment: .top, spacing: 10) {
+                CommentAvatar(author: comment.author, server: comments.chapter.server)
+                details
             }
+        }
+    }
+
+    private var details: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                header
+                Spacer(minLength: 8)
+                CommentMenu(comment: comment, comments: comments)
+            }
+            text
+            if !comment.images.isEmpty, !(comment.spoiler && !revealed.contains(-1)) {
+                CommentImages(paths: comment.images, server: comments.chapter.server)
+            }
+            HStack(spacing: 16) {
+                if let score = comment.score {
+                    Label {
+                        Text(score, format: .number)
+                    } icon: {
+                        Image(systemName: "arrowtriangle.up.fill")
+                            .imageScale(.small)
+                    }
+                    .labelStyle(.titleAndIcon)
+                    .foregroundStyle(.secondary)
+                    .accessibilityLabel(Text("Score \(score)"))
+                }
+                extra()
+            }
+            .font(.subheadline)
         }
     }
 
@@ -402,6 +409,49 @@ private struct CommentMenu: View {
         }
         .buttonStyle(.borderless)
         .accessibilityLabel(Text("More for \(comment.author.name)'s comment"))
+    }
+}
+
+/// The commenter's picture from the site, fetched through the server, or
+/// their initial while it loads or when the site has none.
+private struct CommentAvatar: View {
+    let author: ChekAPI.CommentAuthor
+    let server: UUID
+    @Environment(ServerStore.self) private var servers
+    @State private var image: UIImage?
+
+    private var key: String? {
+        author.avatarUrl.map { "avatar:\(server):\($0)" }
+    }
+
+    var body: some View {
+        Group {
+            if let image = image ?? key.flatMap({ ImagePipeline.shared.cachedImage(for: $0) }) {
+                Image(uiImage: image)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                Text(author.name.prefix(1).uppercased())
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(.quaternary)
+            }
+        }
+        .frame(width: 32, height: 32)
+        .clipShape(.circle)
+        .accessibilityHidden(true)
+        .task(id: key) {
+            guard let key, let path = author.avatarUrl,
+                  let client = servers.client(for: server),
+                  let request = client.imageRequest(path)
+            else { return }
+            let session = client.session
+            image = await ImagePipeline.shared.image(for: key) {
+                guard let answer = try? await session.data(for: request) else { return nil }
+                return await ImagePipeline.decode(answer.0)
+            }
+        }
     }
 }
 
