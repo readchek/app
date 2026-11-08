@@ -79,3 +79,39 @@ export function changeBookSettings(change: Partial<BookSettings>) {
   write(bookKey, next)
   setBook(next)
 }
+
+// Readers' comments: whether to show them at all, and whose to hide, by
+// source. Both stay in this browser, as the iOS app keeps them per device.
+const commentsKey = "chek.reader.comments"
+
+type CommentSettings = { show: boolean; hidden: Record<string, string[]> }
+
+const [commentSettings, setCommentSettings] = createSignal<CommentSettings>(
+  read(commentsKey, { show: true, hidden: {} }),
+)
+
+export { commentSettings }
+
+function changeCommentSettings(next: CommentSettings) {
+  write(commentsKey, next)
+  setCommentSettings(next)
+}
+
+export function showComments(show: boolean) {
+  changeCommentSettings({ ...commentSettings(), show })
+}
+
+/** Hides, or shows again, every comment `name` writes on source `extensionId`. */
+export function hideCommenter(extensionId: string, name: string, hidden: boolean) {
+  const current = commentSettings()
+  const names = (current.hidden[extensionId] ?? []).filter((one) => one !== name)
+  if (hidden) names.push(name)
+  changeCommentSettings({
+    ...current,
+    hidden: { ...current.hidden, [extensionId]: names },
+  })
+}
+
+export function isHiddenCommenter(extensionId: string, name: string): boolean {
+  return commentSettings().hidden[extensionId]?.includes(name) ?? false
+}

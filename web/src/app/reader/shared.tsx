@@ -412,13 +412,14 @@ export function PageButtons(props: {
 }
 
 /** Offers what to read next, at the end. */
-export function UpNextCard(props: { next: UpNext }) {
+export function UpNextCard(props: { next: UpNext; children?: JSX.Element }) {
   return (
     <div class="absolute inset-x-0 bottom-28 z-10 flex justify-center px-4">
       <div class="flex max-w-md items-center gap-4 rounded-2xl border bg-card p-4 shadow-xl">
         <p class="min-w-0 text-[15px]">
           <span class="block text-muted-foreground">Up next</span>
           <span class="block truncate font-semibold">{props.next.title}</span>
+          {props.children}
         </p>
         <Button size="sm" onClick={() => props.next.open()}>
           Read

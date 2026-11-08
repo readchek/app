@@ -13,6 +13,7 @@ import type {
   Series,
 } from "../app/client.ts"
 import type { User } from "../api.ts"
+import { COMMENTING, ORDERS, answerComments } from "./comments.ts"
 
 export type Catalog = {
   server: object
@@ -35,7 +36,11 @@ type Site = {
   series: Record<string, object>
   chapters: Record<
     string,
-    { items: { id: string }[]; chapterCount: number | null; preferredGroup: string | null }
+    {
+      items: { id: string }[]
+      chapterCount: number | null
+      preferredGroup: string | null
+    }
   >
   contents: Record<string, object>
 }
@@ -96,7 +101,12 @@ function file(backend: Backend, request: Request, path: string): Promise<Respons
 
 function progressOf(backend: Backend, id: string): Progress {
   return (
-    backend.positions.all()[id] ?? { revision: 0, locator: null, device: null, updatedAt: null }
+    backend.positions.all()[id] ?? {
+      revision: 0,
+      locator: null,
+      device: null,
+      updatedAt: null,
+    }
   )
 }
 
@@ -130,7 +140,10 @@ export async function answer(request: Request, backend: Backend): Promise<Respon
   // The iOS app opens the web app signed in with a one-time code, which the
   // demo takes whatever it is.
   if (method === "POST" && path === "/me/web-link") {
-    return json({ code: "demo", expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString() })
+    return json({
+      code: "demo",
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+    })
   }
 
   if (method === "GET") {
@@ -178,7 +191,10 @@ export async function answer(request: Request, backend: Backend): Promise<Respon
               (progress.locator.locations?.totalProgression ?? 0) < 1,
           )
           .sort(([, a], [, b]) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
-          .map(([id, progress]) => ({ publication: publications[id]!, progress }))
+          .map(([id, progress]) => ({
+            publication: publications[id]!,
+            progress,
+          }))
         return paged(items, url)
       }
       case "/search": {
@@ -201,9 +217,9 @@ export async function answer(request: Request, backend: Backend): Promise<Respon
         return paged(items, url)
       }
       case "/me/extensions":
-        return json({ items: catalog.extensions })
+        return json({ items: catalog.extensions.map(withComments) })
       case "/extensions":
-        return json({ items: catalog.available })
+        return json({ items: catalog.available.map(withComments) })
     }
 
     if (parts[0] === "libraries" && parts[2] === "series" && parts.length === 3) {
@@ -247,7 +263,10 @@ export async function answer(request: Request, backend: Backend): Promise<Respon
   if (method === "PUT" && parts[0] === "publications" && parts[2] === "progress") {
     const id = parts[1]!
     if (!publications[id]) return missing()
-    const body = (await request.json()) as { expectedRevision: number; locator: Locator }
+    const body = (await request.json()) as {
+      expectedRevision: number
+      locator: Locator
+    }
     const current = progressOf(backend, id)
     if (body.expectedRevision !== current.revision) {
       return json(
@@ -278,6 +297,14 @@ export async function answer(request: Request, backend: Backend): Promise<Respon
   return method === "GET" ? missing() : unchangeable()
 }
 
+/** Marks the demo source that shows sample comments, as a server with
+ * comments turned on lists it. */
+function withComments(extension: object): object {
+  return (extension as { id?: string }).id === COMMENTING
+    ? { ...extension, comments: ORDERS }
+    : extension
+}
+
 async function site(
   request: Request,
   url: URL,
@@ -291,6 +318,10 @@ async function site(
   }
   if (!site || request.method !== "GET") return unchangeable()
   const params = url.searchParams
+  if (id === COMMENTING && rest.startsWith("comments")) {
+    const comments = answerComments(rest, params)
+    if (comments) return comments
+  }
   switch (rest) {
     case "search": {
       const q = params.get("q") ?? ""

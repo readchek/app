@@ -9,12 +9,14 @@ import {
   type RemoteChapter,
   type RemoteSeries,
   chapterContent,
+  installedExtensions,
   siteChapters,
   siteSeries,
 } from "../sites/api.ts"
 import { chapterPosition, savePosition } from "../sites/positions.ts"
 import { chapterTitle } from "../sites/titles.ts"
 import { type BookSource, BookReader } from "./BookReader.tsx"
+import type { CommentSource } from "./Comments.tsx"
 import type { Positions } from "./shared.tsx"
 import { type ComicBook, ComicReader, serverPages } from "./ComicReader.tsx"
 import { Message, laterFormat, openBook } from "./Reader.tsx"
@@ -41,9 +43,14 @@ export function SiteReader() {
         : undefined
     },
     async ({ account, extensionId, seriesId, chapterId, title }) => {
-      const [series, content] = await Promise.all([
+      const [series, content, extension] = await Promise.all([
         siteSeries(account, extensionId, seriesId),
         chapterContent(account, extensionId, chapterId),
+        // Only to know whether it shows readers' comments; reading goes on without.
+        installedExtensions(account).then(
+          (all) => all.find((one) => one.id === extensionId),
+          () => undefined,
+        ),
       ])
       const book = content.file
         ? await openBook(
@@ -55,7 +62,23 @@ export function SiteReader() {
         : undefined
       // Chapters can't be read one at a time, so the link that opens one
       // brings its title along.
-      return { account, extensionId, series, content, book, chapterId, title }
+      const comments: CommentSource | undefined = extension?.comments && {
+        account,
+        extensionId,
+        chapterId,
+        site: extension.name,
+        orders: extension.comments,
+      }
+      return {
+        account,
+        extensionId,
+        series,
+        content,
+        book,
+        chapterId,
+        title,
+        comments,
+      }
     },
   )
 
@@ -79,8 +102,15 @@ export function SiteReader() {
             const open = (next: RemoteChapter) =>
               navigate({
                 to: "/chapter/$server/$extensionId",
-                params: { server: params().server, extensionId: chapter.extensionId },
-                search: { series: chapter.series.id, chapter: next.id, title: chapterTitle(next) },
+                params: {
+                  server: params().server,
+                  extensionId: chapter.extensionId,
+                },
+                search: {
+                  series: chapter.series.id,
+                  chapter: next.id,
+                  title: chapterTitle(next),
+                },
                 replace: true,
               })
             return (
@@ -131,6 +161,7 @@ type OpenedChapter = {
   content: ChapterContent
   chapterId: string
   title: string | undefined
+  comments: CommentSource | undefined
 }
 
 // Where a site chapter keeps its place, in this browser, and what comes after it.
@@ -194,6 +225,7 @@ function siteComic(opened: OpenedChapter, open: (chapter: RemoteChapter) => void
     direction: place.direction,
     positions: place.positions,
     next: place.next,
+    comments: opened.comments,
   }
 }
 
@@ -213,5 +245,6 @@ function siteBook(
     start: place.start,
     positions: place.positions,
     next: place.next,
+    comments: opened.comments,
   }
 }
