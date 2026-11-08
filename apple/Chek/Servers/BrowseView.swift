@@ -152,7 +152,7 @@ enum ServerEdit: Identifiable {
     }
 }
 
-/// Rename, sign in or out, and remove: what you can do to a server, shared
+/// Rename, sign in or out, change user, and remove: what you can do to a server, shared
 /// by its row's menu and its own screen's toolbar.
 struct ServerActions: View {
     let account: ServerAccount
@@ -170,6 +170,9 @@ struct ServerActions: View {
                 editing = .rename(account)
             }
             if servers.state(of: account.id) == .signedIn {
+                Button("Change User", systemImage: "person.2") {
+                    router.sheet = .changeUser(account.id)
+                }
                 Button("Sign Out", systemImage: "rectangle.portrait.and.arrow.right") {
                     Task { await servers.signOut(account) }
                 }

@@ -27,3 +27,21 @@ struct ServerAddressTests {
         #expect(ServerStore.baseURL(from: "not a server") == nil)
     }
 }
+
+/// Who counts as someone else when signing in to a library already added.
+struct ChangeUserTests {
+    @Test func theSameIDIsTheSamePerson() {
+        let user = ChekAPI.User(id: 7, name: "Robin")
+        #expect(!ServerStore.isSomeoneElse(user, thanID: 7, named: "robin-old-name"))
+    }
+
+    @Test func anotherIDIsSomeoneElse() {
+        let user = ChekAPI.User(id: 8, name: "Robin")
+        #expect(ServerStore.isSomeoneElse(user, thanID: 7, named: "Robin"))
+    }
+
+    @Test func withoutAnIDTheNameDecides() {
+        #expect(!ServerStore.isSomeoneElse(ChekAPI.User(id: 8, name: "Robin"), thanID: nil, named: "robin"))
+        #expect(ServerStore.isSomeoneElse(ChekAPI.User(id: 8, name: "Sam"), thanID: nil, named: "Robin"))
+    }
+}
