@@ -12,8 +12,14 @@ struct SourcesSection: View {
         ForEach(sources) { source in
             NavigationLink(value: Route.source(account, source)) {
                 LabeledContent {
+                    // The version added, and the one waiting, so it's
+                    // clear what's running before and after an update.
                     if !source.usable {
                         Text("Off")
+                    } else if let update = source.update {
+                        Text("\(source.version) → \(update)")
+                    } else {
+                        Text(source.version)
                     }
                 } label: {
                     // Only the name dims when the site is off; the symbol

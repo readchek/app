@@ -111,7 +111,7 @@ function ServerSites(props: { account: Account; showHost: boolean }) {
                             {extension.name}
                           </span>
                           <span class="block truncate text-[13px] text-muted-foreground">
-                            {extension.sites.map(siteHost).join(", ")}
+                            Version {extension.version} · {extension.sites.map(siteHost).join(", ")}
                           </span>
                         </span>
                         <Show when={!extension.usable}>
@@ -131,7 +131,7 @@ function ServerSites(props: { account: Account; showHost: boolean }) {
                             aria-label={`Update ${extension.name} to ${version()}`}
                             onClick={() => void update(extension)}
                           >
-                            {updating() === extension.id ? "Updating…" : "Update"}
+                            {updating() === extension.id ? "Updating…" : `Update to ${version()}`}
                           </button>
                         )}
                       </Show>
