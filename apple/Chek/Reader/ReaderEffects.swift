@@ -13,6 +13,7 @@ extension View {
             .modifier(PositionRecorder(session: session))
             .modifier(MiddleTapHandler(controller: session.controller, session: session))
             .modifier(PreferencesApplier(session: session))
+            .modifier(NextChapterWarmer(session: session))
     }
 }
 
@@ -39,6 +40,26 @@ private struct PositionRecorder: ViewModifier {
                     progress.didOpen(session.item.ref)
                 }
             }
+    }
+}
+
+/// Asks for the next chapter's pages once the last page is showing, so
+/// the server has them by the time the chapter's end is turned.
+private struct NextChapterWarmer: ViewModifier {
+    let session: ReaderSession
+    @Environment(ServerSync.self) private var sync
+
+    func body(content: Content) -> some View {
+        content.task(id: chapter) {
+            if let chapter {
+                await sync.warm(chapter)
+            }
+        }
+    }
+
+    private var chapter: SourceChapterRef? {
+        guard session.isOnLastPage, case .chapter(let chapter)? = session.next.target else { return nil }
+        return chapter
     }
 }
 

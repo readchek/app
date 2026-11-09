@@ -379,6 +379,19 @@ nonisolated struct ChekClient: Sendable {
         return pages.items.count
     }
 
+    /// How a publication reads, as its file or its library says: `ltr`,
+    /// `rtl`, `ttb` for a strip scrolled top to bottom, or nothing. Asked
+    /// for while a publication opens, so it gives up quickly too.
+    func readingDirection(of publication: Int64) async throws(ChekError) -> String? {
+        struct Detail: Decodable {
+            var readingDirection: String?
+        }
+        var request = authorized("api/v1/publications/\(publication)")
+        request.timeoutInterval = 5
+        let detail: Detail = try await Self.send(request, session: session)
+        return detail.readingDirection
+    }
+
     /// The saved position. It's asked for while a publication opens, so it
     /// gives up quickly rather than holding the reader back.
     func progress(of publication: Int64) async throws(ChekError) -> ChekAPI.Progress {
