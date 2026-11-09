@@ -39,18 +39,33 @@ struct ReaderScreen: View {
                     if session.item.kind == .comic {
                         ControlsScrim(isShowing: session.isShowingControls)
                     }
-                    ChapterEndLine(session: session, opening: opening, open: open, retry: findNeighbors)
                     Group {
                         if let handoff {
                             ChapterEndPage(kind: session.item.kind, finished: handoff.finished, next: .found(handoff.target), isNext: handoff.isNext, isOpening: true, retry: findNeighbors)
-                        } else if session.isShowingChapterEnd {
-                            ChapterEndPage(kind: session.item.kind, finished: session.item.title, next: session.next, isOpening: false, retry: findNeighbors, comments: session.comments) {
-                                session.show(.comments)
+                        } else if session.edge == .end {
+                            ChapterEndPage(kind: session.item.kind, finished: session.item.title, next: session.next, isOpening: false, retry: findNeighbors, comments: session.comments, showComments: { session.show(.comments) }, turns: turns) { forward in
+                                if forward, let target = session.next.target {
+                                    open(target)
+                                } else if !forward {
+                                    session.leaveEdge()
+                                }
+                            } tapMiddle: {
+                                session.toggleControls()
+                            }
+                        } else if session.edge == .start {
+                            ChapterEndPage(kind: session.item.kind, finished: nil, next: session.previous, isNext: false, isOpening: false, retry: findNeighbors, turns: turns) { forward in
+                                if forward {
+                                    session.leaveEdge()
+                                } else if let target = session.previous.target {
+                                    open(target)
+                                }
+                            } tapMiddle: {
+                                session.toggleControls()
                             }
                         }
                     }
                     .transition(.opacity)
-                    .animation(.easeInOut(duration: 0.2), value: session.isShowingChapterEnd)
+                    .animation(.easeInOut(duration: 0.2), value: session.edge)
                     if session.controller.state == .ready {
                         ReadingHint(session: session)
                     }
@@ -120,6 +135,12 @@ struct ReaderScreen: View {
                 open(target)
             }
         }
+        // And one back past the first page goes to what came before.
+        .onChange(of: session.controller.turnsPastStart) {
+            if let target = session.turnedPastStart() {
+                open(target)
+            }
+        }
         .onChange(of: isSettled) {
             if isSettled {
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -141,6 +162,12 @@ struct ReaderScreen: View {
         Task { await session.findNeighbors(with: finder) }
     }
 
+    /// Which way this publication's pages turn, for the chapter's ends to
+    /// turn the same way.
+    private var turns: ChapterEndPage.Turns {
+        session.controller.publication?.metadata.readingProgression == .rightToLeft ? .rightToLeft : .leftToRight
+    }
+
     /// Whether the open chapter is showing, or showing why it can't be, so
     /// the chapter end that covered the switch to it can go.
     private var isSettled: Bool {
@@ -157,15 +184,18 @@ struct ReaderScreen: View {
         guard opening == nil else { return }
         opening = target
         let isNext = target == session.next.target
+        // Turned back into from its first page, the chapter before opens
+        // on its last, where reading back left off.
+        let fromEnd = !isNext && session.edge == .start
         // Read here rather than in the body, so page turns don't redraw it.
-        let hasFinished = isNext && (session.isShowingChapterEnd || session.isOnLastPage)
+        let hasFinished = isNext && (session.edge == .end || session.isOnLastPage)
         withAnimation(.easeInOut(duration: 0.2)) {
             handoff = ChapterHandoff(finished: hasFinished ? session.item.title : nil, target: target, isNext: isNext)
         }
         Task {
             defer { opening = nil }
             do {
-                continueReading(try await finder.readingItem(for: target))
+                continueReading(try await finder.readingItem(for: target, fromEnd: fromEnd))
             } catch {
                 handoff = nil
                 openingFailure = DisplayError(error)

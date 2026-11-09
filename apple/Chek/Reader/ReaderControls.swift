@@ -57,7 +57,7 @@ private struct ReaderToolbars: ViewModifier {
                     }
                 }
                 ToolbarItem(placement: .bottomBar) {
-                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.isShowingChapterEnd)
+                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.edge == .end)
                         .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
                 }
                 if session.item.series != nil {
@@ -99,11 +99,10 @@ private struct ReaderToolbars: ViewModifier {
                 case .appearance:
                     AppearancePanel(
                         showsTextSettings: session.showsTextSettings,
-                        showsComicSettings: session.item.kind == .comic,
                         showsCommentSettings: session.item.sourceChapter != nil,
-                        // Only pictures have a direction to get wrong;
-                        // text follows its language.
-                        directionKey: session.showsTextSettings ? nil : session.item.settingsKey
+                        // Only pictures have a layout to get wrong; text
+                        // follows its language.
+                        modeKey: session.showsTextSettings ? nil : session.item.settingsKey
                     )
                 }
             }

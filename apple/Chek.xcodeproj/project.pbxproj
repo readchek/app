@@ -434,8 +434,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/readchek/chek-reader";
 			requirement = {
-				kind = upToNextMinorVersion;
-				minimumVersion = 0.1.1;
+				branch = "claude/project-thread-o4vtt2";
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

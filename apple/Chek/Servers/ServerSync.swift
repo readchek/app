@@ -164,7 +164,7 @@ final class ServerSync {
         )
         item.sourceChapter = chapter
         item.series = chapter.seriesTitle
-        item.seriesKey = "source/\(chapter.server.uuidString)/\(chapter.source)/\(chapter.seriesID)"
+        item.seriesKey = SourceChapterRef.settingsKey(server: chapter.server, source: chapter.source, series: chapter.seriesID)
         item.isOnDevice = ChapterFiles.downloadedPageCount(of: chapter) != nil
         return item
     }

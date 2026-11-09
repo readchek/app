@@ -31,7 +31,7 @@ private struct PositionRecorder: ViewModifier {
                 // page out, which isn't a page turn.
                 if let old, !location.isSamePlace(as: old) {
                     session.hideControls()
-                    session.leaveChapterEnd()
+                    session.leaveEdge()
                 }
             }
             .onChange(of: session.controller.state) { _, state in

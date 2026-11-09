@@ -101,7 +101,10 @@ struct NeighborFinder {
     /// What the reader needs to open `target`. One you've already read to
     /// the end starts from the beginning, since its last page is no place
     /// to pick it up again.
-    func readingItem(for target: ReadingTarget) async throws(DisplayError) -> ReadingItem {
+    ///
+    /// With `fromEnd`, it opens on its last page instead, for a reader
+    /// turning back into it.
+    func readingItem(for target: ReadingTarget, fromEnd: Bool = false) async throws(DisplayError) -> ReadingItem {
         var item: ReadingItem
         let isFinished: Bool
         switch target {
@@ -118,9 +121,10 @@ struct NeighborFinder {
             item = ReadingItem(book)
             isFinished = book.readingStatus == .finished
         }
-        if isFinished {
+        if isFinished || fromEnd {
             item.startLocation = nil
         }
+        item.startsAtEnd = fromEnd
         return item
     }
 }

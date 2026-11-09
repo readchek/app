@@ -60,18 +60,15 @@ final class ReaderSettings {
     var pageTransition: ReaderPreferences.PageTransition {
         didSet { store(pageTransition.rawValue, for: .pageTransition); update() }
     }
-    var comicFlow: ReaderPreferences.ComicFlow {
-        didSet { store(comicFlow.rawValue, for: .comicFlow); update() }
-    }
 
     /// Everything above, as the reader takes it. Stored rather than computed
     /// so views that apply it observe one property.
     private(set) var preferences = ReaderPreferences()
 
-    /// Which way pages turn, where a reader has said so, by the series or
-    /// publication it was said for. Sources and files often get manga
-    /// wrong, and the choice is about the series rather than how you read.
-    private(set) var readingDirections: [String: Publication.ReadingProgression] = [:]
+    /// How a comic reads, where a reader has said so, by the series or
+    /// publication it was said for. Sources and files often get it wrong,
+    /// and the choice is about the series rather than how you read.
+    private(set) var readingModes: [String: ReadingMode] = [:]
 
     /// Whether chapters show readers' comments from their sites, where a
     /// site has them. A reader can turn them off for every site at once.
@@ -98,9 +95,19 @@ final class ReaderSettings {
         lineSpacing = defaults.string(forKey: Key.lineSpacing.rawValue).flatMap(LineSpacing.init(rawValue:)) ?? .original
         margins = defaults.string(forKey: Key.margins.rawValue).flatMap(Margins.init(rawValue:)) ?? .regular
         pageTransition = defaults.string(forKey: Key.pageTransition.rawValue).flatMap(ReaderPreferences.PageTransition.init(rawValue:)) ?? .slide
-        comicFlow = defaults.string(forKey: Key.comicFlow.rawValue).flatMap(ReaderPreferences.ComicFlow.init(rawValue:)) ?? .automatic
+        // Directions chosen before reading modes still say how their
+        // series read.
         let directions = defaults.dictionary(forKey: Key.readingDirections.rawValue) as? [String: String] ?? [:]
-        readingDirections = directions.compactMapValues(Publication.ReadingProgression.init(rawValue:))
+        var modes = directions.compactMapValues { direction -> ReadingMode? in
+            switch direction {
+            case Publication.ReadingProgression.rightToLeft.rawValue: .manga
+            case Publication.ReadingProgression.leftToRight.rawValue: .comic
+            default: nil
+            }
+        }
+        let chosen = defaults.dictionary(forKey: Key.readingModes.rawValue) as? [String: String] ?? [:]
+        modes.merge(chosen.compactMapValues(ReadingMode.init(rawValue:))) { _, chosen in chosen }
+        readingModes = modes
         showsComments = defaults.object(forKey: Key.showsComments.rawValue) as? Bool ?? true
         hiddenCommenters = defaults.dictionary(forKey: Key.hiddenCommenters.rawValue) as? [String: [String]] ?? [:]
         commentSites = defaults.dictionary(forKey: Key.commentSites.rawValue) as? [String: String] ?? [:]
@@ -108,22 +115,40 @@ final class ReaderSettings {
     }
 
     /// The preferences for reading what `settingsKey` names: the ones
-    /// above, with the reading direction chosen for it, if any.
+    /// above, laid out the way chosen for it. Left on automatic, a series
+    /// its source calls a vertical strip scrolls, and anything else is
+    /// left to the reader to tell from its pages.
     func preferences(for settingsKey: String) -> ReaderPreferences {
         var preferences = preferences
-        preferences.readingProgression = readingDirections[settingsKey]
+        switch readingMode(for: settingsKey) {
+        case .automatic:
+            preferences.comicFlow = StripSeries.contains(settingsKey, in: defaults) ? .scrolled : .automatic
+        case .comic:
+            preferences.comicFlow = .paged
+            preferences.readingProgression = .leftToRight
+        case .manga:
+            preferences.comicFlow = .paged
+            preferences.readingProgression = .rightToLeft
+        case .webtoon:
+            preferences.comicFlow = .scrolled
+        }
         return preferences
     }
 
-    /// The reading direction chosen for what `settingsKey` names, nil
-    /// where the publication's own applies.
-    func readingDirection(for settingsKey: String) -> Publication.ReadingProgression? {
-        readingDirections[settingsKey]
+    /// How what `settingsKey` names reads: what was chosen for it, or
+    /// automatic.
+    func readingMode(for settingsKey: String) -> ReadingMode {
+        readingModes[settingsKey] ?? .automatic
     }
 
-    func setReadingDirection(_ direction: Publication.ReadingProgression?, for settingsKey: String) {
-        readingDirections[settingsKey] = direction
-        store(readingDirections.mapValues(\.rawValue), for: .readingDirections)
+    func setReadingMode(_ mode: ReadingMode, for settingsKey: String) {
+        readingModes[settingsKey] = mode == .automatic ? nil : mode
+        store(readingModes.mapValues(\.rawValue), for: .readingModes)
+        // The old record would bring a direction back after choosing automatic.
+        var directions = defaults.dictionary(forKey: Key.readingDirections.rawValue) as? [String: String] ?? [:]
+        if directions.removeValue(forKey: settingsKey) != nil {
+            store(directions, for: .readingDirections)
+        }
     }
 
     /// Whether `name`'s comments from `site`, an extension's id, are hidden.
@@ -180,8 +205,7 @@ final class ReaderSettings {
             font: font,
             lineHeight: lineSpacing.lineHeight,
             marginScale: margins.scale,
-            pageTransition: pageTransition,
-            comicFlow: comicFlow
+            pageTransition: pageTransition
         )
     }
 
@@ -197,8 +221,8 @@ final class ReaderSettings {
         case lineSpacing = "reader.lineSpacing"
         case margins = "reader.margins"
         case pageTransition = "reader.pageTransition"
-        case comicFlow = "reader.comicFlow"
         case readingDirections = "reader.readingDirections"
+        case readingModes = "reader.readingModes"
         case showsComments = "reader.showsComments"
         case hiddenCommenters = "reader.hiddenCommenters"
         case commentSites = "reader.commentSites"
@@ -206,5 +230,53 @@ final class ReaderSettings {
 
     private func store(_ value: Any, for key: Key) {
         defaults.set(value, forKey: key.rawValue)
+    }
+}
+
+/// How a comic's pages follow one another, chosen once for a series.
+///
+/// One choice in place of a layout and a direction, since the two go
+/// together: a webtoon scrolls down, manga turns right to left and other
+/// comics turn left to right.
+nonisolated enum ReadingMode: String, CaseIterable, Identifiable, Sendable {
+    /// What the file or site says, and failing that, what the pages look like.
+    case automatic
+    /// Pages turned left to right.
+    case comic
+    /// Pages turned right to left.
+    case manga
+    /// One column scrolled down.
+    case webtoon
+
+    var id: Self { self }
+}
+
+/// The series their sources call vertical strips, kept on the device so
+/// a chapter opens scrolling at once instead of being looked at first.
+/// The newest are kept, since a reader only goes back to so many series.
+nonisolated enum StripSeries {
+    private static let key = "reader.stripSeries"
+    private static let kept = 500
+
+    static func contains(_ settingsKey: String, in defaults: UserDefaults = .standard) -> Bool {
+        defaults.stringArray(forKey: key)?.contains(settingsKey) ?? false
+    }
+
+    /// Notes whether the series `settingsKey` names is a strip.
+    static func note(_ isStrip: Bool, for settingsKey: String, in defaults: UserDefaults = .standard) {
+        var series = defaults.stringArray(forKey: key) ?? []
+        guard series.contains(settingsKey) != isStrip else { return }
+        series.removeAll { $0 == settingsKey }
+        if isStrip {
+            series.append(settingsKey)
+        }
+        defaults.set(Array(series.suffix(kept)), forKey: key)
+    }
+}
+
+extension SourceChapterRef {
+    /// Where reading settings for a source's series are kept.
+    nonisolated static func settingsKey(server: UUID, source: String, series: String) -> String {
+        "source/\(server.uuidString)/\(source)/\(series)"
     }
 }

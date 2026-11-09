@@ -103,6 +103,8 @@ final class ProgressStore {
             $0.serverID == server && $0.sourceID == source && $0.seriesID == seriesID
         })
         let rightToLeft = series.readingDirection == "rtl"
+        // Whether it scrolls is the reader's to know before a chapter opens.
+        StripSeries.note(series.readingDirection == "ttb", for: SourceChapterRef.settingsKey(server: server, source: source, series: seriesID))
         var changed = false
         for state in (try? context.fetch(descriptor)) ?? [] {
             if state.seriesCoverPath != series.coverUrl {
