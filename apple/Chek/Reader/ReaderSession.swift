@@ -40,10 +40,19 @@ final class ReaderSession {
     private(set) var next: NeighborLookup = .looking
     /// What comes before it, for going back a chapter.
     private(set) var previous: NeighborLookup = .looking
-    /// Whether a comic has been turned past its last page, which shows what
-    /// you've finished and what's next, off the artwork. Turning on again
-    /// opens it.
-    private(set) var isShowingChapterEnd = false
+    /// Which end of the chapter has been turned past, if either. Past the
+    /// last page is a page of its own saying what you've finished and
+    /// what's next, and past the first is one naming the chapter before.
+    /// The same turn again goes there; the other way returns to the page.
+    private(set) var edge: Edge?
+
+    /// An end of the chapter, past its pages.
+    enum Edge {
+        /// Before the first page.
+        case start
+        /// After the last page.
+        case end
+    }
 
     init(item: ReadingItem, preferences: ReaderPreferences) {
         self.item = item
@@ -73,7 +82,7 @@ final class ReaderSession {
         }
         phase = .reading
         // Failures show through the controller's state.
-        try? await controller.open(source, at: item.startLocation)
+        try? await controller.open(source, at: item.startLocation, fromEnd: item.startsAtEnd)
     }
 
     /// Opens the publication again at the current place, as after signing
@@ -113,23 +122,36 @@ final class ReaderSession {
         return showsTextSettings && (location.locations.totalProgression ?? 0) >= ReadingStatus.finishedThreshold
     }
 
-    /// What a page turn past the last page goes on to, if anything. A comic
-    /// first steps onto its chapter end, as Mihon does, so the next one
-    /// never opens by surprise. A book already says what's next on its
-    /// last page, so it goes straight on.
+    /// What a page turn past the last page goes on to, if anything. The
+    /// first one steps onto the chapter's end, so the next chapter never
+    /// opens by surprise, and the one after that goes on. Books and comics
+    /// alike, so there's one thing to learn.
     func turnedPastEnd() -> ReadingTarget? {
         guard isOnLastPage, next != .none else { return nil }
-        if item.kind == .comic, !isShowingChapterEnd {
-            isShowingChapterEnd = true
+        if edge != .end {
+            edge = .end
             hideControls()
             return nil
         }
         return next.target
     }
 
-    /// Back from the chapter end to the page, after turning back a page.
-    func leaveChapterEnd() {
-        isShowingChapterEnd = false
+    /// What a page turn back past the first page goes to, if anything:
+    /// first the page naming the chapter before, then that chapter. With
+    /// no chapter before, the first page is where reading back stops.
+    func turnedPastStart() -> ReadingTarget? {
+        guard let target = previous.target else { return nil }
+        if edge != .start {
+            edge = .start
+            hideControls()
+            return nil
+        }
+        return target
+    }
+
+    /// Back from an end of the chapter to its pages.
+    func leaveEdge() {
+        edge = nil
     }
 
     /// Text settings only reach text that reflows, so comics and PDFs

@@ -4,16 +4,15 @@ import SwiftUI
 /// Text size, theme, font, spacing and margins, changed while you read.
 struct AppearancePanel: View {
     var showsTextSettings = true
-    var showsComicSettings = false
     /// Whether comments apply, which they do to chapters from sources.
     var showsCommentSettings = false
-    /// What a reading direction chosen here applies to, nil to offer none.
-    var directionKey: String?
+    /// What a reading mode chosen here applies to, nil to offer none.
+    var modeKey: String?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsComicSettings: showsComicSettings, showsCommentSettings: showsCommentSettings, directionKey: directionKey)
+            ReaderAppearanceForm(showsTextSettings: showsTextSettings, showsCommentSettings: showsCommentSettings, modeKey: modeKey)
                 .navigationTitle("Appearance")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -37,14 +36,13 @@ struct ReaderAppearanceForm: View {
     /// Whether the settings for reflowing text apply, which they don't to
     /// comics and PDFs.
     var showsTextSettings = true
-    /// Whether comic layouts apply, which they do to comics and Settings.
-    var showsComicSettings = true
     /// Whether to offer turning comments off and showing hidden
     /// commenters again, which applies to chapters from sources and Settings.
     var showsCommentSettings = true
-    /// What a reading direction chosen here applies to, usually a series.
-    /// Nil in Settings, where there's nothing open to choose it for.
-    var directionKey: String?
+    /// What a reading mode chosen here applies to, usually a series. Nil
+    /// in Settings, where there's nothing open to choose it for, and for
+    /// text, which follows its language.
+    var modeKey: String?
     @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
@@ -56,37 +54,28 @@ struct ReaderAppearanceForm: View {
                     ThemePicker(selection: $settings.theme)
                 }
             }
-            if showsComicSettings {
+            if let modeKey {
                 Section {
-                    Picker("Comic Layout", selection: $settings.comicFlow) {
-                        Text("Automatic").tag(ReaderPreferences.ComicFlow.automatic)
-                        Text("Pages").tag(ReaderPreferences.ComicFlow.paged)
-                        Text("Vertical Scroll").tag(ReaderPreferences.ComicFlow.scrolled)
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                } header: {
-                    Text("Comic Layout")
-                } footer: {
-                    Text("Automatic scrolls webtoons and other tall comics and turns pages for the rest.")
-                }
-            }
-            if let directionKey {
-                Section {
-                    Picker("Reading Direction", selection: Binding(
-                        get: { settings.readingDirection(for: directionKey) },
-                        set: { settings.setReadingDirection($0, for: directionKey) }
+                    Picker("Read As", selection: Binding(
+                        get: { settings.readingMode(for: modeKey) },
+                        set: { settings.setReadingMode($0, for: modeKey) }
                     )) {
-                        Text("Automatic").tag(Publication.ReadingProgression?.none)
-                        Text("Left to Right").tag(Publication.ReadingProgression?.some(.leftToRight))
-                        Text("Right to Left").tag(Publication.ReadingProgression?.some(.rightToLeft))
+                        Text("Auto").tag(ReadingMode.automatic)
+                        Text("Comic").tag(ReadingMode.comic)
+                        Text("Manga").tag(ReadingMode.manga)
+                        Text("Webtoon").tag(ReadingMode.webtoon)
                     }
                     .pickerStyle(.segmented)
                     .labelsHidden()
                 } header: {
-                    Text("Reading Direction")
+                    Text("Read As")
                 } footer: {
-                    Text("Applies to this series. Manga reads right to left. Automatic follows the file or site.")
+                    switch settings.readingMode(for: modeKey) {
+                    case .automatic: Text("Follows the file or site, then the shape of the pages. Applies to this series.")
+                    case .comic: Text("Pages turn left to right. Applies to this series.")
+                    case .manga: Text("Pages turn right to left. Applies to this series.")
+                    case .webtoon: Text("Pages scroll down in one column. Applies to this series.")
+                    }
                 }
             }
             Section("Page Turn") {

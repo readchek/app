@@ -12,19 +12,56 @@ struct ReaderSettingsTests {
         return defaults
     }
 
-    @Test func directionIsKeptPerSeries() {
+    @Test func readingModeIsKeptPerSeries() {
         let settings = ReaderSettings(defaults: freshDefaults())
-        settings.setReadingDirection(.rightToLeft, for: "series/a")
+        settings.setReadingMode(.manga, for: "series/a")
         #expect(settings.preferences(for: "series/a").readingProgression == .rightToLeft)
+        #expect(settings.preferences(for: "series/a").comicFlow == .paged)
         #expect(settings.preferences(for: "series/b").readingProgression == nil)
-        settings.setReadingDirection(nil, for: "series/a")
+        #expect(settings.preferences(for: "series/b").comicFlow == .automatic)
+        settings.setReadingMode(.automatic, for: "series/a")
         #expect(settings.preferences(for: "series/a").readingProgression == nil)
     }
 
-    @Test func directionSurvivesRelaunch() {
+    @Test func eachReadingModeLaysPagesOutItsWay() {
+        let settings = ReaderSettings(defaults: freshDefaults())
+        settings.setReadingMode(.comic, for: "a")
+        #expect(settings.preferences(for: "a").comicFlow == .paged)
+        #expect(settings.preferences(for: "a").readingProgression == .leftToRight)
+        settings.setReadingMode(.webtoon, for: "a")
+        #expect(settings.preferences(for: "a").comicFlow == .scrolled)
+        #expect(settings.preferences(for: "a").readingProgression == nil)
+    }
+
+    @Test func readingModeSurvivesRelaunch() {
         let defaults = freshDefaults()
-        ReaderSettings(defaults: defaults).setReadingDirection(.leftToRight, for: "series/a")
-        #expect(ReaderSettings(defaults: defaults).readingDirection(for: "series/a") == .leftToRight)
+        ReaderSettings(defaults: defaults).setReadingMode(.webtoon, for: "series/a")
+        #expect(ReaderSettings(defaults: defaults).readingMode(for: "series/a") == .webtoon)
+    }
+
+    @Test func directionsChosenBeforeReadingModesStillApply() {
+        let defaults = freshDefaults()
+        defaults.set(["series/a": "rtl", "series/b": "ltr"], forKey: "reader.readingDirections")
+        let settings = ReaderSettings(defaults: defaults)
+        #expect(settings.readingMode(for: "series/a") == .manga)
+        #expect(settings.readingMode(for: "series/b") == .comic)
+        // Choosing automatic doesn't bring the old direction back.
+        settings.setReadingMode(.automatic, for: "series/a")
+        #expect(ReaderSettings(defaults: defaults).readingMode(for: "series/a") == .automatic)
+    }
+
+    @Test func aSeriesItsSourceCallsAStripScrollsOnAutomatic() {
+        let defaults = freshDefaults()
+        let settings = ReaderSettings(defaults: defaults)
+        StripSeries.note(true, for: "series/a", in: defaults)
+        #expect(settings.preferences(for: "series/a").comicFlow == .scrolled)
+        #expect(settings.preferences(for: "series/b").comicFlow == .automatic)
+        // What the reader chose wins over what the source says.
+        settings.setReadingMode(.manga, for: "series/a")
+        #expect(settings.preferences(for: "series/a").comicFlow == .paged)
+        settings.setReadingMode(.automatic, for: "series/a")
+        StripSeries.note(false, for: "series/a", in: defaults)
+        #expect(settings.preferences(for: "series/a").comicFlow == .automatic)
     }
 
     @Test func textSizeStepsStayInRange() {

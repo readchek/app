@@ -19,6 +19,9 @@ struct ReadingItem: Identifiable {
     let kind: PublicationKind
     let content: Content
     var startLocation: Locator?
+    /// Whether it opens on its last page, as it does for a reader turning
+    /// back into it from the chapter after.
+    var startsAtEnd = false
     /// The chapter this is, when it's read straight from a source, so the
     /// reader can offer the one after it.
     var sourceChapter: SourceChapterRef?

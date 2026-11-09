@@ -180,7 +180,7 @@ export function CommentsLink(props: { comments: Comments }) {
     <Entry
       comments={props.comments}
       variant="link"
-      class="mt-1 h-auto gap-1.5 px-0 py-0 text-[13px] font-semibold [&_svg]:size-3.5"
+      class="mt-1 h-auto gap-1.5 justify-self-start px-0 py-0 text-[13px] font-semibold [&_svg]:size-3.5"
     >
       {(count) => (
         <>

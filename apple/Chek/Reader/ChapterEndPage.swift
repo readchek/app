@@ -3,13 +3,14 @@ import SwiftUI
 
 /// Between one chapter and the next: what you've finished and what comes
 /// after it, set as plain type on the page's own color, as Mihon's
-/// chapter transition is. Comics show it after a turn past their last
-/// page, so nothing sits on the artwork, and every chapter shows it while
+/// chapter transition is. Every book and comic shows it one turn past its
+/// last page, so nothing sits on the artwork, and one turn back past its
+/// first page shows the chapter before the same way. It also shows while
 /// the next one opens, in place of a blank screen.
 ///
-/// Only the retry button takes touches. Swipes and taps go through to the
-/// page underneath, so turning on again opens the next chapter and
-/// turning back returns to the last page.
+/// It's a page like any other: a tap at the side or a swipe turns it.
+/// Turning on from the end opens the next chapter and turning back
+/// returns to the last page, which stays put underneath.
 struct ChapterEndPage: View {
     let kind: PublicationKind
     /// The title of what you've just read, when it's still open.
@@ -23,7 +24,19 @@ struct ChapterEndPage: View {
     var comments: ChapterComments?
     /// Opens the comments.
     var showComments: () -> Void = {}
+    /// Which way the pages around it turn.
+    var turns: Turns = .leftToRight
+    /// Turns the page, forward or back. Nil while the next chapter opens,
+    /// when there's nothing to turn to.
+    var turn: ((_ forward: Bool) -> Void)?
+    /// Shows or hides the reader's controls, for a tap in the middle.
+    var tapMiddle: () -> Void = {}
     @Environment(ReaderSettings.self) private var settings
+
+    /// The side a page turn forward goes toward.
+    enum Turns {
+        case leftToRight, rightToLeft
+    }
 
     var body: some View {
         ZStack {
@@ -51,7 +64,12 @@ struct ChapterEndPage: View {
                 .allowsHitTesting(false)
         }
         .foregroundStyle(primary)
+        .contentShape(.rect)
+        .modifier(PageTurning(turns: turns, turn: turn, tapMiddle: tapMiddle))
         .accessibilityElement(children: .contain)
+        .accessibilityAction(named: isNext ? Text("Next Chapter") : Text("Previous Chapter")) {
+            turn?(isNext)
+        }
     }
 
     @ViewBuilder private var upNext: some View {
@@ -106,7 +124,7 @@ struct ChapterEndPage: View {
         if isOpening {
             ProgressView()
         } else if next.target != nil {
-            Text("Turn the page to keep reading")
+            (isNext ? Text("Turn the page to keep reading") : Text("Turn back again to open it"))
                 .font(.footnote)
                 .foregroundStyle(secondary)
         }
@@ -140,5 +158,45 @@ struct ChapterEndPage: View {
 
     private var secondary: Color {
         primary.opacity(0.6)
+    }
+}
+
+/// Turns the chapter's end as its pages turn: a tap at either side, a
+/// swipe across, or a swipe up and down as a scrolled comic moves. A tap
+/// in the middle is for the reader's controls.
+private struct PageTurning: ViewModifier {
+    let turns: ChapterEndPage.Turns
+    let turn: ((_ forward: Bool) -> Void)?
+    let tapMiddle: () -> Void
+    @State private var width: CGFloat = 0
+
+    func body(content: Content) -> some View {
+        content
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { width = $0 }
+            .onTapGesture { point in
+                guard width > 0 else { return }
+                let place = point.x / width
+                guard place < 0.3 || place > 0.7 else {
+                    tapMiddle()
+                    return
+                }
+                // The trailing side is the way on, as it is on the pages.
+                turn?((place > 0.7) == (turns == .leftToRight))
+            }
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 24)
+                    .onEnded { value in
+                        let across = value.translation.width
+                        let down = value.translation.height
+                        if abs(across) > abs(down) * 1.5, abs(across) > 40 {
+                            // The next page comes in from the trailing side.
+                            turn?((across < 0) == (turns == .leftToRight))
+                        } else if abs(down) > abs(across) * 1.5, abs(down) > 60, value.startLocation.y > 140 {
+                            // Scrolling on is pushing the page up. From the
+                            // top edge a pull down closes the reader instead.
+                            turn?(down < 0)
+                        }
+                    }
+            )
     }
 }

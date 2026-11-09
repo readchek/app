@@ -10,6 +10,7 @@
     "build:server": "vite build --mode server --outDir dist-server",
     "preview": "vite preview",
     "typecheck": "tsc",
+    "test": "bun test",
     "deploy": "vite build && bun scripts/cloudflare.ts && cf deploy --prebuilt",
     "deploy:demo": "bun scripts/demo-data.ts && vite build --mode demo && bun scripts/cloudflare.ts demo && bunx wrangler@4 deploy -c wrangler.demo.jsonc",
     "lint": "oxlint --deny-warnings .",
@@ -18,7 +19,7 @@
   },
   "dependencies": {
     "@kobalte/core": "0.13.14",
-    "@readchek/reader": "github:readchek/chek-reader#854435e9883059cd75c2670138b386e8b27b5d5b",
+    "@readchek/reader": "github:readchek/chek-reader#e22f27ef8ef507cc85ad04bac1f0533b9ad6dc7b",
     "@tanstack/solid-router": "1.170.43",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",

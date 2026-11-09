@@ -34,7 +34,7 @@ xcodebuild test -project apple/Chek.xcodeproj -scheme Chek \
   -destination 'platform=iOS Simulator,name=iPhone 18 Pro' CODE_SIGNING_ALLOWED=NO
 ```
 
-For `web/`, run `bun run typecheck`, `bun run lint`, `bun run format:check` and `bun run build` there; CI runs them too.
+For `web/`, run `bun run typecheck`, `bun run lint`, `bun run format:check`, `bun run test` and `bun run build` there; CI runs them too.
 
 Before you push, build what you changed and run the tests. Tests cover logic that doesn't need a screen: address parsing, titles, statuses, settings, decoding. Add one when you fix a bug in such code. If your environment can't build the app, say so in the PR rather than guessing.
 

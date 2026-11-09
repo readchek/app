@@ -339,9 +339,11 @@ async function site(
       const recorded = site.chapters[params.get("seriesId") ?? ""]
       if (!recorded) return missing()
       let items = recorded.items
+      // The server puts the list in the asked order first, so `after` with
+      // `desc` answers the chapter before.
+      if (params.get("order") === "desc") items = [...items].reverse()
       const after = params.get("after")
       if (after) items = items.slice(items.findIndex((item) => item.id === after) + 1)
-      if (params.get("order") === "desc") items = [...items].reverse()
       const offset = Number(params.get("offset") ?? 0) || 0
       const limit = Number(params.get("limit") ?? 100) || 100
       const next = offset + limit

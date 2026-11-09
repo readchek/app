@@ -1,19 +1,22 @@
 import { createSignal } from "solid-js"
 import {
   type BookPreferences,
-  type ComicFlow,
   type ReadingDirection,
   type Spreads,
   defaultBookPreferences,
 } from "@readchek/reader"
+import type { ReadingMode } from "./modes.ts"
 
 // Reading settings are this browser's, as they're each device's in the iOS
 // app: a phone and a desktop want different layouts.
 
-export type ComicSettings = { flow: ComicFlow; spreads: Spreads }
+/** What's the same for every comic on this device. How each series reads is chosen per series. */
+export type ComicSettings = { spreads: Spreads }
 
 const comicKey = "chek.reader.comic"
 const directionKey = "chek.reader.directions"
+const modeKey = "chek.reader.modes"
+const guessKey = "chek.reader.guesses"
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -32,9 +35,9 @@ function write(key: string, value: unknown) {
   }
 }
 
-const [comic, setComic] = createSignal<ComicSettings>(
-  read(comicKey, { flow: "automatic", spreads: "automatic" }),
-)
+const [comic, setComic] = createSignal<ComicSettings>({
+  spreads: read<ComicSettings>(comicKey, { spreads: "automatic" }).spreads,
+})
 
 export { comic as comicSettings }
 
@@ -44,21 +47,46 @@ export function changeComicSettings(change: Partial<ComicSettings>) {
   setComic(next)
 }
 
-// The direction is chosen per series, as on iOS: a manga series reads
-// right to left while the rest of the shelf doesn't.
-const [directions, setDirections] = createSignal<Record<string, ReadingDirection>>(
-  read(directionKey, {}),
-)
+// How a series reads is chosen per series: a manga reads right to left
+// and a webtoon scrolls while the rest of the shelf does neither, so one
+// setting for every comic made fixing one series break another.
+const [modes, setModes] = createSignal<Record<string, ReadingMode>>(read(modeKey, {}))
 
-/** The direction chosen for a series, if any. `series` names it with its server. */
-export function seriesDirection(series: string): ReadingDirection | undefined {
-  return directions()[series]
+// Directions chosen before reading modes, which still say how to read
+// their series.
+const directions = read<Record<string, ReadingDirection>>(directionKey, {})
+
+/** The reading mode chosen for a series. `series` names it with its server. */
+export function seriesMode(series: string): ReadingMode {
+  const chosen = modes()[series]
+  if (chosen) return chosen
+  const before = directions[series]
+  return before === "rtl" ? "manga" : before === "ltr" ? "comic" : "automatic"
 }
 
-export function setSeriesDirection(series: string, direction: ReadingDirection) {
-  const next = { ...directions(), [series]: direction }
-  write(directionKey, next)
-  setDirections(next)
+export function setSeriesMode(series: string, mode: ReadingMode) {
+  const next = { ...modes(), [series]: mode }
+  write(modeKey, next)
+  setModes(next)
+}
+
+// What a series' pages looked like when nothing said how it reads, so
+// its next chapter opens the same way without being looked at again.
+const guessesKept = 500
+let guesses = read<Record<string, "paged" | "scrolled">>(guessKey, {})
+
+export function seriesGuess(series: string): "paged" | "scrolled" | undefined {
+  return guesses[series]
+}
+
+export function setSeriesGuess(series: string, guess: "paged" | "scrolled") {
+  if (guesses[series] === guess) return
+  const { [series]: _, ...rest } = guesses
+  const keys = Object.keys(rest)
+  // Insertion order is age: the oldest go first.
+  for (const old of keys.slice(0, Math.max(keys.length - guessesKept + 1, 0))) delete rest[old]
+  guesses = { ...rest, [series]: guess }
+  write(guessKey, guesses)
 }
 
 /** Book settings: the reader's own, with `automatic` following the app's light or dark look. */
