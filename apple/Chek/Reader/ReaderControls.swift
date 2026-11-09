@@ -57,7 +57,7 @@ private struct ReaderToolbars: ViewModifier {
                     }
                 }
                 ToolbarItem(placement: .bottomBar) {
-                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.edge == .end)
+                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.shownEdge == .end)
                         .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
                 }
                 if session.item.series != nil {
