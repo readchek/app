@@ -11,6 +11,7 @@ import {
   type PageInfo,
   type Progress,
   type PublicationDetail,
+  type PublicationSummary,
   comicFormats,
   pagePath,
   pages,
@@ -22,8 +23,15 @@ import {
 import { loadFile } from "../files.ts"
 import { publicationTitle, seriesTitle } from "../titles.ts"
 import { type BookSource, BookReader } from "./BookReader.tsx"
-import { type ComicBook, ComicReader, serverPages } from "./ComicReader.tsx"
-import { type Positions, type UpNext, createReaderKeys, useCloseReader } from "./shared.tsx"
+import { loadImage } from "../images.ts"
+import { type ComicBook, ComicReader, type SeriesEntry, serverPages } from "./ComicReader.tsx"
+import {
+  type Neighbor,
+  type Neighbors,
+  type Positions,
+  createReaderKeys,
+  useCloseReader,
+} from "./shared.tsx"
 
 /** A publication open full screen, in the reader its format needs. */
 export function Reader() {
@@ -41,9 +49,14 @@ export function Reader() {
     },
     async ({ account, id }) => {
       const detail = await publication(account, id)
-      const [pageList, saved, book] = await Promise.all([
+      const [pageList, saved, series, book] = await Promise.all([
         comicFormats.includes(detail.format) ? pages(account, id) : Promise.resolve([]),
         progress(account, id),
+        // The rest of its series, for what's either side of it. Reading goes on without.
+        seriesPublications(account, detail.series.id, { limit: 200 }).then(
+          (list) => list.items,
+          () => [],
+        ),
         // Named as the iOS app names its download, since a text file's
         // name can become its title, and so the size of its pages.
         openBook(
@@ -53,7 +66,7 @@ export function Reader() {
           `${id}.${detail.format}`,
         ),
       ])
-      return { account, detail, pages: pageList, progress: saved, book }
+      return { account, detail, pages: pageList, progress: saved, series, book }
     },
   )
 
@@ -117,6 +130,8 @@ type Opened = {
   detail: PublicationDetail
   pages: PageInfo[]
   progress: Progress
+  /** Its series' publications, in reading order; empty when they couldn't be asked for. */
+  series: PublicationSummary[]
 }
 
 /** A publication's place, kept on the server. */
@@ -132,18 +147,46 @@ function serverPositions(account: Account, id: number, saved: Progress): Positio
   }
 }
 
-/** The book after this one in its series, for the end of the book. */
-function nextInSeries(
-  account: Account,
-  detail: PublicationDetail,
-  open: (id: number) => void,
-): () => Promise<UpNext | undefined> {
-  return async () => {
-    const list = await seriesPublications(account, detail.series.id, { limit: 200 })
-    const index = list.items.findIndex((item) => item.id === detail.id)
-    const after = index >= 0 ? list.items[index + 1] : undefined
-    return after && { title: publicationTitle(after), open: () => open(after.id) }
+/** What's either side of a publication in its series, when it has company there. */
+function seriesNeighbors(opened: Opened, open: (id: number) => void): Neighbors | undefined {
+  const { account, detail, series } = opened
+  const index = series.findIndex((item) => item.id === detail.id)
+  // A book alone in its series has nothing to go on to or back to.
+  if (index < 0 || series.length < 2) return undefined
+  const neighbor = (item: PublicationSummary | undefined): Neighbor | undefined =>
+    item && {
+      title: publicationTitle(item),
+      open: () => open(item.id),
+      prepare: () => {
+        if (!comicFormats.includes(item.format)) return
+        // The first pages, which the image cache keeps for when it opens.
+        void pages(account, item.id).then(
+          (list) => {
+            for (const page of list.slice(0, 3)) {
+              loadImage(account, pagePath(item.id, page.index)).catch(() => {})
+            }
+          },
+          () => {},
+        )
+      },
+    }
+  return {
+    previous: neighbor(series[index - 1]),
+    next: neighbor(series[index + 1]),
+    ending: "last",
+    unit: "book",
   }
+}
+
+/** A publication's series, for moving around it from the reader. */
+function seriesEntries(opened: Opened, open: (id: number) => void) {
+  if (opened.series.length < 2) return undefined
+  return async (): Promise<SeriesEntry[]> =>
+    opened.series.map((item) => ({
+      title: publicationTitle(item),
+      current: item.id === opened.detail.id,
+      open: () => open(item.id),
+    }))
 }
 
 /** A publication's pages, read with its place kept on the server. */
@@ -161,7 +204,8 @@ function publicationComic(opened: Opened, open: (id: number) => void): ComicBook
     seriesKey: `${accountKey(account)}/${detail.series.id}`,
     direction: detail.readingDirection,
     positions: serverPositions(account, detail.id, opened.progress),
-    next: nextInSeries(account, detail, open),
+    neighbors: seriesNeighbors(opened, open),
+    series: seriesEntries(opened, open),
   }
 }
 
@@ -169,6 +213,7 @@ function publicationComic(opened: Opened, open: (id: number) => void): ComicBook
 function publicationPdf(opened: Opened, pdf: PdfDocument, open: (id: number) => void): ComicBook {
   return {
     ...publicationComic(opened, open),
+    fixedLayout: true,
     pages: pdf,
     toc: pdf.toc,
     release: () => void pdf.destroy(),
@@ -189,7 +234,7 @@ function publicationBook(
     publication: book,
     start: opened.progress.locator,
     positions: serverPositions(account, detail.id, opened.progress),
-    next: nextInSeries(account, detail, open),
+    neighbors: seriesNeighbors(opened, open),
   }
 }
 

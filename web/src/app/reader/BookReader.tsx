@@ -1,5 +1,5 @@
 import { Show, createEffect, createSignal, on, onCleanup, onMount } from "solid-js"
-import { createResource } from "../../lib/resource.ts"
+import { Portal } from "solid-js/web"
 import {
   type BookLocation,
   type BookPreferences,
@@ -36,19 +36,24 @@ import {
   createComments,
   isDocked,
 } from "./Comments.tsx"
+import { ChapterEndPage, ChapterStartPage } from "./ChapterEnd.tsx"
 import { ContentsDialog } from "./Contents.tsx"
 import { type BookSettings, bookSettings, changeBookSettings } from "./settings.ts"
 import {
   BottomBar,
+  ChapterButtons,
   ConflictDialog,
+  type Neighbor,
+  type Neighbors,
   PageButtons,
   type Positions,
   TopBar,
-  type UpNext,
-  UpNextCard,
+  arriveBy,
   createControls,
   createKeeper,
   createReaderKeys,
+  settleWheel,
+  takeArrival,
   useCloseReader,
 } from "./shared.tsx"
 
@@ -60,7 +65,8 @@ export type BookSource = {
   publication: Publication
   start: Locator | null
   positions: Positions
-  next: () => Promise<UpNext | undefined>
+  /** What's either side of it, when it's one of a series. */
+  neighbors?: Neighbors
   /** Where readers' comments on it come from, for a chapter from a site that has them. */
   comments?: CommentSource
 }
@@ -94,14 +100,33 @@ export function BookReader(props: { book: BookSource }) {
 
   const [location, setLocation] = createSignal<BookLocation>()
   const [scrub, setScrub] = createSignal<number>()
-  const controls = createControls()
+  const neighbors = book.neighbors
+  // Read into from the book before or after, or opened from a list.
+  const arrival = takeArrival()
+  // Reading into a book comes without the controls: nobody asked for them.
+  const controls = createControls({ hidden: arrival !== undefined })
   const comments = book.comments && createComments(book.comments)
-  const [finished, setFinished] = createSignal(false)
+  const [leaving, setLeaving] = createSignal<"before" | "after">()
   const [contents, setContents] = createSignal(false)
   const [failure, setFailure] = createSignal<string>()
   const [systemDark, setSystemDark] = createSignal(dark.matches)
   const keeper = createKeeper(book.positions)
-  const [next] = createResource(() => book.next())
+
+  /** Opens the book either side, saying how it was reached. */
+  const go = (neighbor: Neighbor, from?: "start" | "end") => {
+    if (leaving()) return
+    setLeaving(neighbor === neighbors?.previous ? "before" : "after")
+    arriveBy(from)
+    neighbor.open(from)
+  }
+
+  // The pages either side of the book: one element each, placed by the
+  // view over the page and drawn here.
+  const ends = {
+    before: neighbors?.previous ? document.createElement("div") : undefined,
+    after: neighbors ? document.createElement("div") : undefined,
+  }
+  for (const end of [ends.before, ends.after]) end?.style.setProperty("height", "100%")
 
   const followSystem = (event: MediaQueryListEvent) => setSystemDark(event.matches)
   dark.addEventListener("change", followSystem)
@@ -131,6 +156,19 @@ export function BookReader(props: { book: BookSource }) {
 
   onMount(() => {
     if (!element) return
+    let lastPage: number | undefined
+    let prepared = false
+    // A book finished before starts over, since its last page is no
+    // place to pick it up again.
+    const finishedBefore = (book.start?.locations?.totalProgression ?? 0) >= 1
+    const order = book.publication.readingOrder
+    const last = order[order.length - 1]
+    const start: Locator | null =
+      arrival === "end" && last
+        ? { href: last.href, type: last.type, locations: { progression: 1 } }
+        : arrival === "start" || finishedBefore
+          ? null
+          : book.start
     view = new BookView(
       element,
       book.publication,
@@ -138,14 +176,19 @@ export function BookReader(props: { book: BookSource }) {
         location: (place) => {
           setLocation(place)
           setScrub(undefined)
-          if (!place.atEnd) setFinished(false)
+          if (lastPage !== undefined && lastPage !== place.position) controls.read()
+          lastPage = place.position
+          if (place.atEnd && !prepared) {
+            prepared = true
+            neighbors?.next?.prepare?.()
+          }
           keeper.keep(place.locator)
         },
         tap: () => controls.tap(),
         pointer: () => controls.moved(),
-        end: () => {
-          setFinished(true)
-          controls.show()
+        leave: (toward) => {
+          const neighbor = toward === "after" ? neighbors?.next : neighbors?.previous
+          if (neighbor) go(neighbor, toward === "after" ? "start" : "end")
         },
         // Tab moves focus within the page's frame too, toward the controls.
         key: (key) => (key === "Tab" ? controls.show() : void pressKey(key)),
@@ -160,8 +203,9 @@ export function BookReader(props: { book: BookSource }) {
       {
         frameUrl: `${import.meta.env.BASE_URL}reader-frame/frame.html`,
         preferences: preferences(),
+        ends,
       },
-      book.start,
+      start,
     )
     element.focus({ preventScroll: true })
     onCleanup(() => view?.destroy())
@@ -182,6 +226,7 @@ export function BookReader(props: { book: BookSource }) {
     const place = location()
     if (!place) return ""
     if (scrub() !== undefined) return scrubLabel(shownPosition())
+    if (place.edge === "after") return "Finished"
     const page = `Page ${place.page + 1} of ${place.pageCount}`
     return place.chapter ? `${place.chapter.title} · ${page}` : page
   }
@@ -205,6 +250,7 @@ export function BookReader(props: { book: BookSource }) {
 
   return (
     <div
+      ref={(node) => arrival && settleWheel(node)}
       class="relative h-full transition-[margin] duration-200"
       // The page makes room for the comments beside it rather than going under them.
       style={{
@@ -334,11 +380,29 @@ export function BookReader(props: { book: BookSource }) {
         </div>
       </Show>
 
-      <Show when={finished() && next()}>
-        {(after) => (
-          <UpNextCard next={after()}>
+      <Show when={neighbors && ends.after}>
+        <Portal mount={ends.after} ref={(node) => (node.style.height = "100%")}>
+          <ChapterEndPage
+            finished={book.title}
+            neighbors={neighbors!}
+            motion="turn"
+            opening={leaving() === "after"}
+            go={(neighbor) => go(neighbor, "start")}
+          >
             <Show when={comments}>{(shown) => <CommentsLink comments={shown()} />}</Show>
-          </UpNextCard>
+          </ChapterEndPage>
+        </Portal>
+      </Show>
+      <Show when={ends.before && neighbors?.previous}>
+        {(previous) => (
+          <Portal mount={ends.before} ref={(node) => (node.style.height = "100%")}>
+            <ChapterStartPage
+              previous={previous()}
+              motion="turn"
+              opening={leaving() === "before"}
+              go={(neighbor) => go(neighbor, "end")}
+            />
+          </Portal>
         )}
       </Show>
       <Show when={comments}>{(shown) => <CommentsPanel comments={shown()} />}</Show>
@@ -368,12 +432,14 @@ export function BookReader(props: { book: BookSource }) {
             <SliderThumb />
           </SliderTrack>
         </Slider>
-        <p class="flex justify-between gap-4 text-[13px] text-muted-foreground tabular-nums">
-          <span class="min-w-0 truncate" aria-live="polite">
-            {label()}
-          </span>
-          <span>{percent()}</span>
-        </p>
+        <ChapterButtons neighbors={neighbors} rtl={rtl} go={(neighbor) => go(neighbor)}>
+          <p class="flex min-w-0 justify-center gap-3 text-[13px] text-muted-foreground tabular-nums">
+            <span class="min-w-0 truncate" aria-live="polite">
+              {label()}
+            </span>
+            <span>{percent()}</span>
+          </p>
+        </ChapterButtons>
       </BottomBar>
 
       <ContentsDialog

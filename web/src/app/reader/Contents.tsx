@@ -1,6 +1,6 @@
 import { For, type JSX, Show, createMemo, createSignal } from "solid-js"
 import type { TocItem } from "@readchek/reader"
-import { Search } from "../../components/icons.tsx"
+import { Search, Spinner } from "../../components/icons.tsx"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../../components/ui/dialog.tsx"
 import { TextField, TextFieldInput, TextFieldLabel } from "../../components/ui/text-field.tsx"
 import { cn } from "../../lib/cn.ts"
@@ -67,6 +67,10 @@ export function ContentsDialog(props: {
   items: TocItem[]
   current: TocItem | undefined
   choose: (item: TocItem) => void
+  /** What the list is called, when it isn't a book's contents, such as a series' chapters. */
+  title?: string
+  /** Whether the entries are still being fetched. */
+  loading?: boolean
 }) {
   const [filter, setFilter] = createSignal("")
   const all = createMemo(() => flattened(props.items))
@@ -89,8 +93,14 @@ export function ContentsDialog(props: {
     >
       <DialogContent class="max-w-xl">
         <DialogHeader>
-          <DialogTitle>Contents</DialogTitle>
+          <DialogTitle>{props.title ?? "Contents"}</DialogTitle>
         </DialogHeader>
+        <Show when={props.loading}>
+          <p role="status" class="flex items-center gap-2.5 py-2 text-[15px] text-muted-foreground">
+            <Spinner class="size-[18px] text-link" />
+            Loading…
+          </p>
+        </Show>
         {/* Short contents don't need finding in. */}
         <Show when={all().length > 8}>
           <form
@@ -199,6 +209,12 @@ function TocButton(props: {
         props.current === props.item && "font-semibold text-link",
       )}
       aria-current={props.current === props.item ? "location" : undefined}
+      // A long list opens at where you are, not at its top.
+      ref={(element) => {
+        if (props.current === props.item) {
+          queueMicrotask(() => element.scrollIntoView({ block: "center" }))
+        }
+      }}
       onClick={() => props.choose(props.item)}
     >
       {props.item.title}

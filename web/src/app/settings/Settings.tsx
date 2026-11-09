@@ -145,16 +145,6 @@ export function Settings() {
                 onChange={(font) => changeBookSettings({ font })}
               />
               <Choice
-                label="Comic pages"
-                value={comicSettings().flow}
-                options={[
-                  { value: "automatic", label: "Automatic" },
-                  { value: "paged", label: "Turn" },
-                  { value: "scrolled", label: "Scroll" },
-                ]}
-                onChange={(flow) => changeComicSettings({ flow })}
-              />
-              <Choice
                 label="Two comic pages at once"
                 value={comicSettings().spreads}
                 options={[

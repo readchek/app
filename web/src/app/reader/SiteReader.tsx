@@ -17,9 +17,45 @@ import { chapterPosition, savePosition } from "../sites/positions.ts"
 import { chapterTitle } from "../sites/titles.ts"
 import { type BookSource, BookReader } from "./BookReader.tsx"
 import type { CommentSource } from "./Comments.tsx"
-import type { Positions } from "./shared.tsx"
-import { type ComicBook, ComicReader, serverPages } from "./ComicReader.tsx"
+import type { Neighbor, Neighbors, Positions } from "./shared.tsx"
+import { type ComicBook, ComicReader, type SeriesEntry, serverPages } from "./ComicReader.tsx"
+import { loadImage } from "../images.ts"
 import { Message, laterFormat, openBook } from "./Reader.tsx"
+
+// A chapter's content asked for ahead of opening it, while the last pages
+// of the one before are read, so opening it finds the answer waiting.
+const prepared = new Map<string, Promise<ChapterContent>>()
+
+function contentOf(account: Account, extensionId: string, chapterId: string) {
+  const key = `${accountKey(account)}\n${extensionId}\n${chapterId}`
+  let content = prepared.get(key)
+  if (!content) {
+    content = chapterContent(account, extensionId, chapterId)
+    prepared.set(key, content)
+    // Kept only until it's used or fails; a chapter's pages can change.
+    const forget = () => prepared.get(key) === content && prepared.delete(key)
+    content.catch(forget)
+    setTimeout(forget, 5 * 60 * 1000)
+  }
+  return content
+}
+
+/** The chapter next to `chapterId`, going on (`asc`) or back (`desc`). */
+async function chapterBeside(
+  account: Account,
+  extensionId: string,
+  seriesId: string,
+  chapterId: string,
+  order: "asc" | "desc",
+): Promise<RemoteChapter | undefined> {
+  const page = await siteChapters(account, extensionId, {
+    seriesId,
+    order,
+    after: chapterId,
+    limit: 1,
+  })
+  return page.items[0]
+}
 
 /** A chapter read straight from a site, full screen. */
 export function SiteReader() {
@@ -43,9 +79,15 @@ export function SiteReader() {
         : undefined
     },
     async ({ account, extensionId, seriesId, chapterId, title }) => {
-      const [series, content, extension] = await Promise.all([
+      // What's either side is asked for with the chapter itself, so the
+      // way on is known before the first page shows. Reading goes on without.
+      const beside = (order: "asc" | "desc") =>
+        chapterBeside(account, extensionId, seriesId, chapterId, order).catch(() => undefined)
+      const [series, content, after, before, extension] = await Promise.all([
         siteSeries(account, extensionId, seriesId),
-        chapterContent(account, extensionId, chapterId),
+        contentOf(account, extensionId, chapterId),
+        beside("asc"),
+        beside("desc"),
         // Only to know whether it shows readers' comments; reading goes on without.
         installedExtensions(account).then(
           (all) => all.find((one) => one.id === extensionId),
@@ -78,6 +120,8 @@ export function SiteReader() {
         chapterId,
         title,
         comments,
+        after,
+        before,
       }
     },
   )
@@ -126,6 +170,7 @@ export function SiteReader() {
                     <ComicReader
                       book={{
                         ...siteComic(chapter, open),
+                        fixedLayout: true,
                         pages: pdf,
                         toc: pdf.toc,
                         release: () => void pdf.destroy(),
@@ -162,6 +207,8 @@ type OpenedChapter = {
   chapterId: string
   title: string | undefined
   comments: CommentSource | undefined
+  after: RemoteChapter | undefined
+  before: RemoteChapter | undefined
 }
 
 // Where a site chapter keeps its place, in this browser, and what comes after it.
@@ -171,7 +218,54 @@ function sitePlace(opened: OpenedChapter, open: (chapter: RemoteChapter) => void
   const title = opened.title ?? series.title
   const direction: ReadingDirection | null =
     series.readingDirection === "rtl" ? "rtl" : series.readingDirection === "ltr" ? "ltr" : null
+  const neighbor = (chapter: RemoteChapter | undefined): Neighbor | undefined =>
+    chapter && {
+      title: chapterTitle(chapter),
+      open: () => open(chapter),
+      prepare: () => {
+        // The page list, then the first pages, which the image cache keeps.
+        void contentOf(account, extensionId, chapter.id).then(
+          (content) => {
+            const first = [...(content.pages ?? [])].sort((a, b) => a.index - b.index).slice(0, 3)
+            for (const page of first) loadImage(account, page.url).catch(() => {})
+          },
+          () => {},
+        )
+      },
+    }
+  const neighbors: Neighbors = {
+    previous: neighbor(opened.before),
+    next: neighbor(opened.after),
+    // Sites mostly carry series still coming out, so one whose status
+    // isn't known is taken to be.
+    ending: series.status === "completed" || series.status === "cancelled" ? "last" : "caughtUp",
+    unit: "chapter",
+  }
+  /** Every chapter of the series, oldest first, a server page at a time. */
+  const all = async (): Promise<SeriesEntry[]> => {
+    const entries: SeriesEntry[] = []
+    let offset: number | null = 0
+    // A bound, so a server that keeps answering can't keep this going for ever.
+    for (let pages = 0; offset !== null && pages < 50; pages++) {
+      const page: Awaited<ReturnType<typeof siteChapters>> = await siteChapters(
+        account,
+        extensionId,
+        { seriesId: series.id, order: "asc", offset, limit: 200 },
+      )
+      for (const chapter of page.items) {
+        entries.push({
+          title: chapterTitle(chapter),
+          current: chapter.id === chapterId,
+          open: () => open(chapter),
+        })
+      }
+      offset = page.nextOffset
+    }
+    return entries
+  }
   return {
+    neighbors,
+    all,
     account,
     title,
     server,
@@ -196,16 +290,6 @@ function sitePlace(opened: OpenedChapter, open: (chapter: RemoteChapter) => void
       // Only the server's positions can be overtaken by another device.
       prefer: () => {},
     } satisfies Positions,
-    next: async () => {
-      const page = await siteChapters(account, extensionId, {
-        seriesId: series.id,
-        order: "asc",
-        after: chapterId,
-        limit: 1,
-      })
-      const after = page.items[0]
-      return after && { title: chapterTitle(after), open: () => open(after) }
-    },
   }
 }
 
@@ -222,9 +306,10 @@ function siteComic(opened: OpenedChapter, open: (chapter: RemoteChapter) => void
     ),
     start: place.start,
     seriesKey: `${place.server}/${opened.extensionId}/${opened.series.id}`,
-    direction: place.direction,
+    direction: opened.series.readingDirection,
     positions: place.positions,
-    next: place.next,
+    neighbors: place.neighbors,
+    series: place.all,
     comments: opened.comments,
   }
 }
@@ -244,7 +329,7 @@ function siteBook(
     publication: book,
     start: place.start,
     positions: place.positions,
-    next: place.next,
+    neighbors: place.neighbors,
     comments: opened.comments,
   }
 }

@@ -26,8 +26,78 @@ export type Positions = {
   prefer(other: Progress): void
 }
 
-/** What comes after, offered at the end. */
-export type UpNext = { title: string; open: () => void }
+/** The chapter or book next to the one open, in its series. */
+export type Neighbor = {
+  title: string
+  /**
+   * Opens it in place of the one open. Reading on into it starts at its
+   * first page and reading back into it at its last; with neither, it
+   * opens where it was left.
+   */
+  open: (from?: "start" | "end") => void
+  /** Fetches what opening it will need, ahead of the turn that opens it. */
+  prepare?: () => void
+}
+
+/** What's either side of the open chapter or book, for one that's part of a series. */
+export type Neighbors = {
+  previous?: Neighbor
+  next?: Neighbor
+  /** Why nothing is next, when nothing is: more is still to come, or the series is over. */
+  ending: "caughtUp" | "last"
+  /** What the series is made of, for naming the way on. */
+  unit: "chapter" | "book"
+}
+
+// How the chapter now opening was reached, kept only across the switch
+// to it: reading into a chapter starts at one of its ends, and comes
+// without the controls, since nobody asked for them.
+let arriving: "start" | "end" | undefined
+
+/** Notes that the next chapter to open was read into, forward from the last page or back from the first. */
+export function arriveBy(from: "start" | "end" | undefined) {
+  arriving = from
+}
+
+/** How the chapter opening now was reached, once. */
+export function takeArrival(): "start" | "end" | undefined {
+  const from = arriving
+  arriving = undefined
+  return from
+}
+
+// When the wheel last turned, and the time before that, to tell a scroll
+// still running from a new one.
+let wheelAt = 0
+let wheelBefore = 0
+window.addEventListener(
+  "wheel",
+  (event) => {
+    wheelBefore = wheelAt
+    wheelAt = event.timeStamp
+  },
+  { capture: true, passive: true },
+)
+
+/**
+ * Drops what's left of the scroll that opened this chapter. A trackpad
+ * keeps sending its glide for a second, which would carry the reader
+ * down the new chapter's first pages unread.
+ */
+export function settleWheel(element: HTMLElement) {
+  let settling = true
+  element.addEventListener(
+    "wheel",
+    (event) => {
+      if (!settling) return
+      if (event.timeStamp - wheelBefore < 180) {
+        event.preventDefault()
+        event.stopPropagation()
+      } else settling = false
+    },
+    { capture: true, passive: false },
+  )
+}
 
 // Positions are saved a moment after the page settles, so flipping
 // through a book saves once rather than for every page passed.
@@ -201,9 +271,9 @@ export type Controls = ReturnType<typeof createControls>
  * screen a tap in the middle of the page shows or hides them, as in the
  * iOS app.
  */
-export function createControls() {
+export function createControls(options: { hidden?: boolean } = {}) {
   const [hovering, setHovering] = createSignal(mouse.matches)
-  const [shown, setShown] = createSignal(true)
+  const [shown, setShown] = createSignal(!options.hidden)
   const holds = new Set<string>()
   let timer: ReturnType<typeof setTimeout> | undefined
 
@@ -249,6 +319,14 @@ export function createControls() {
     hide() {
       clearTimeout(timer)
       setShown(false)
+    },
+    /**
+     * A page was turned on a touch screen, where the controls don't hide
+     * by themselves: reading on puts them away, as in the iOS app, unless
+     * one of them is in use.
+     */
+    read() {
+      if (!hovering() && holds.size === 0) setShown(false)
     },
     /** The mouse moved over the page. */
     moved() {
@@ -411,20 +489,54 @@ export function PageButtons(props: {
   )
 }
 
-/** Offers what to read next, at the end. */
-export function UpNextCard(props: { next: UpNext; children?: JSX.Element }) {
-  return (
-    <div class="absolute inset-x-0 bottom-28 z-10 flex justify-center px-4">
-      <div class="flex max-w-md items-center gap-4 rounded-2xl border bg-card p-4 shadow-xl">
-        <p class="min-w-0 text-[15px]">
-          <span class="block text-muted-foreground">Up next</span>
-          <span class="block truncate font-semibold">{props.next.title}</span>
-          {props.children}
-        </p>
-        <Button size="sm" onClick={() => props.next.open()}>
-          Read
+/**
+ * The way to the chapters either side, in the bottom bar's corners: back
+ * at the start of the slider and on at its end, the same two places in
+ * every book and comic.
+ */
+export function ChapterButtons(props: {
+  neighbors: Neighbors | undefined
+  /** Whether the slider runs right to left, which puts the way on at the left. */
+  rtl: boolean
+  go: (neighbor: Neighbor) => void
+  /** Where you are, between the two. */
+  children: JSX.Element
+}) {
+  const button = (which: "previous" | "next") => {
+    const neighbor = () => props.neighbors?.[which]
+    const atStart = () => (which === "previous") !== props.rtl
+    return (
+      <Show when={props.neighbors?.previous || props.neighbors?.next} fallback={<span />}>
+        <Button
+          variant="ghost"
+          size="sm"
+          class={cn(
+            "h-8 gap-0.5 px-1.5 text-[13px] font-semibold [&_svg]:size-4",
+            atStart() ? "justify-self-start" : "justify-self-end",
+          )}
+          disabled={!neighbor()}
+          title={neighbor()?.title}
+          onClick={() => {
+            const found = neighbor()
+            if (found) props.go(found)
+          }}
+        >
+          <Show when={atStart()}>
+            <ChevronLeft />
+          </Show>
+          {which === "previous" ? "Previous" : "Next"} {props.neighbors!.unit}
+          <Show when={!atStart()}>
+            <ChevronRight />
+          </Show>
         </Button>
-      </div>
+      </Show>
+    )
+  }
+  return (
+    <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+      {button(props.rtl ? "next" : "previous")}
+      {props.children}
+      {button(props.rtl ? "previous" : "next")}
     </div>
   )
 }

@@ -153,6 +153,23 @@ function SeriesBody(props: { account: Account; extensionId: string; series: Remo
   )
 
   const last = () => lastInSeries(server, props.extensionId, props.series.id)
+  // Once the chapter you opened last is finished, reading on means the
+  // one after it, as in the iOS app.
+  const [afterLast] = createResource(
+    () => {
+      const place = last()
+      return place && place.progression >= 1 ? place.chapterId : undefined
+    },
+    async (finished) =>
+      (
+        await siteChapters(props.account, props.extensionId, {
+          seriesId: props.series.id,
+          order: "asc",
+          after: finished,
+          limit: 1,
+        })
+      ).items[0],
+  )
   const authors = () => props.series.contributors.map((person) => person.name)
   const facts = () =>
     [statusLabel(props.series.status), props.series.year ? String(props.series.year) : undefined]
@@ -212,6 +229,16 @@ function SeriesBody(props: { account: Account; extensionId: string; series: Remo
       actions={
         <>
           <Switch>
+            <Match when={afterLast()}>
+              {(chapter) => (
+                <Link
+                  {...chapterLink(chapter())}
+                  class={buttonVariants({ class: "w-full sm:w-auto sm:px-8" })}
+                >
+                  <span class="truncate">Read {chapterTitle(chapter())}</span>
+                </Link>
+              )}
+            </Match>
             <Match when={last()}>
               {(place) => (
                 <Link
