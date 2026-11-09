@@ -1,3 +1,4 @@
+import ChekReader
 import Foundation
 
 /// Something the reader can go on to from the publication it has open:
@@ -42,6 +43,18 @@ enum NeighborLookup: Equatable {
 
     var target: ReadingTarget? {
         if case .found(let target) = self { target } else { nil }
+    }
+
+    /// The page the reader gives this end of the chapter. A chapter there
+    /// gets one reading goes on through. At the end, while it's still being
+    /// asked or there's nothing further, it's a page saying so, where
+    /// reading stops; at the start, only a chapter gets one.
+    func edgePage(at edge: ReaderEdge) -> ReaderEdgePage {
+        switch self {
+        case .found: .through
+        case .none: .none
+        case .looking, .end, .caughtUp, .unknown: edge == .end ? .stop : .none
+        }
     }
 
     fileprivate init<Item: Equatable>(_ neighbor: ServerSync.Neighbor<Item>, as target: (Item) -> ReadingTarget) {

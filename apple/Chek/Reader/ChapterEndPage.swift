@@ -5,10 +5,10 @@ import SwiftUI
 /// type on the page's own color. One turn past the last page shows the
 /// next chapter, and one back past the first shows the one before.
 ///
-/// Where the reader turns its pages, it's a page among them, turned onto
-/// and away from with the same swipe, and turning on again opens the
-/// chapter it names. Elsewhere, as in a comic that scrolls, it covers the
-/// pages and turns the same way by itself.
+/// In the reader it's a page among the chapter's, turned or scrolled onto
+/// and away from as they are, and going on past it opens the chapter it
+/// names. In a PDF, which has no room for it, it covers the pages and
+/// turns the same way by itself.
 struct ChapterEndPage: View {
     let kind: PublicationKind
     let next: NeighborLookup
@@ -53,7 +53,7 @@ struct ChapterEndPage: View {
         }
         .overlay(alignment: .bottom) {
             if isOpening {
-                ProgressView()
+                OpeningSpinner()
                     .padding(.bottom, 48)
             }
         }
@@ -139,6 +139,21 @@ struct ChapterEndPage: View {
 
     private var secondary: Color {
         primary.opacity(0.6)
+    }
+}
+
+/// Shows once the next chapter has been waited on a moment. It's usually
+/// fetched ahead, and a spinner that flashes for an instant is noise.
+private struct OpeningSpinner: View {
+    @State private var isShowing = false
+
+    var body: some View {
+        ProgressView()
+            .opacity(isShowing ? 1 : 0)
+            .task {
+                try? await Task.sleep(for: .milliseconds(600))
+                isShowing = true
+            }
     }
 }
 

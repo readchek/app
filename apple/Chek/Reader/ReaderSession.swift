@@ -63,8 +63,22 @@ final class ReaderSession {
         }
     }
 
+    /// Whether the next or previous chapter is opening from this one's
+    /// end, behind its page.
+    var isOpeningNeighbor = false
+    /// Whether ``open()`` has started, as it does before the screen shows
+    /// a chapter turned into from the one before.
+    private var hasStartedOpening = false
+
+    /// Opens the publication, unless it's already been opened.
+    func openIfNeeded() async {
+        guard !hasStartedOpening else { return }
+        await open()
+    }
+
     /// Opens the publication, fetching it first if it has to be.
     func open() async {
+        hasStartedOpening = true
         let source: PublicationSource
         switch item.content {
         case .source(let ready):
@@ -157,13 +171,7 @@ final class ReaderSession {
     /// naming the chapter either side, which reading goes on through, or
     /// at the end, one saying there's nothing after it.
     var edgePages: (start: ReaderEdgePage, end: ReaderEdgePage) {
-        let start: ReaderEdgePage = previous.target == nil ? .none : .through
-        let end: ReaderEdgePage = switch next {
-        case .none: .none
-        case .found: .through
-        case .looking, .end, .caughtUp, .unknown: .stop
-        }
-        return (start, end)
+        (previous.edgePage(at: .start), next.edgePage(at: .end))
     }
 
     /// Which end of the chapter is showing, whether the reader's pages or

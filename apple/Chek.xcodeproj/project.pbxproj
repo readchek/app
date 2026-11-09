@@ -435,7 +435,7 @@
 			repositoryURL = "https://github.com/readchek/chek-reader";
 			requirement = {
 				kind = upToNextMinorVersion;
-				minimumVersion = 0.3.0;
+				minimumVersion = 0.3.1;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

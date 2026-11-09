@@ -47,15 +47,7 @@ struct ReaderScreen: View {
                     }
                     Group {
                         if let handoff {
-                            if handoff.isTurnedOnto {
-                                // The page past the end the reader turned
-                                // onto, kept while the switch happens.
-                                ReaderCanvas(kind: session.item.kind)
-                                    .overlay { ProgressView().controlSize(.large) }
-                                    .ignoresSafeArea()
-                            } else {
-                                ChapterEndPage(kind: session.item.kind, next: .found(handoff.target), isNext: handoff.isNext, isOpening: true, retry: findNeighbors)
-                            }
+                            ChapterEndPage(kind: session.item.kind, next: .found(handoff.target), isNext: handoff.isNext, isOpening: true, retry: findNeighbors)
                         } else if session.edge == .end {
                             ChapterEndPage(kind: session.item.kind, next: session.next, isOpening: false, retry: findNeighbors, comments: session.comments, showComments: { session.show(.comments) }, turns: session.turns) { forward in
                                 if forward, let target = session.next.target {
@@ -126,7 +118,7 @@ struct ReaderScreen: View {
         .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         // Opens again for the next chapter, which replaces the session.
         .task(id: session.item.id) {
-            await session.open()
+            await session.openIfNeeded()
         }
         // Alongside opening, so the way on is known before the last page.
         .task(id: session.item.id) {
@@ -197,20 +189,29 @@ struct ReaderScreen: View {
         let fromEnd = !isNext && session.shownEdge == .start
         // Turned onto the page past the end, which is already showing what
         // the switch shows, so it's taken over without a fade.
+        // Turned onto or past one of the chapter's own pages in the reader,
+        // which stays on screen while the next one opens behind it, so the
+        // switch is straight to its page.
         let isTurnedOnto = session.controller.edge != nil
-        var change = Transaction()
-        change.disablesAnimations = isTurnedOnto
-        withTransaction(change) {
-            withAnimation(isTurnedOnto ? nil : .easeInOut(duration: 0.2)) {
-                handoff = ChapterHandoff(target: target, isNext: isNext, isTurnedOnto: isTurnedOnto)
+        if isTurnedOnto {
+            session.isOpeningNeighbor = true
+        } else {
+            withAnimation(.easeInOut(duration: 0.2)) {
+                handoff = ChapterHandoff(target: target, isNext: isNext)
             }
         }
         Task {
             defer { opening = nil }
             do {
-                continueReading(try await finder.readingItem(for: target, fromEnd: fromEnd))
+                let item = try await finder.readingItem(for: target, fromEnd: fromEnd)
+                let next = ReaderSession(item: item, preferences: settings.preferences(for: item.settingsKey))
+                if isTurnedOnto {
+                    await next.open()
+                }
+                continueReading(next)
             } catch {
                 handoff = nil
+                session.isOpeningNeighbor = false
                 openingFailure = DisplayError(error)
                 // Off the page past the end, which only waits for it, and
                 // back to the chapter's end.
@@ -222,10 +223,10 @@ struct ReaderScreen: View {
     }
 
     /// Goes on to another chapter in place, without closing the reader.
-    private func continueReading(_ item: ReadingItem) {
+    private func continueReading(_ next: ReaderSession) {
         let finished = session
         Task { await finished.controller.close() }
-        session = ReaderSession(item: item, preferences: settings.preferences(for: item.settingsKey))
+        session = next
     }
 }
 
@@ -240,9 +241,6 @@ private struct ChapterHandoff: Equatable {
     var target: ReadingTarget
     /// Whether it's the next chapter, rather than the previous one.
     var isNext: Bool
-    /// Whether the reader turned onto the page past the chapter's end,
-    /// rather than this screen showing the end itself.
-    var isTurnedOnto: Bool
 }
 
 /// An end of the chapter as one of the reader's pages: the chapter it
@@ -257,7 +255,7 @@ private struct ChapterEdge: View {
             kind: session.item.kind,
             next: edge == .end ? session.next : session.previous,
             isNext: edge == .end,
-            isOpening: false,
+            isOpening: session.isOpeningNeighbor,
             retry: { Task { await session.findNeighbors(with: finder) } },
             comments: edge == .end ? session.comments : nil,
             showComments: { session.show(.comments) },
