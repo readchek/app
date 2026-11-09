@@ -69,7 +69,7 @@ export type PublicationDetail = PublicationSummary & {
   publisher: string | null
   language: string | null
   published: string | null
-  readingDirection: "ltr" | "rtl" | null
+  readingDirection: "ltr" | "rtl" | "ttb" | null
 }
 
 export type PageInfo = { index: number; mediaType: string; size: number | null }
