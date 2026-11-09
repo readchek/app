@@ -6,8 +6,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/readchek/chek-reader",
       "state" : {
-        "revision" : "7e833c6bb8b6c2d648f3c79d0a37ee94bac94470",
-        "version" : "0.3.0"
+        "branch" : "claude/project-thread-14v3he",
+        "revision" : "fa3cc33e44862f5037f5238d41efb888efeb150f"
       }
     },
     {
