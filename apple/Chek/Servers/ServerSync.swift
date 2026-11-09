@@ -54,7 +54,9 @@ final class ServerSync {
         }
         let state = readingState(for: publication)
         if client != nil {
+            async let direction: Void = noteDirection(of: publication)
             await refresh(state, from: publication)
+            await direction
         }
 
         let content: ReadingItem.Content
@@ -83,9 +85,7 @@ final class ServerSync {
             content: content,
             startLocation: state.savedLocation
         )
-        if let series = publication.seriesID {
-            item.seriesKey = "server/\(publication.server.uuidString)/series/\(series)"
-        }
+        item.seriesKey = Self.seriesKey(of: publication)
         item.isOnDevice = isDownloaded
         item.serverPublication = publication
         if publication.seriesID != nil {
@@ -217,6 +217,16 @@ final class ServerSync {
         case unknown
     }
 
+    /// Asks for `chapter`'s pages before it's opened. The server starts
+    /// fetching them from the site, and the answer is kept for the reader
+    /// to open with.
+    func warm(_ chapter: SourceChapterRef) async {
+        guard ChapterFiles.downloadedPageCount(of: chapter) == nil else { return }
+        _ = try? await servers.request(chapter.server) { client throws(ChekError) in
+            try await client.pages(ofChapter: chapter.chapterID, inSource: chapter.source)
+        }
+    }
+
     /// The chapter after `chapter`, from the server, or from what it said
     /// last time when it can't be reached.
     func chapter(after chapter: SourceChapterRef) async -> Neighbor<SourceChapterRef> {
@@ -346,6 +356,21 @@ final class ServerSync {
         } else {
             prompts[publication.ref] = OtherDevicePosition(locator: locator, device: remote.device, updatedAt: remote.updatedAt, revision: remote.revision)
         }
+    }
+
+    /// Remembers whether the server calls a comic's series a strip, so
+    /// Auto scrolls it without looking at its pages first.
+    private func noteDirection(of publication: RemotePublication) async {
+        guard publication.kind == .comic, let key = Self.seriesKey(of: publication) else { return }
+        guard let direction = try? await servers.request(publication.server, { client throws(ChekError) in
+            try await client.readingDirection(of: publication.id)
+        }) else { return }
+        StripSeries.note(direction == "ttb", for: key)
+    }
+
+    /// Where reading settings for a library series are kept.
+    private static func seriesKey(of publication: RemotePublication) -> String? {
+        publication.seriesID.map { "server/\(publication.server.uuidString)/series/\($0)" }
     }
 
     private func adopt(_ remote: ChekAPI.Progress, into state: RemoteReadingState) {
