@@ -493,7 +493,7 @@ private struct ExtensionRow: View {
             if isChanging {
                 ProgressView()
             } else if let installed {
-                if installed.version != item.version {
+                if item.isSupported, installed.version != item.version {
                     Button("Update") {
                         Task { await model.install(item) }
                     }
@@ -510,6 +510,7 @@ private struct ExtensionRow: View {
                 }
                 .buttonStyle(.bordered)
                 .buttonBorderShape(.capsule)
+                .disabled(!item.isSupported)
             }
         }
         .swipeActions(allowsFullSwipe: false) {
@@ -534,12 +535,24 @@ private struct ExtensionRow: View {
     private var details: String {
         let site = item.sites.first(where: { !$0.hasPrefix("*") }) ?? item.sites.first
         let version: String
-        if let installed, installed.version != item.version {
+        if let installed, item.isSupported, installed.version != item.version {
             version = String(localized: "Version \(installed.version), update to \(item.version)")
         } else {
-            version = String(localized: "Version \(item.version)")
+            version = String(localized: "Version \(installed?.version ?? item.version)")
         }
-        return [site, version].compactMap(\.self).joined(separator: " · ")
+        return [site, version, needsServer].compactMap(\.self).joined(separator: " · ")
+    }
+
+    /// Why it can't be added or updated until the server is, if that's so.
+    private var needsServer: String? {
+        if let blocked = installed?.blockedUpdate {
+            return String(localized: "Version \(blocked.version) needs Chek \(blocked.minServer) or newer")
+        }
+        guard !item.isSupported else { return nil }
+        guard let minServer = item.minServer else {
+            return String(localized: "Needs a newer Chek")
+        }
+        return String(localized: "Needs Chek \(minServer) or newer")
     }
 }
 

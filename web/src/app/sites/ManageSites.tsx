@@ -27,7 +27,14 @@ type Row = {
   repositoryId: number
   version: string
   installed: string | null
+  /** False when the server is too old to run any version the repository lists. */
+  supported: boolean
+  /** Why the site can't be added or updated until the server is, if that's so. */
+  needsServer: string | null
 }
+
+const needsChek = (release: string | undefined) =>
+  release ? `needs Chek ${release} or newer` : "needs a newer Chek"
 
 const formatNames: Record<ContentFormat, string> = {
   images: "Comics",
@@ -73,21 +80,30 @@ function SiteList(props: { account: Account }) {
         availableExtensions(account),
         installedExtensions(account),
       ])
-      const listed: Row[] = available.map((item) => ({
-        id: item.id,
-        name: item.name,
-        sites: item.sites,
-        formats: item.formats,
-        repositoryId: item.repositoryId,
-        version: item.version,
-        installed:
-          installed.find((own) => own.id === item.id && own.repositoryId === item.repositoryId)
-            ?.version ?? null,
-      }))
+      const listed: Row[] = available.map((item) => {
+        const own = installed.find(
+          (own) => own.id === item.id && own.repositoryId === item.repositoryId,
+        )
+        return {
+          id: item.id,
+          name: item.name,
+          sites: item.sites,
+          formats: item.formats,
+          repositoryId: item.repositoryId,
+          version: item.version,
+          installed: own?.version ?? null,
+          supported: item.supported !== false,
+          needsServer: own?.blockedUpdate
+            ? `Version ${own.blockedUpdate.version} ${needsChek(own.blockedUpdate.minServer)}.`
+            : item.supported === false
+              ? `${own ? "Newer versions" : "This site"} ${needsChek(item.minServer)}.`
+              : null,
+        }
+      })
       // Sites added from a repository that's gone stay removable.
       const orphans = installed
         .filter((own) => !listed.some((row) => row.id === own.id && row.installed))
-        .map((own) => ({ ...own, installed: own.version }))
+        .map((own) => ({ ...own, installed: own.version, supported: true, needsServer: null }))
       return [...listed, ...orphans].sort((a, b) => a.name.localeCompare(b.name))
     },
   )
@@ -134,7 +150,8 @@ function SiteList(props: { account: Account }) {
                 <For each={list()}>
                   {(row) => {
                     const busy = () => working() === `${row.repositoryId}/${row.id}`
-                    const update = () => row.installed !== null && row.installed !== row.version
+                    const update = () =>
+                      row.supported && row.installed !== null && row.installed !== row.version
                     return (
                       <li class="flex items-center gap-4 py-4">
                         <div class="min-w-0 flex-1">
@@ -151,12 +168,22 @@ function SiteList(props: { account: Account }) {
                               `Version ${row.installed ?? row.version}`,
                             ].join(" · ")}
                           </p>
+                          <Show when={row.needsServer}>
+                            {(notice) => (
+                              <p class="text-[13px] text-muted-foreground">{notice()}</p>
+                            )}
+                          </Show>
                         </div>
                         <div class="flex shrink-0 gap-2">
                           <Show when={busy()}>
                             <Spinner class="size-4 self-center text-link" />
                           </Show>
                           <Switch>
+                            <Match when={!row.installed && !row.supported}>
+                              <Button size="sm" disabled>
+                                Add
+                              </Button>
+                            </Match>
                             <Match when={!row.installed}>
                               <Button
                                 size="sm"

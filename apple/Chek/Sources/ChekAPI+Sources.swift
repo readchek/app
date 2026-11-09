@@ -16,8 +16,12 @@ nonisolated extension ChekAPI {
         /// False while it came from your own repository and the admin
         /// allows only the allow list.
         var usable: Bool
-        /// The version the repository lists, when it's newer.
+        /// The newest version the repository lists that the server runs,
+        /// when it's newer.
         var update: String?
+        /// A newer version the server is too old to run. Servers before
+        /// 0.5.4 leave it out.
+        var blockedUpdate: BlockedUpdate?
         /// What its chapters come in. Older servers leave it out, and
         /// their sources only read pages.
         var formats: [ContentFormat]?
@@ -25,6 +29,13 @@ nonisolated extension ChekAPI {
         /// them and the server's admin turned them on. Kept as written, so
         /// an order this app doesn't know doesn't fail the whole list.
         var comments: [String]?
+    }
+
+    /// A version of an extension that needs a newer Chek server.
+    struct BlockedUpdate: Codable, Hashable, Sendable {
+        var version: String
+        /// The oldest Chek release that runs it.
+        var minServer: String
     }
 
     /// How a source's chapter is read: pages like a comic, or one file.
@@ -76,6 +87,15 @@ nonisolated extension ChekAPI {
         var capabilities: [String]
         /// The version installed from this repository, if any.
         var installedVersion: String?
+        /// False when the server is too old to run any version the
+        /// repository lists. Servers before 0.5.4 leave it out.
+        var supported: Bool?
+        /// The oldest Chek release that runs this version, or, when it's
+        /// unsupported, any version the repository lists.
+        var minServer: String?
+
+        /// Whether the server can install it.
+        var isSupported: Bool { supported != false }
 
         /// Unique across repositories, which can each offer the same id.
         var listingID: String { "\(repositoryId)/\(id)" }
