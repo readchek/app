@@ -19,8 +19,10 @@ export type InstalledExtension = {
   installedAt: string
   /** False while it came from the person's own repository and the admin allows only the allow list. */
   usable: boolean
-  /** The version the repository lists, when it differs from the installed one. */
+  /** The newest version the repository lists that the server runs, when it differs from the installed one. */
   update: string | null
+  /** A newer version the server is too old to run, and the oldest Chek release that runs it. */
+  blockedUpdate?: { version: string; minServer: string }
   /**
    * The orders readers' comments come in, the site's default first; empty
    * when the source gives only a count. Absent when there are none to show.
@@ -38,6 +40,10 @@ export type AvailableExtension = {
   capabilities: string[]
   formats: ContentFormat[]
   installedVersion: string | null
+  /** False when every version the repository lists needs a newer server. Servers before 0.5.4 leave it out. */
+  supported?: boolean
+  /** The oldest Chek release that runs this version, or, when unsupported, any version listed. */
+  minServer?: string
 }
 
 export type RemoteSeriesItem = {
