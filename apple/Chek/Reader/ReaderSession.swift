@@ -127,6 +127,9 @@ final class ReaderSession {
     /// opens by surprise, and the one after that goes on. Books and comics
     /// alike, so there's one thing to learn.
     func turnedPastEnd() -> ReadingTarget? {
+        // Where the reader turns its pages, the chapter's end is one of
+        // them, and this turn is the one on past it.
+        if controller.edge == .end { return next.target }
         guard isOnLastPage, next != .none else { return nil }
         if edge != .end {
             edge = .end
@@ -141,12 +144,36 @@ final class ReaderSession {
     /// no chapter before, the first page is where reading back stops.
     func turnedPastStart() -> ReadingTarget? {
         guard let target = previous.target else { return nil }
+        if controller.edge == .start { return target }
         if edge != .start {
             edge = .start
             hideControls()
             return nil
         }
         return target
+    }
+
+    /// What the reader's pages have at each end of the chapter: a page
+    /// naming the chapter either side, which reading goes on through, or
+    /// at the end, one saying there's nothing after it.
+    var edgePages: (start: ReaderEdgePage, end: ReaderEdgePage) {
+        let start: ReaderEdgePage = previous.target == nil ? .none : .through
+        let end: ReaderEdgePage = switch next {
+        case .none: .none
+        case .found: .through
+        case .looking, .end, .caughtUp, .unknown: .stop
+        }
+        return (start, end)
+    }
+
+    /// Which end of the chapter is showing, whether the reader's pages or
+    /// this session show it.
+    var shownEdge: Edge? {
+        switch controller.edge {
+        case .start: .start
+        case .end: .end
+        case nil: edge
+        }
     }
 
     /// Back from an end of the chapter to its pages.

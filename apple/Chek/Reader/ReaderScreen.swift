@@ -36,14 +36,28 @@ struct ReaderScreen: View {
                 ZStack {
                     ReaderCanvas(kind: session.item.kind)
                     ReaderContent(session: session, insets: contentInsets)
+                        // Where the reader turns pages, the chapter's ends
+                        // are pages among them.
+                        .readerEdgePages(start: session.edgePages.start, end: session.edgePages.end) { [session, settings, finder] edge in
+                            ChapterEdge(session: session, edge: edge, finder: finder)
+                                .environment(settings)
+                        }
                     if session.item.kind == .comic {
                         ControlsScrim(isShowing: session.isShowingControls)
                     }
                     Group {
                         if let handoff {
-                            ChapterEndPage(kind: session.item.kind, finished: handoff.finished, next: .found(handoff.target), isNext: handoff.isNext, isOpening: true, retry: findNeighbors)
+                            if handoff.isTurnedOnto {
+                                // The page past the end the reader turned
+                                // onto, kept while the switch happens.
+                                ReaderCanvas(kind: session.item.kind)
+                                    .overlay { ProgressView().controlSize(.large) }
+                                    .ignoresSafeArea()
+                            } else {
+                                ChapterEndPage(kind: session.item.kind, next: .found(handoff.target), isNext: handoff.isNext, isOpening: true, retry: findNeighbors)
+                            }
                         } else if session.edge == .end {
-                            ChapterEndPage(kind: session.item.kind, finished: session.item.title, next: session.next, isOpening: false, retry: findNeighbors, comments: session.comments, showComments: { session.show(.comments) }, turns: turns) { forward in
+                            ChapterEndPage(kind: session.item.kind, next: session.next, isOpening: false, retry: findNeighbors, comments: session.comments, showComments: { session.show(.comments) }, turns: session.turns) { forward in
                                 if forward, let target = session.next.target {
                                     open(target)
                                 } else if !forward {
@@ -53,7 +67,7 @@ struct ReaderScreen: View {
                                 session.toggleControls()
                             }
                         } else if session.edge == .start {
-                            ChapterEndPage(kind: session.item.kind, finished: nil, next: session.previous, isNext: false, isOpening: false, retry: findNeighbors, turns: turns) { forward in
+                            ChapterEndPage(kind: session.item.kind, next: session.previous, isNext: false, isOpening: false, retry: findNeighbors, turns: session.turns) { forward in
                                 if forward {
                                     session.leaveEdge()
                                 } else if let target = session.previous.target {
@@ -162,12 +176,6 @@ struct ReaderScreen: View {
         Task { await session.findNeighbors(with: finder) }
     }
 
-    /// Which way this publication's pages turn, for the chapter's ends to
-    /// turn the same way.
-    private var turns: ChapterEndPage.Turns {
-        session.controller.publication?.metadata.readingProgression == .rightToLeft ? .rightToLeft : .leftToRight
-    }
-
     /// Whether the open chapter is showing, or showing why it can't be, so
     /// the chapter end that covered the switch to it can go.
     private var isSettled: Bool {
@@ -186,11 +194,16 @@ struct ReaderScreen: View {
         let isNext = target == session.next.target
         // Turned back into from its first page, the chapter before opens
         // on its last, where reading back left off.
-        let fromEnd = !isNext && session.edge == .start
-        // Read here rather than in the body, so page turns don't redraw it.
-        let hasFinished = isNext && (session.edge == .end || session.isOnLastPage)
-        withAnimation(.easeInOut(duration: 0.2)) {
-            handoff = ChapterHandoff(finished: hasFinished ? session.item.title : nil, target: target, isNext: isNext)
+        let fromEnd = !isNext && session.shownEdge == .start
+        // Turned onto the page past the end, which is already showing what
+        // the switch shows, so it's taken over without a fade.
+        let isTurnedOnto = session.controller.edge != nil
+        var change = Transaction()
+        change.disablesAnimations = isTurnedOnto
+        withTransaction(change) {
+            withAnimation(isTurnedOnto ? nil : .easeInOut(duration: 0.2)) {
+                handoff = ChapterHandoff(target: target, isNext: isNext, isTurnedOnto: isTurnedOnto)
+            }
         }
         Task {
             defer { opening = nil }
@@ -199,6 +212,11 @@ struct ReaderScreen: View {
             } catch {
                 handoff = nil
                 openingFailure = DisplayError(error)
+                // Off the page past the end, which only waits for it, and
+                // back to the chapter's end.
+                if session.controller.edge != nil {
+                    await session.controller.goBackward()
+                }
             }
         }
     }
@@ -219,10 +237,52 @@ private struct CommentsLookup: Equatable {
 
 /// What's on the chapter end while the next chapter opens.
 private struct ChapterHandoff: Equatable {
-    var finished: String?
     var target: ReadingTarget
     /// Whether it's the next chapter, rather than the previous one.
     var isNext: Bool
+    /// Whether the reader turned onto the page past the chapter's end,
+    /// rather than this screen showing the end itself.
+    var isTurnedOnto: Bool
+}
+
+/// An end of the chapter as one of the reader's pages: the chapter it
+/// leads to, turned onto and away from as the pages are.
+private struct ChapterEdge: View {
+    let session: ReaderSession
+    let edge: ReaderEdge
+    let finder: NeighborFinder
+
+    var body: some View {
+        ChapterEndPage(
+            kind: session.item.kind,
+            next: edge == .end ? session.next : session.previous,
+            isNext: edge == .end,
+            isOpening: false,
+            retry: { Task { await session.findNeighbors(with: finder) } },
+            comments: edge == .end ? session.comments : nil,
+            showComments: { session.show(.comments) },
+            turns: session.turns,
+            followsSwipes: false
+        ) { forward in
+            Task {
+                if forward {
+                    await session.controller.goForward()
+                } else {
+                    await session.controller.goBackward()
+                }
+            }
+        } tapMiddle: {
+            session.toggleControls()
+        }
+    }
+}
+
+extension ReaderSession {
+    /// Which way this publication's pages turn, for the chapter's ends to
+    /// turn the same way.
+    var turns: ChapterEndPage.Turns {
+        controller.publication?.metadata.readingProgression == .rightToLeft ? .rightToLeft : .leftToRight
+    }
 }
 
 extension ReaderScreen {

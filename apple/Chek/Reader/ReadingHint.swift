@@ -17,7 +17,7 @@ struct ReadingHint: View {
                     .overlay(alignment: .bottom) {
                         // On its own panel: the dimmed page's text still
                         // shows through, and white on it isn't readable.
-                        Text("Tap the edges or swipe to turn pages. Tap the middle to show the controls.")
+                        Text("Tap the sides or swipe to turn. Tap the middle for controls.")
                             .font(.subheadline)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.white)
