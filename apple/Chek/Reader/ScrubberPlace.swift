@@ -1,6 +1,6 @@
 import Foundation
 
-/// What the label beside the reader's scrubber says about where you are.
+/// What the reader says under its title about where you are.
 ///
 /// Comics and PDFs have real page numbers. Text that reflows has positions
 /// instead, which aren't pages you'd recognize, so it shows how far

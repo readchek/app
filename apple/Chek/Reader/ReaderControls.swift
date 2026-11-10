@@ -25,21 +25,34 @@ private struct ReaderToolbars: ViewModifier {
                     }
                 }
                 ToolbarItem(placement: .principal) {
-                    ReaderTitle(title: session.item.title, controller: session.controller, isOverArtwork: session.item.kind == .comic)
+                    ReaderTitle(session: session)
                 }
-                // Comments sit beside the contents, and only on a chapter
-                // that has some, so every other book keeps one button
-                // either side of the title.
+                // Comments show only on a chapter that has some. When the
+                // bar runs short of room they're the first to go into the
+                // system's menu, so the two below never move.
                 if let comments = session.comments, comments.count != nil {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        CommentsButton(comments: comments) {
-                            session.show(.comments)
+                    if #available(iOS 27, *) {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            CommentsButton(comments: comments) {
+                                session.show(.comments)
+                            }
+                        }
+                        .visibilityPriority(.low)
+                    } else {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            CommentsButton(comments: comments) {
+                                session.show(.comments)
+                            }
                         }
                     }
                 }
-                // One button either side, so the title sits in the visual
-                // middle, not just the measured one. Appearance goes with
-                // the scrubber in ``ReaderBottomBar``, as in Books.
+                // How it looks and where to go, always the last two and
+                // always in this order.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
+                        session.show(.appearance)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Contents", systemImage: "list.bullet") {
                         session.show(.contents)
@@ -89,8 +102,9 @@ private struct ReaderToolbars: ViewModifier {
     }
 }
 
-/// The controls under the page: the chapter before, your place in this
-/// one, the chapter after, and appearance, always in that order.
+/// The controls under the page: a slider through this chapter, with the
+/// chapter before and the one after at its ends, as on a music player.
+/// Where you are is said once, under the title.
 ///
 /// It's drawn here rather than given to the system's bottom toolbar,
 /// which moves whatever it finds no room for into a menu. Next Chapter
@@ -106,23 +120,18 @@ private struct ReaderBottomBar: View {
         let isChapter = session.item.sourceChapter != nil
         GlassEffectContainer(spacing: 12) {
             HStack(spacing: 12) {
-                HStack(spacing: 0) {
-                    if inSeries {
-                        SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: isChapter, opening: opening, open: open)
-                    }
-                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.shownEdge == .end)
-                        .padding(.horizontal, inSeries ? 0 : 12)
-                    if inSeries {
-                        SeriesStepButton(lookup: session.next, direction: .next, isChapter: isChapter, opening: opening, open: open)
-                    }
+                if inSeries {
+                    SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: isChapter, opening: opening, open: open)
+                        .glassEffect(.regular.interactive(), in: .circle)
                 }
-                .frame(height: Self.height)
-                .glassEffect(.regular.interactive(), in: .capsule)
-                Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
-                    session.show(.appearance)
+                ReaderScrubber(session: session)
+                    .padding(.horizontal, 16)
+                    .frame(height: Self.height)
+                    .glassEffect(.regular, in: .capsule)
+                if inSeries {
+                    SeriesStepButton(lookup: session.next, direction: .next, isChapter: isChapter, opening: opening, open: open)
+                        .glassEffect(.regular.interactive(), in: .circle)
                 }
-                .modifier(BarButton())
-                .glassEffect(.regular.interactive(), in: .circle)
             }
         }
         // As wide as the screen allows, and no wider than reads well on
@@ -132,7 +141,7 @@ private struct ReaderBottomBar: View {
         .padding(.bottom, 4)
     }
 
-    static let height: CGFloat = 48
+    static let height: CGFloat = 44
 }
 
 /// A button in ``ReaderBottomBar``: its symbol alone, on a target big
@@ -193,16 +202,17 @@ private struct SeriesStepButton: View {
     }
 }
 
-/// The publication's title, with the chapter you're in under it.
+/// The publication's title, with where you are under it: the page of a
+/// comic, or a book's chapter. While the slider is dragged it follows the
+/// thumb, so the page being chosen is said in the same place.
 private struct ReaderTitle: View {
-    let title: String
-    let controller: ReaderController
-    /// Comic pages run under the bar, where plain text would vanish into
-    /// light artwork, so the title sits on glass like the buttons beside it.
-    let isOverArtwork: Bool
+    let session: ReaderSession
 
     var body: some View {
-        if isOverArtwork {
+        // Comic pages run under the bar, where plain text would vanish
+        // into light artwork, so the title sits on glass like the buttons
+        // beside it.
+        if session.item.kind == .comic {
             label
                 .padding(.horizontal, 16)
                 .padding(.vertical, 6)
@@ -214,76 +224,96 @@ private struct ReaderTitle: View {
 
     private var label: some View {
         VStack(spacing: 0) {
-            Text(title)
+            Text(session.item.title)
                 .font(.headline)
                 .lineLimit(1)
-            if let chapter = controller.location?.title, chapter != title {
-                Text(chapter)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
+            subtitle
+                .font(.caption.monospacedDigit())
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
         }
         .accessibilityElement(children: .combine)
     }
+
+    @ViewBuilder private var subtitle: some View {
+        let place = ReaderPlace(session: session)
+        if !place.showsPages, session.scrubbing == nil, session.shownEdge != .end,
+           let chapter = session.controller.location?.title, chapter != session.item.title {
+            Text(chapter)
+        } else {
+            PlaceLabel(place: place.label)
+        }
+    }
 }
 
-/// A slider through the whole publication, with where you are beside it.
-private struct ReaderScrubber: View {
-    let controller: ReaderController
-    /// Whether the chapter end shows, past the last page.
-    let isAtChapterEnd: Bool
-    /// Where the slider is while you drag it, before the reader moves.
-    @State private var scrubbing: Double?
+/// Where the reader is in what's open, worked out the same way for the
+/// slider and for the words under the title.
+private struct ReaderPlace {
+    let session: ReaderSession
+
+    private var controller: ReaderController { session.controller }
 
     /// Comics and PDFs have real page numbers. Text that reflows has
     /// positions instead, which aren't pages you'd recognize, so it shows
     /// a percentage.
-    private var showsPages: Bool {
+    var showsPages: Bool {
         guard let format = controller.format else { return false }
         return [.pdf, .cbz, .cbt, .cbr, .cb7].contains(format)
     }
 
-    var body: some View {
-        let count = controller.positions?.count ?? 0
+    var count: Int {
+        controller.positions?.count ?? 0
+    }
+
+    /// The position the reader is at, from 1.
+    var position: Double {
         // Reflowing text's last screen can sit on an earlier position than
         // the last, which would leave the thumb short of the end at 100%.
         let isAtEnd = (controller.location?.locations.totalProgression ?? 0) >= ReadingStatus.finishedThreshold
-        let position = isAtEnd && count > 1 ? Double(count) : Double(controller.location?.locations.position ?? 1)
-        HStack(spacing: 12) {
-            if count > 1 {
-                Slider(
-                    value: Binding(get: { scrubbing ?? position }, set: { scrubbing = $0 }),
-                    in: 1...Double(count),
-                    step: 1
-                ) { editing in
-                    guard !editing, let target = scrubbing else { return }
-                    Task {
-                        await controller.go(toPosition: Int(target))
-                        scrubbing = nil
-                    }
-                }
-                .accessibilityLabel(Text("Position"))
-            } else {
-                ProgressView(value: controller.location?.locations.totalProgression ?? 0)
-            }
-            PlaceLabel(place: ScrubberPlace.make(
-                showsPages: showsPages,
-                position: Int(scrubbing ?? position),
-                count: count,
-                progress: progress(count: count),
-                // Dragging the thumb is choosing a page again.
-                isAtChapterEnd: isAtChapterEnd && scrubbing == nil
-            ))
-        }
-        .padding(.horizontal, 8)
+        return isAtEnd && count > 1 ? Double(count) : Double(controller.location?.locations.position ?? 1)
     }
 
-    private func progress(count: Int) -> Double? {
-        if let scrubbing, count > 1 {
+    var label: ScrubberPlace {
+        ScrubberPlace.make(
+            showsPages: showsPages,
+            position: Int(session.scrubbing ?? position),
+            count: count,
+            progress: progress,
+            // Dragging the thumb is choosing a page again.
+            isAtChapterEnd: session.shownEdge == .end && session.scrubbing == nil
+        )
+    }
+
+    private var progress: Double? {
+        if let scrubbing = session.scrubbing, count > 1 {
             return (scrubbing - 1) / Double(count - 1)
         }
         return controller.location?.locations.totalProgression
+    }
+}
+
+/// A slider through the whole publication.
+private struct ReaderScrubber: View {
+    let session: ReaderSession
+
+    var body: some View {
+        let place = ReaderPlace(session: session)
+        if place.count > 1 {
+            Slider(
+                value: Binding(get: { session.scrubbing ?? place.position }, set: { session.scrubbing = $0 }),
+                in: 1...Double(place.count),
+                step: 1
+            ) { editing in
+                guard !editing, let target = session.scrubbing else { return }
+                Task {
+                    await session.controller.go(toPosition: Int(target))
+                    session.scrubbing = nil
+                }
+            }
+            .accessibilityLabel(Text("Position"))
+        } else {
+            ProgressView(value: session.controller.location?.locations.totalProgression ?? 0)
+        }
     }
 }
 
@@ -291,19 +321,15 @@ private struct PlaceLabel: View {
     let place: ScrubberPlace
 
     var body: some View {
-        Group {
-            switch place {
-            case .page(let position, let count):
-                Text("\(position) of \(count)")
-            case .progress(let progress):
-                Text(progress, format: .percent.precision(.fractionLength(0)))
-            case .finished:
-                Text("Finished")
-            case .none:
-                EmptyView()
-            }
+        switch place {
+        case .page(let position, let count):
+            Text("\(position) of \(count)")
+        case .progress(let progress):
+            Text(progress, format: .percent.precision(.fractionLength(0)))
+        case .finished:
+            Text("Finished")
+        case .none:
+            EmptyView()
         }
-        .font(.footnote.weight(.medium).monospacedDigit())
-        .fixedSize()
     }
 }
