@@ -29,6 +29,9 @@ final class ReaderSession {
     private(set) var phase: Phase
     private(set) var isShowingControls = true
     var panel: Panel?
+    /// Where the slider's thumb is while it's dragged, before the reader
+    /// moves there. The title says this place until the thumb is let go.
+    var scrubbing: Double?
     /// Readers' comments on the chapter from its site, for a chapter read
     /// from a source while comments are on.
     var comments: ChapterComments?
