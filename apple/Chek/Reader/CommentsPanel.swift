@@ -1,28 +1,5 @@
 import SwiftUI
 
-/// The comments button in the reader's top bar, with how many there are.
-/// A site that gives only a count opens its own thread instead.
-struct CommentsButton: View {
-    let comments: ChapterComments
-    let show: () -> Void
-
-    var body: some View {
-        if comments.hasList {
-            Button(action: show) { label }
-        } else if let thread = comments.thread {
-            Link(destination: thread) { label }
-        }
-    }
-
-    private var label: some View {
-        Label {
-            Text("^[\(comments.count ?? 0) comment](inflect: true)")
-        } icon: {
-            Image(systemName: "bubble")
-        }
-    }
-}
-
 /// Readers' comments on a chapter, from its site and read-only: in the
 /// site's orders, with replies on request, spoilers covered until tapped,
 /// and a menu on each to hide its author or report it on the site.
