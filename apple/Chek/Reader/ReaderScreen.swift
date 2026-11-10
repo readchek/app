@@ -496,14 +496,14 @@ private struct ReaderFailureView: View {
         let isComic = session.item.kind == .comic
         if let server = signedOutServer {
             if isComic {
-                Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this comic.")
+                return Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this comic.")
             } else {
-                Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this book.")
+                return Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this book.")
             }
         } else if isDamagedLocalFile {
-            Text("The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it.")
+            return Text("The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it.")
         } else {
-            Text(ReaderFailureMessage.make(for: error, kind: session.item.kind, canRetry: isRetryable))
+            return Text(ReaderFailureMessage.make(for: error, kind: session.item.kind, canRetry: isRetryable))
         }
     }
 

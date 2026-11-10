@@ -81,7 +81,7 @@ struct DisplayError: Error, Hashable, Sendable {
     }
 }
 
-extension DisplayError.Kind {
+nonisolated extension DisplayError.Kind {
     init(_ error: ChekError) {
         self = switch error {
         case .offline: .connection
