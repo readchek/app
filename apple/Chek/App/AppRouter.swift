@@ -13,7 +13,8 @@ enum AppTab: Hashable {
 enum Route: Hashable {
     case server(UUID)
     case serverLibrary(UUID, ChekAPI.Library)
-    case series(UUID, seriesID: Int64, title: String)
+    /// `count` is how many books the library says it has, known before any load.
+    case series(UUID, seriesID: Int64, title: String, count: Int)
     /// A source's series, searchable: the server and the installed extension.
     case source(UUID, ChekAPI.InstalledExtension)
     case sourceSeries(UUID, source: String, seriesID: String, title: String)

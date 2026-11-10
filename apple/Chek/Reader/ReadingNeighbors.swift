@@ -129,7 +129,7 @@ struct NeighborFinder {
             isFinished = progress.readingState(publication.ref)?.readingStatus == .finished
         case .book(let id, _):
             guard let book = library.book(id) else {
-                throw DisplayError(title: String(localized: "This Book Is No Longer in Your Library"))
+                throw DisplayError(title: String(localized: "This Book Is No Longer in Your Library"), kind: .gone)
             }
             item = ReadingItem(book)
             isFinished = book.readingStatus == .finished

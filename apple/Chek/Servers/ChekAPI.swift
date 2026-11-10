@@ -125,6 +125,7 @@ extension ChekError: LocalizedError {
     var recoverySuggestion: String? {
         switch self {
         case .unauthorized: String(localized: "Sign in to keep reading.")
+        case .notFound: String(localized: "It may have been moved or removed from the library.")
         case .offline: String(localized: "Check your internet connection and try again.")
         case .server(_, "source_failed"): String(localized: "Try again later. If it keeps happening, look for an update in Sites.")
         case .server(_, "source_unavailable"): String(localized: "It may have been removed from this library.")

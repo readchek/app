@@ -134,7 +134,7 @@ private struct NewChapterAlertsSection: View {
                     }
                 }
             } else if status != nil, let url = URL(string: UIApplication.openNotificationSettingsURLString) {
-                Link("Open Settings", destination: url)
+                Link("Notification Settings", destination: url)
             }
         } header: {
             Text("Following")

@@ -400,11 +400,11 @@ private struct CommentMenu: View {
                 settings.setHidden(true, comment.author.name, on: comments.chapter.source, siteName: comments.site)
             }
             if let url = comment.url.flatMap(ChapterComments.safeLink) {
+                // Its page on the site is where it's reported, and the one
+                // row says so: a second row to the same page read as a
+                // second thing to do.
                 Link(destination: url) {
                     Label("Report on \(comments.site)", systemImage: "flag")
-                }
-                Link(destination: url) {
-                    Label("Open on \(comments.site)", systemImage: "arrow.up.right")
                 }
             }
         } label: {

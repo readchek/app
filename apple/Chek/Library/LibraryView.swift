@@ -25,7 +25,7 @@ struct LibraryView: View {
             // so there's one place to search rather than two side by side.
             LibraryContent(sort: sort, filter: filter, layout: layout, selection: $selection)
                 .demoBanner()
-                .navigationTitle(selection.map { Text("^[\($0.count) Selected](inflect: true)") } ?? Text(filter.navigationTitle))
+                .navigationTitle(selection.map { $0.isEmpty ? Text("Select Items") : Text("^[\($0.count) Selected](inflect: true)") } ?? Text(filter.navigationTitle))
                 .toolbar {
                     if selection != nil {
                         // Done is the trailing action, as in every sheet;

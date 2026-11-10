@@ -48,7 +48,7 @@ private struct RemoveBookConfirmation: ViewModifier {
             titleVisibility: .visible,
             presenting: book
         ) { book in
-            Button("Delete Book", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 library.remove(book)
             }
         } message: { _ in

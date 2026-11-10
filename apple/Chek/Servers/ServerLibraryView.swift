@@ -166,7 +166,7 @@ private struct SeriesCell: View {
     @Environment(ServerStore.self) private var servers
 
     var body: some View {
-        NavigationLink(value: Route.series(account, seriesID: series.id, title: series.displayTitle)) {
+        NavigationLink(value: Route.series(account, seriesID: series.id, title: series.displayTitle, count: Int(series.publicationCount))) {
             VStack(alignment: .leading, spacing: Metrics.captionSpacing) {
                 CoverView(
                     source: series.coverPublicationId.map { servers.cover(of: $0, on: account) } ?? .none,

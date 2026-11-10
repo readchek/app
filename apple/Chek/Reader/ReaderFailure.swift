@@ -13,7 +13,8 @@ extension DisplayError {
         case .network(let reason):
             self.init(
                 title: String(localized: "Couldn't Load \(what)"),
-                message: Self.innermostReason(reason) ?? String(localized: "Check your internet connection and try again.")
+                message: Self.innermostReason(reason) ?? String(localized: "Check your internet connection and try again."),
+                kind: .connection
             )
         case .unsupportedFormat, .formatNotIncluded, .notYetImplemented:
             self.init(
@@ -45,5 +46,23 @@ extension DisplayError {
     private static func innermostReason(_ reason: String) -> String? {
         let last = reason.components(separatedBy: ": ").last?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return last.isEmpty ? nil : last
+    }
+}
+
+/// The sentence on the reader's failure page: what went wrong, then the
+/// ways out as links. Trying again is offered once, and only when it can
+/// help; closing always is.
+enum ReaderFailureMessage {
+    static func make(for error: DisplayError, kind: PublicationKind, canRetry: Bool) -> AttributedString {
+        let retries = canRetry && error.canRetry
+        var text = FailureState.message(for: error, canRetry: retries)
+        let close: AttributedString = switch (kind, retries) {
+        case (.comic, true): AttributedString(localized: "You can also [close](chek-action://close) this comic.")
+        case (.book, true): AttributedString(localized: "You can also [close](chek-action://close) this book.")
+        case (.comic, false): AttributedString(localized: "[Close](chek-action://close) this comic.")
+        case (.book, false): AttributedString(localized: "[Close](chek-action://close) this book.")
+        }
+        text += AttributedString(" ") + close
+        return text
     }
 }

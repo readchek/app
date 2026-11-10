@@ -1,3 +1,4 @@
+import ChekReader
 import SwiftUI
 
 /// Shown once, the first time the reader opens: where to tap to turn
@@ -6,6 +7,7 @@ struct ReadingHint: View {
     let session: ReaderSession
     @AppStorage("reader.hasShownHint") private var hasShown = false
     @State private var isVisible = false
+    @Environment(ReaderSettings.self) private var settings
 
     var body: some View {
         ZStack {
@@ -17,7 +19,7 @@ struct ReadingHint: View {
                     .overlay(alignment: .bottom) {
                         // On its own panel: the dimmed page's text still
                         // shows through, and white on it isn't readable.
-                        Text("Tap the sides or swipe to turn. Tap the middle for controls.")
+                        Text(isScrolled ? "Scroll to read. Tap the middle for controls." : "Tap the sides or swipe to turn. Tap the middle for controls.")
                             .font(.subheadline)
                             .multilineTextAlignment(.center)
                             .foregroundStyle(.white)
@@ -42,6 +44,12 @@ struct ReadingHint: View {
             session.hideControls()
             isVisible = true
         }
+    }
+
+    /// Whether the pages scroll down in one column, where there's no
+    /// page to turn.
+    private var isScrolled: Bool {
+        session.item.kind == .comic && settings.preferences(for: session.item.settingsKey).comicFlow == .scrolled
     }
 
     private func dismiss() {

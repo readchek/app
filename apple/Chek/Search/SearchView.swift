@@ -237,7 +237,7 @@ private struct SectionFailureRow: View {
 
     var body: some View {
         HStack {
-            Label("Couldn't search \(place)", systemImage: "wifi.exclamationmark")
+            Label("Couldn't search \(place)", systemImage: error.systemImage)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             Spacer()

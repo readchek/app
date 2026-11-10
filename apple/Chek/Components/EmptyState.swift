@@ -59,22 +59,23 @@ struct FailureState: View {
     var retry: (() async -> Void)?
 
     var body: some View {
-        EmptyState(systemImage: "wifi.exclamationmark", message: Text(message), actions: [
+        EmptyState(systemImage: error.systemImage, message: Text(Self.message(for: error, canRetry: retry != nil)), actions: [
             "retry": { Task { await retry?() } },
         ])
     }
 
-    /// The error's explanation, else its title, with "try again" linked:
-    /// the words already in it when it says so, else added at the end.
-    private var message: AttributedString {
-        var text = AttributedString(error.message ?? error.title)
-        guard retry != nil else { return text }
+    /// The error as a whole sentence, with "try again" linked when trying
+    /// again can help: the words already in it when it says so, else a
+    /// sentence of its own after it.
+    static func message(for error: DisplayError, canRetry: Bool) -> AttributedString {
+        var text = AttributedString(error.sentence)
+        guard canRetry, error.canRetry else { return text }
         if let range = text.range(of: String(localized: "try again"), options: .caseInsensitive) {
             text[range].link = EmptyState.link("retry")
         } else {
-            var link = AttributedString(String(localized: "Try Again"))
+            var link = AttributedString(String(localized: "Try again"))
             link.link = EmptyState.link("retry")
-            text += AttributedString(" ") + link
+            text += AttributedString(" ") + link + AttributedString(".")
         }
         return text
     }

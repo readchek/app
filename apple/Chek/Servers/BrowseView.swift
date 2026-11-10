@@ -120,8 +120,8 @@ extension View {
                     ServerHomeView(account: account)
                 case .serverLibrary(let account, let library):
                     ServerLibraryView(account: account, library: library)
-                case .series(let account, let series, let title):
-                    SeriesView(account: account, seriesID: series, title: title)
+                case .series(let account, let series, let title, let count):
+                    SeriesView(account: account, seriesID: series, title: title, count: count)
                 case .source(let account, let source):
                     SourceView(account: account, source: source)
                 case .sourceSeries(let account, let source, let series, let title):
