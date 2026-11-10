@@ -338,7 +338,10 @@ async function site(
     case "chapters": {
       const recorded = site.chapters[params.get("seriesId") ?? ""]
       if (!recorded) return missing()
-      let items = recorded.items
+      // Only the chapters the snapshot kept, so the list never offers one
+      // that can't open and reading on stops at the last one kept.
+      let items = recorded.items.filter((item) => item.id in site.contents)
+      const complete = items.length === recorded.items.length
       // The server puts the list in the asked order first, so `after` with
       // `desc` answers the chapter before.
       if (params.get("order") === "desc") items = [...items].reverse()
@@ -352,7 +355,7 @@ async function site(
         offset,
         nextOffset: next < items.length ? next : null,
         total: items.length,
-        chapterCount: recorded.chapterCount,
+        chapterCount: complete ? recorded.chapterCount : items.length,
         preferredGroup: recorded.preferredGroup,
       })
     }
