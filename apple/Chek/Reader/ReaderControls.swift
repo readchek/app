@@ -27,19 +27,13 @@ private struct ReaderToolbars: ViewModifier {
                 ToolbarItem(placement: .principal) {
                     ReaderTitle(session: session)
                 }
-                // Comments are on the chapter's end, where they're read, so
-                // the bar keeps to two buttons that never move.
-                // How it looks and where to go, always in this order.
+                // One button either side of the title, which never move.
+                // The title opens the contents: it says where you are, and
+                // the list is where else you could be.
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
                         session.show(.appearance)
                     }
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Contents", systemImage: "list.bullet") {
-                        session.show(.contents)
-                    }
-                    .disabled(session.controller.state != .ready)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -84,9 +78,9 @@ private struct ReaderToolbars: ViewModifier {
     }
 }
 
-/// The controls under the page: a slider through this chapter, with the
-/// chapter before and the one after at its ends, as on a music player.
-/// Where you are is said once, under the title.
+/// The controls under the page: one capsule with a slider through this
+/// chapter and the chapters either side at its ends, as on a music
+/// player, and readers' comments beside it, under the thumb.
 ///
 /// It's drawn here rather than given to the system's bottom toolbar,
 /// which moves whatever it finds no room for into a menu. Next Chapter
@@ -100,19 +94,27 @@ private struct ReaderBottomBar: View {
     var body: some View {
         let inSeries = session.item.series != nil
         let isChapter = session.item.sourceChapter != nil
-        GlassEffectContainer(spacing: 12) {
-            HStack(spacing: 12) {
-                if inSeries {
-                    SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: isChapter, opening: opening, open: open)
-                        .glassEffect(.regular.interactive(), in: .circle)
+        GlassEffectContainer(spacing: 8) {
+            HStack(spacing: 8) {
+                HStack(spacing: 0) {
+                    if inSeries {
+                        SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: isChapter, opening: opening, open: open)
+                    }
+                    ReaderScrubber(session: session)
+                        .padding(.horizontal, inSeries ? 2 : 18)
+                    if inSeries {
+                        SeriesStepButton(lookup: session.next, direction: .next, isChapter: isChapter, opening: opening, open: open)
+                    }
                 }
-                ReaderScrubber(session: session)
-                    .padding(.horizontal, 16)
-                    .frame(height: Self.height)
-                    .glassEffect(.regular, in: .capsule)
-                if inSeries {
-                    SeriesStepButton(lookup: session.next, direction: .next, isChapter: isChapter, opening: opening, open: open)
-                        .glassEffect(.regular.interactive(), in: .circle)
+                .frame(height: Self.height)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                // A site that shows comments keeps their place on every
+                // chapter, with or without any, so the slider beside it
+                // is the same width from one chapter to the next.
+                if let comments = session.comments, comments.isSupported {
+                    BarComments(comments: comments) {
+                        session.show(.comments)
+                    }
                 }
             }
         }
@@ -123,7 +125,46 @@ private struct ReaderBottomBar: View {
         .padding(.bottom, 4)
     }
 
-    static let height: CGFloat = 44
+    static let height: CGFloat = 48
+}
+
+/// Readers' comments in ``ReaderBottomBar``: a bubble, and how many there
+/// are when there are some. A site that gives only a count opens its own
+/// thread instead.
+private struct BarComments: View {
+    let comments: ChapterComments
+    let show: () -> Void
+
+    var body: some View {
+        Group {
+            if comments.hasList {
+                Button(action: show) { label }
+            } else if let thread = comments.thread {
+                Link(destination: thread) { label }
+            } else {
+                Button(action: {}) { label }
+                    .disabled(true)
+            }
+        }
+        .buttonStyle(.borderless)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .accessibilityLabel(Text("^[\(comments.count ?? 0) comment](inflect: true)"))
+    }
+
+    private var label: some View {
+        HStack(spacing: 5) {
+            Image(systemName: "bubble")
+                .font(.body.weight(.medium))
+            if let count = comments.count {
+                Text(count, format: .number.notation(.compactName))
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+            }
+        }
+        .padding(.horizontal, 14)
+        .frame(minWidth: ReaderBottomBar.height)
+        .frame(height: ReaderBottomBar.height)
+        .contentShape(.rect)
+    }
 }
 
 /// A button in ``ReaderBottomBar``: its symbol alone, on a target big
@@ -184,24 +225,46 @@ private struct SeriesStepButton: View {
     }
 }
 
-/// The publication's title. A comic's is one line on glass, and while
-/// the slider is dragged it gives way to the page under the thumb, so
-/// the page being chosen is said without a label of its own. A book's
-/// has the chapter you're in under it.
+/// The publication's title, which opens its contents. A comic's is one
+/// line on glass, and a book's has the chapter you're in under it. While
+/// the slider is dragged it gives way to the place under the thumb, so
+/// the page being chosen is said without a label of its own.
 private struct ReaderTitle: View {
     let session: ReaderSession
 
     var body: some View {
-        // Comic pages run under the bar, where plain text would vanish
-        // into light artwork, so the title sits on glass like the buttons
-        // beside it.
-        if session.item.kind == .comic {
-            comicLabel
-                .padding(.horizontal, 14)
-                .frame(minHeight: 36)
-                .glassEffect(.regular, in: .capsule)
-        } else {
-            bookLabel
+        Button {
+            session.show(.contents)
+        } label: {
+            // Comic pages run under the bar, where plain text would
+            // vanish into light artwork, so the title sits on glass like
+            // the buttons beside it.
+            if session.item.kind == .comic {
+                label
+                    .padding(.horizontal, 14)
+                    .frame(minHeight: 36)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+            } else {
+                label
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(session.controller.state != .ready)
+        .accessibilityLabel(Text("Contents"))
+        .accessibilityValue(Text(session.item.title))
+    }
+
+    private var label: some View {
+        HStack(spacing: 5) {
+            if session.item.kind == .comic {
+                comicLabel
+            } else {
+                bookLabel
+            }
+            // The mark of a title that opens something, as in Files.
+            Image(systemName: "chevron.down")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -226,7 +289,6 @@ private struct ReaderTitle: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
         }
-        .accessibilityElement(children: .combine)
     }
 
     @ViewBuilder private var bookSubtitle: some View {

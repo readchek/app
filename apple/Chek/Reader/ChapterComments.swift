@@ -52,6 +52,16 @@ final class ChapterComments {
     private(set) var moreFailed = false
     private(set) var replies: [String: Replies] = [:]
 
+    /// Whether the chapter's site shows comments at all, whatever this
+    /// chapter has. The reader keeps a place for comments on every chapter
+    /// of such a site, so the button never comes and goes between chapters.
+    private(set) var isSupported: Bool
+    /// The sites found to show comments, by server and source, so the next
+    /// chapter of one knows before it has asked.
+    private static var supporting: Set<String> = []
+
+    private var siteKey: String { "\(chapter.server.uuidString)/\(chapter.source)" }
+
     private let servers: ServerStore
     /// Counts loads, so an answer for an order no longer chosen is dropped.
     private var generation = 0
@@ -59,6 +69,7 @@ final class ChapterComments {
     init(chapter: SourceChapterRef, servers: ServerStore) {
         self.chapter = chapter
         self.servers = servers
+        isSupported = Self.supporting.contains("\(chapter.server.uuidString)/\(chapter.source)")
     }
 
     /// Whether there's a list to open here, rather than only a link to
@@ -84,8 +95,12 @@ final class ChapterComments {
             }
             guard let source = extensions.first(where: { $0.id == chapter.source }), let orders = source.commentOrders else {
                 availability = .none
+                isSupported = false
+                Self.supporting.remove(siteKey)
                 return
             }
+            isSupported = true
+            Self.supporting.insert(siteKey)
             site = source.name
             self.orders = orders
             order = orders.first
