@@ -21,7 +21,7 @@
 </p>
 
 This repository holds the native Chek apps, starting with iPhone and iPad,
-and Chek on the web. Chek 2.1 is live on the App Store.
+and Chek on the web. Chek 2.2 is live on the App Store.
 
 ## What the app does
 
