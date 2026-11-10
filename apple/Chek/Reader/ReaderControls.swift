@@ -3,16 +3,13 @@ import SwiftUI
 
 extension View {
     /// The reader's toolbars, shown and hidden together.
-    func readerToolbars(session: ReaderSession, width: CGFloat, opening: ReadingTarget?, open: @escaping (ReadingTarget) -> Void) -> some View {
-        modifier(ReaderToolbars(session: session, width: width, opening: opening, open: open))
+    func readerToolbars(session: ReaderSession, opening: ReadingTarget?, open: @escaping (ReadingTarget) -> Void) -> some View {
+        modifier(ReaderToolbars(session: session, opening: opening, open: open))
     }
 }
 
 private struct ReaderToolbars: ViewModifier {
     let session: ReaderSession
-    /// The screen's width. Toolbar items size to their content, and a
-    /// slider has none, so the scrubber is given its width.
-    let width: CGFloat
     /// What's being got ready to open, if anything.
     let opening: ReadingTarget?
     /// Opens another chapter or volume of the same series in place.
@@ -42,45 +39,28 @@ private struct ReaderToolbars: ViewModifier {
                 }
                 // One button either side, so the title sits in the visual
                 // middle, not just the measured one. Appearance goes with
-                // the scrubber at the bottom, as in Books.
+                // the scrubber in ``ReaderBottomBar``, as in Books.
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Contents", systemImage: "list.bullet") {
                         session.show(.contents)
                     }
                     .disabled(session.controller.state != .ready)
                 }
-                // The chapters either side, beside the scrubber, as in
-                // Mihon and Webtoon: going on never needs the contents.
-                if session.item.series != nil {
-                    ToolbarItem(placement: .bottomBar) {
-                        SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: session.item.sourceChapter != nil, opening: opening, open: open)
-                    }
-                }
-                ToolbarItem(placement: .bottomBar) {
-                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.shownEdge == .end)
-                        .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
-                }
-                if session.item.series != nil {
-                    ToolbarItem(placement: .bottomBar) {
-                        SeriesStepButton(lookup: session.next, direction: .next, isChapter: session.item.sourceChapter != nil, opening: opening, open: open)
-                    }
-                }
-                ToolbarSpacer(.fixed, placement: .bottomBar)
-                ToolbarItem(placement: .bottomBar) {
-                    Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
-                        session.show(.appearance)
-                    }
-                }
             }
             .navigationBarTitleDisplayMode(.inline)
             // Only the glass controls float over the page; the bars
             // themselves draw nothing, so no band of another color shows.
-            .toolbarBackgroundVisibility(.hidden, for: .navigationBar, .bottomBar)
+            .toolbarBackgroundVisibility(.hidden, for: .navigationBar)
 
             // Contents and the scrubber need an open publication; while
             // there isn't one, only Close is of any use.
             .toolbarVisibility(session.isShowingControls ? .visible : .hidden, for: .navigationBar)
-            .toolbarVisibility(session.isShowingControls && session.controller.state == .ready ? .visible : .hidden, for: .bottomBar)
+            .overlay(alignment: .bottom) {
+                if session.isShowingControls, session.controller.state == .ready {
+                    ReaderBottomBar(session: session, opening: opening, open: open)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+            }
             .animation(.smooth(duration: 0.25), value: session.isShowingControls)
             .sheet(item: Bindable(session).panel) { panel in
                 switch panel {
@@ -106,6 +86,65 @@ private struct ReaderToolbars: ViewModifier {
                     )
                 }
             }
+    }
+}
+
+/// The controls under the page: the chapter before, your place in this
+/// one, the chapter after, and appearance, always in that order.
+///
+/// It's drawn here rather than given to the system's bottom toolbar,
+/// which moves whatever it finds no room for into a menu. Next Chapter
+/// went there on some phones, and a control that moves can't be found
+/// without looking.
+private struct ReaderBottomBar: View {
+    let session: ReaderSession
+    let opening: ReadingTarget?
+    let open: (ReadingTarget) -> Void
+
+    var body: some View {
+        let inSeries = session.item.series != nil
+        let isChapter = session.item.sourceChapter != nil
+        GlassEffectContainer(spacing: 12) {
+            HStack(spacing: 12) {
+                HStack(spacing: 0) {
+                    if inSeries {
+                        SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: isChapter, opening: opening, open: open)
+                    }
+                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.shownEdge == .end)
+                        .padding(.horizontal, inSeries ? 0 : 12)
+                    if inSeries {
+                        SeriesStepButton(lookup: session.next, direction: .next, isChapter: isChapter, opening: opening, open: open)
+                    }
+                }
+                .frame(height: Self.height)
+                .glassEffect(.regular.interactive(), in: .capsule)
+                Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
+                    session.show(.appearance)
+                }
+                .modifier(BarButton())
+                .glassEffect(.regular.interactive(), in: .circle)
+            }
+        }
+        // As wide as the screen allows, and no wider than reads well on
+        // an iPad.
+        .frame(maxWidth: 560)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 4)
+    }
+
+    static let height: CGFloat = 48
+}
+
+/// A button in ``ReaderBottomBar``: its symbol alone, on a target big
+/// enough for a thumb.
+private struct BarButton: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .labelStyle(.iconOnly)
+            .font(.body.weight(.medium))
+            .buttonStyle(.borderless)
+            .frame(width: ReaderBottomBar.height, height: ReaderBottomBar.height)
+            .contentShape(.rect)
     }
 }
 
@@ -140,6 +179,7 @@ private struct SeriesStepButton: View {
             }
         }
         .disabled(lookup.target == nil || opening != nil)
+        .modifier(BarButton())
         .accessibilityValue(lookup.target.map { Text($0.title) } ?? Text(""))
     }
 

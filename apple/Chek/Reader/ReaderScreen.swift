@@ -79,7 +79,7 @@ struct ReaderScreen: View {
                 // A new chapter is a new page view, not the last one's
                 // reused with its old pages.
                 .id(session.item.id)
-                .readerToolbars(session: session, width: proxy.size.width, opening: opening, open: open)
+                .readerToolbars(session: session, opening: opening, open: open)
                 // The bars' edge effect darkens the page's top and bottom
                 // even with the bars hidden; the page should run clean.
                 .scrollEdgeEffectHidden(true, for: .all)
