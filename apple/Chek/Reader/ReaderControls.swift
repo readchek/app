@@ -27,27 +27,9 @@ private struct ReaderToolbars: ViewModifier {
                 ToolbarItem(placement: .principal) {
                     ReaderTitle(session: session)
                 }
-                // Comments show only on a chapter that has some. When the
-                // bar runs short of room they're the first to go into the
-                // system's menu, so the two below never move.
-                if let comments = session.comments, comments.count != nil {
-                    if #available(iOS 27, *) {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            CommentsButton(comments: comments) {
-                                session.show(.comments)
-                            }
-                        }
-                        .visibilityPriority(.low)
-                    } else {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            CommentsButton(comments: comments) {
-                                session.show(.comments)
-                            }
-                        }
-                    }
-                }
-                // How it looks and where to go, always the last two and
-                // always in this order.
+                // Comments are on the chapter's end, where they're read, so
+                // the bar keeps to two buttons that never move.
+                // How it looks and where to go, always in this order.
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
                         session.show(.appearance)
@@ -202,9 +184,10 @@ private struct SeriesStepButton: View {
     }
 }
 
-/// The publication's title, with where you are under it: the page of a
-/// comic, or a book's chapter. While the slider is dragged it follows the
-/// thumb, so the page being chosen is said in the same place.
+/// The publication's title. A comic's is one line on glass, and while
+/// the slider is dragged it gives way to the page under the thumb, so
+/// the page being chosen is said without a label of its own. A book's
+/// has the chapter you're in under it.
 private struct ReaderTitle: View {
     let session: ReaderSession
 
@@ -213,23 +196,32 @@ private struct ReaderTitle: View {
         // into light artwork, so the title sits on glass like the buttons
         // beside it.
         if session.item.kind == .comic {
-            label
+            comicLabel
                 .padding(.horizontal, 14)
-                .frame(minHeight: 44)
+                .frame(minHeight: 36)
                 .glassEffect(.regular, in: .capsule)
         } else {
-            label
+            bookLabel
         }
     }
 
-    private var label: some View {
-        VStack(spacing: 0) {
-            // Two lines in a bar's height, as a navigation title with a
-            // subtitle is set, so more of a long chapter title shows.
+    @ViewBuilder private var comicLabel: some View {
+        if session.scrubbing != nil {
+            PlaceLabel(place: ReaderPlace(session: session).label)
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+        } else {
             Text(session.item.title)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
-            subtitle
+        }
+    }
+
+    private var bookLabel: some View {
+        VStack(spacing: 0) {
+            Text(session.item.title)
+                .font(.headline)
+                .lineLimit(1)
+            bookSubtitle
                 .font(.caption.monospacedDigit())
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
@@ -237,13 +229,11 @@ private struct ReaderTitle: View {
         .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder private var subtitle: some View {
-        let place = ReaderPlace(session: session)
-        if !place.showsPages, session.scrubbing == nil, session.shownEdge != .end,
-           let chapter = session.controller.location?.title, chapter != session.item.title {
+    @ViewBuilder private var bookSubtitle: some View {
+        if session.scrubbing != nil {
+            PlaceLabel(place: ReaderPlace(session: session).label)
+        } else if let chapter = session.controller.location?.title, chapter != session.item.title {
             Text(chapter)
-        } else {
-            PlaceLabel(place: place.label)
         }
     }
 }
