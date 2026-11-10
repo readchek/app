@@ -25,6 +25,16 @@
     "%@ was at %@." : {
 
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
     "%@ → %@" : {
       "localizations" : {
         "en" : {
@@ -100,6 +110,9 @@
 
     },
     "Adding ^[%lld book](inflect: true)" : {
+
+    },
+    "Adding ^[%lld book](inflect: true)…" : {
 
     },
     "Address" : {
@@ -185,6 +198,16 @@
     },
     "Chapter %@" : {
 
+    },
+    "Chapter %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chapter %1$@: %2$@"
+          }
+        }
+      }
     },
     "Chapters" : {
 
@@ -274,9 +297,6 @@
 
     },
     "Comments from %@ hidden ·" : {
-
-    },
-    "Comments people leave on %@ show here." : {
 
     },
     "Compact" : {
@@ -426,10 +446,13 @@
     "Enter the address you were given, such as books.example.com." : {
 
     },
-    "Enter the address you were given. A name helps tell libraries apart and is only shown on this device." : {
+    "Enter the address you were given. A name helps tell libraries apart and is only shown on this device. Without one, the library goes by its address." : {
 
     },
     "Erotica" : {
+
+    },
+    "Every unread chapter after the one you last opened is already on this device." : {
 
     },
     "Everyone" : {
@@ -495,9 +518,6 @@
     "Hide Replies" : {
 
     },
-    "Hide someone from a comment's menu, and they're listed here." : {
-
-    },
     "Home" : {
 
     },
@@ -536,6 +556,12 @@
     },
     "Library" : {
       "comment" : "Tab for the books on this device"
+    },
+    "Library Name" : {
+
+    },
+    "Library Name (Optional)" : {
+
     },
     "License" : {
 
@@ -591,9 +617,6 @@
     "Name" : {
       "comment" : "A server's friendly name, or the account's user name"
     },
-    "Name (Optional)" : {
-
-    },
     "Narrow" : {
 
     },
@@ -609,10 +632,10 @@
     "New Chapter Notifications" : {
 
     },
-    "New York" : {
+    "New Chapters" : {
 
     },
-    "New chapters of series you follow appear here." : {
+    "New York" : {
 
     },
     "Newest" : {
@@ -636,12 +659,6 @@
     "Next in Series" : {
 
     },
-    "No Comments Yet" : {
-
-    },
-    "No Hidden Commenters" : {
-
-    },
     "No Longer Available" : {
 
     },
@@ -660,7 +677,13 @@
     "No collections are shared with you yet. Ask the library's administrator for access." : {
 
     },
-    "No new chapters. Chek checks a few times a day, or you can [check now](chek-action://check)." : {
+    "No comments yet. What people write on %@ shows here." : {
+
+    },
+    "No new chapters. Pull down to check now." : {
+
+    },
+    "Nobody is hidden. Hide someone from a comment's menu, and they're listed here." : {
 
     },
     "None" : {
@@ -676,6 +699,15 @@
 
     },
     "Nothing here matches your search." : {
+
+    },
+    "Nothing matches “%@”." : {
+
+    },
+    "Nothing stored yet." : {
+
+    },
+    "Nothing to read here yet. Look through your libraries in [Shared](chek-action://shared), or [add books](chek-action://add) from Files." : {
 
     },
     "Notification Settings" : {
@@ -928,6 +960,12 @@
 
     },
     "Sepia" : {
+
+    },
+    "Series" : {
+
+    },
+    "Series you follow appear here, with their new chapters." : {
 
     },
     "Settings" : {
@@ -1189,9 +1227,6 @@
 
     },
     "Update ^[%lld Site](inflect: true)" : {
-
-    },
-    "Updates" : {
 
     },
     "User Name" : {
