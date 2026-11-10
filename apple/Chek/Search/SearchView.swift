@@ -25,11 +25,6 @@ struct SearchView: View {
             }
             .demoBanner()
             .navigationTitle("Search")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    SearchFilterMenu(filters: $filters, sites: serverResults.sites)
-                }
-            }
             .routeDestinations()
         }
         .searchable(text: $text, prompt: prompt)
@@ -170,7 +165,7 @@ private struct EverywhereResults: View {
         .overlay {
             if isEmpty && searching.isEmpty && failures.isEmpty {
                 // Below the filters, which stay usable.
-                ContentUnavailableView.search(text: text)
+                EmptyState("Nothing matches “\(text)”.", systemImage: "magnifyingglass")
                     .padding(.top, 56)
             }
         }
@@ -202,8 +197,12 @@ private struct PlaceHeader: View {
     let seeAll: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(alignment: .firstTextBaseline) {
+            // The same heading as Home's shelves.
             Text(title)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.primary)
+                .lineLimit(1)
             Spacer()
             Button("See All", action: seeAll)
                 .font(.subheadline)
@@ -348,9 +347,9 @@ extension View {
 
 // MARK: - One place
 
-/// Above the results: the way to narrow them, since the toolbar is hidden
-/// while typing, then each filter in use with the way to take it off, so
-/// a narrowed search never looks like everything there is.
+/// Above the results: the one way to narrow them, then each filter in use
+/// with the way to take it off, so a narrowed search never looks like
+/// everything there is.
 private struct ActiveFilters: View {
     @Binding var filters: SearchFilters
     @Environment(ServerStore.self) private var servers
@@ -449,7 +448,7 @@ private struct ScopedGrid: View {
                 FailureState(error: error, retry: retry)
                     .padding(.top, 56)
             case .loaded(let items) where items.isEmpty:
-                ContentUnavailableView.search(text: text)
+                EmptyState("Nothing matches “\(text)”.", systemImage: "magnifyingglass")
                     .padding(.top, 56)
             default:
                 EmptyView()
@@ -535,25 +534,11 @@ private struct SourceGrid: View {
                 FailureState(error: error) { await serverResults.retry(source: id, servers: servers) }
                     .padding(.top, 56)
             case .loaded(let series) where series.isEmpty:
-                ContentUnavailableView.search(text: text)
+                EmptyState("Nothing matches “\(text)”.", systemImage: "magnifyingglass")
                     .padding(.top, 56)
             default:
                 EmptyView()
             }
-        }
-    }
-}
-
-/// Where to search and what to show, from the toolbar.
-private struct SearchFilterMenu: View {
-    @Binding var filters: SearchFilters
-    let sites: [UUID: [ChekAPI.InstalledExtension]]
-
-    var body: some View {
-        Menu {
-            SearchFilterOptions(filters: $filters, sites: sites)
-        } label: {
-            Label("Filters", systemImage: filters.isActive ? "line.3.horizontal.decrease.circle.fill" : "line.3.horizontal.decrease.circle")
         }
     }
 }
@@ -579,7 +564,7 @@ private struct SearchFilterOptions: View {
                 Label("Everywhere", systemImage: "magnifyingglass").tag(SearchScope.everywhere)
                 Label("Library", systemImage: "books.vertical").tag(SearchScope.library)
                 ForEach(accounts) { account in
-                    Label(account.name, systemImage: "person.2").tag(SearchScope.server(account.id))
+                    Label(account.name, systemImage: "building.columns").tag(SearchScope.server(account.id))
                 }
                 ForEach(accounts) { account in
                     // Only sites that have what's chosen to show.

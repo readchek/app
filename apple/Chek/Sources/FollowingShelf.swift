@@ -20,7 +20,7 @@ struct FollowingShelf: View {
     }
 }
 
-private struct FollowedSeriesCell: View {
+struct FollowedSeriesCell: View {
     let follow: FollowedSeries
     @Environment(ServerStore.self) private var servers
     @Environment(FollowStore.self) private var follows

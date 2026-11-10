@@ -103,6 +103,7 @@ private struct NowReadingBar: View {
     @Environment(AppRouter.self) private var router
     @Environment(ServerSync.self) private var sync
     @Environment(\.tabViewBottomAccessoryPlacement) private var placement
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
         Button(action: resume) {
@@ -114,16 +115,24 @@ private struct NowReadingBar: View {
                     Text(current.title)
                         .font(.subheadline.weight(.semibold))
                         .lineLimit(1)
-                    if placement != .inline, let progress = current.progress, progress >= 0.01 {
+                    // One line at the largest text sizes, where two don't
+                    // fit the bar's fixed height.
+                    if placement != .inline, !dynamicTypeSize.isAccessibilitySize, let progress = current.progress, progress >= 0.01 {
                         Text(progress, format: .percent.precision(.fractionLength(0)))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 Spacer(minLength: 8)
-                Image(systemName: "play.fill")
-                    .font(.body)
-                    .accessibilityHidden(true)
+                // A library's book is checked for its place before it
+                // opens, which the tap should be seen to have started.
+                if router.opening == current.ref {
+                    ProgressView()
+                } else {
+                    Image(systemName: "play.fill")
+                        .font(.body)
+                        .accessibilityHidden(true)
+                }
             }
             .padding(.horizontal, 16)
             .contentShape(.rect)

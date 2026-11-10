@@ -109,3 +109,29 @@ struct ItemDownloadIndicator: View {
         }
     }
 }
+
+extension View {
+    /// Says why a download failed, wherever you are when it does: on the
+    /// root, since downloads go on while you look at other screens.
+    func downloadFailureAlert() -> some View {
+        modifier(DownloadFailureAlert())
+    }
+}
+
+/// Split out so the root view doesn't redraw when a download fails.
+private struct DownloadFailureAlert: ViewModifier {
+    @Environment(Downloads.self) private var downloads
+
+    func body(content: Content) -> some View {
+        content.alert(
+            downloads.failure?.title ?? "",
+            isPresented: Binding { downloads.failure != nil } set: { if !$0 { downloads.failure = nil } }
+        ) {
+            Button("OK") {}
+        } message: {
+            if let message = downloads.failure?.message {
+                Text(message)
+            }
+        }
+    }
+}

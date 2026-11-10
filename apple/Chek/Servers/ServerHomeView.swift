@@ -210,7 +210,7 @@ private struct ServerHomeContent: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
                         ForEach(0..<2, id: \.self) { _ in
-                            PlaceholderShelf()
+                            PlaceholderShelf(showsHeading: true)
                         }
                     }
                     .padding(.vertical, 12)

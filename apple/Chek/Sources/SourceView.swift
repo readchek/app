@@ -108,7 +108,7 @@ private struct SourceSeriesGrid: View {
         }
         .overlay {
             if isSearching, series.phase == .complete, series.items.isEmpty {
-                ContentUnavailableView.search
+                EmptyState("Nothing here matches your search.", systemImage: "magnifyingglass")
             } else if kept.isEmpty {
                 PagedListOverlay(phase: series.phase, isEmpty: series.items.isEmpty, emptyMessage: "This site has no series to show.") {
                     Task { await series.reload() }

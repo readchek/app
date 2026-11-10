@@ -33,6 +33,8 @@ struct EmptyState: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
+                // A sentence, not a banner, on an iPad's width.
+                .frame(maxWidth: 440)
         }
         .padding(.horizontal, 40)
         .padding(.vertical, 24)

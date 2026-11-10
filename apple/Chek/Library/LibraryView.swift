@@ -118,6 +118,7 @@ private struct LibraryContent: View {
     @Query private var books: [Book]
     @State private var bookToRemove: Book?
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(LibraryStore.self) private var library
 
     init(sort: LibrarySort, filter: LibraryFilter, layout: LibraryLayout, selection: Binding<Set<UUID>?>) {
         self.filter = filter
@@ -139,7 +140,17 @@ private struct LibraryContent: View {
 
     private var content: some View {
         Group {
-            if books.isEmpty {
+            if books.isEmpty, !library.imports.isEmpty {
+                // The first books are on their way in, which the empty
+                // library's invitation to add some shouldn't sit over.
+                VStack(spacing: 14) {
+                    ProgressView()
+                        .controlSize(.large)
+                    Text("Adding ^[\(library.imports.count) book](inflect: true)…")
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if books.isEmpty {
                 if filter == .finished {
                     EmptyState("Books you finish appear here.", systemImage: "checkmark.circle")
                 } else if filter != .all {

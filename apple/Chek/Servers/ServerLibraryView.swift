@@ -148,9 +148,9 @@ private struct LibrarySearchResults: View {
         .listStyle(.plain)
         .overlay {
             if found.phase == .complete, found.items.isEmpty {
-                ContentUnavailableView.search(text: query)
+                EmptyState("Nothing matches “\(query)”.", systemImage: "magnifyingglass")
             } else {
-                PagedListOverlay(phase: found.phase, isEmpty: found.items.isEmpty, emptyMessage: "Nothing here matches your search.") {
+                PagedListOverlay(phase: found.phase, isEmpty: found.items.isEmpty, emptyMessage: "Nothing here matches your search.", placeholder: .spinner) {
                     Task { await found.reload() }
                 }
             }

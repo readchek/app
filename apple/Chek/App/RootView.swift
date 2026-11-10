@@ -40,7 +40,7 @@ struct RootView: View {
             if sizeClass == .regular {
                 TabSection("Shared Libraries") {
                     ForEach(accounts) { account in
-                        Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "person.2", value: AppTab.server(account.id)) {
+                        Tab(account.name, systemImage: account.id == DemoMode.accountID ? "sparkles" : "building.columns", value: AppTab.server(account.id)) {
                             ServerTab(account: account)
                         }
                     }
@@ -80,6 +80,7 @@ struct RootView: View {
             }
         }
         .importFailureAlert()
+        .downloadFailureAlert()
         .appUpdateNotice()
         .openingFailureAlert()
         .syncTriggers()

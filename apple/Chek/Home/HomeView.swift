@@ -51,6 +51,20 @@ private struct HomeContent: View {
                 // Everything here came from servers you're signed out of, so
                 // the way back in is the one thing worth showing.
                 SignedOutHomeView(accounts: signedOut)
+            } else if !hasShelves, !model.hasLoaded {
+                // The libraries haven't answered yet: shelves where
+                // theirs will be, rather than a blank page.
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Metrics.sectionSpacing) {
+                        ForEach(0..<2, id: \.self) { _ in
+                            PlaceholderShelf(showsHeading: true)
+                        }
+                    }
+                    .padding(.vertical, 12)
+                }
+                .scrollDisabled(true)
+            } else if !hasShelves {
+                NothingToReadView()
             } else {
                 // A plain list of shelves, the same page as a shared
                 // library's own screen.
@@ -164,6 +178,11 @@ final class HomeServersModel {
     private(set) var elsewhere: [Elsewhere] = []
     private(set) var newOnServers: [ServerShelf] = []
     private(set) var sites: [SiteShelf] = []
+    /// Whether every library and site has had its say once, so an empty
+    /// Home is known to be empty rather than still loading.
+    private(set) var hasLoaded = false
+    private var hasLoadedServers = false
+    private var hasLoadedSites = false
     private var hasShownSnapshot = false
     private var hasShownSitesSnapshot = false
 
@@ -222,6 +241,8 @@ final class HomeServersModel {
         }
         self.elsewhere = elsewhere
         newOnServers = shelves
+        hasLoadedServers = true
+        hasLoaded = hasLoadedSites
         await HomeSnapshot(
             elsewhere: snapshotElsewhere,
             shelves: shelves.map { HomeSnapshot.Shelf(id: $0.id, serverName: $0.serverName, publications: $0.publications) }
@@ -259,6 +280,8 @@ final class HomeServersModel {
             }
         }
         sites = shelves
+        hasLoadedSites = true
+        hasLoaded = hasLoadedServers
         await SiteShelfSnapshot.write(shelves)
     }
 }
@@ -359,5 +382,22 @@ private struct SignedOutHomeView: View {
             "shared": { router.tab = .browse },
             "add": { router.addBooks() },
         ]
+    }
+}
+
+/// Home when your libraries have nothing to show yet: where to look, and
+/// the way to add your own.
+private struct NothingToReadView: View {
+    @Environment(AppRouter.self) private var router
+
+    var body: some View {
+        EmptyState(
+            "Nothing to read here yet. Look through your libraries in [Shared](chek-action://shared), or [add books](chek-action://add) from Files.",
+            systemImage: "books.vertical",
+            actions: [
+                "shared": { router.tab = .browse },
+                "add": { router.addBooks() },
+            ]
+        )
     }
 }

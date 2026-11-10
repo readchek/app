@@ -121,16 +121,6 @@ private struct SeriesContent: View {
         .refreshable {
             await publications.reload()
         }
-        .alert(
-            downloads.failure?.title ?? "",
-            isPresented: Binding { downloads.failure != nil } set: { if !$0 { downloads.failure = nil } }
-        ) {
-            Button("OK") {}
-        } message: {
-            if let message = downloads.failure?.message {
-                Text(message)
-            }
-        }
     }
 
     /// The one you're partway through, or else the first you haven't finished.
@@ -189,7 +179,7 @@ private struct SeriesHeader: View {
                     Button {
                         router.open(publication, using: sync)
                     } label: {
-                        Text(status == .new ? "Start Reading" : "Continue \(publication.displayTitle)")
+                        Text(ContinueLabel.text(for: publication.displayTitle, isNew: status == .new))
                             .lineLimit(1)
                             .frame(maxWidth: .infinity)
                     }

@@ -157,6 +157,8 @@ private struct SourceSeriesContent: View {
     @Environment(AppearanceSettings.self) private var appearance
     /// The chapter the header's button opens, worked out from your places.
     @State private var next: (chapter: SourceChapterRef, status: ReadingStatus)?
+    /// Why the chapters before one couldn't be marked as finished.
+    @State private var markFailure: DisplayError?
 
     init(account: UUID, source: String, series: ChekAPI.SourceSeries, chapters: ChapterList, staleError: DisplayError?, refresh: @escaping () async -> Void) {
         self.account = account
@@ -233,13 +235,15 @@ private struct SourceSeriesContent: View {
         .refreshable {
             await refresh()
         }
+        // Marking chapters that couldn't be asked for, said rather than
+        // left looking like a tap that missed.
         .alert(
-            downloads.failure?.title ?? "",
-            isPresented: Binding { downloads.failure != nil } set: { if !$0 { downloads.failure = nil } }
+            markFailure?.title ?? "",
+            isPresented: Binding { markFailure != nil } set: { if !$0 { markFailure = nil } }
         ) {
             Button("OK") {}
         } message: {
-            if let message = downloads.failure?.message {
+            if let message = markFailure?.message {
                 Text(message)
             }
         }
@@ -275,6 +279,7 @@ private struct SourceSeriesContent: View {
                 isNew: follows.first?.unseenChapterIDs.contains(entry.chapter.id) == true,
                 download: download,
                 preferredGroup: chapters.preferredGroup,
+                authors: Set(series.contributors.map { $0.name.lowercased() }),
                 open: { release in router.open(chapterRef(entry.chapter.picking(release)), using: sync) },
                 prefer: { group in Task { await chapters.prefer(group: group) } }
             )
@@ -342,10 +347,14 @@ private struct SourceSeriesContent: View {
     private func markRead(before position: Int) async {
         let seriesID = series.id
         let source = source
-        guard let earlier = try? await servers.request(account, { client throws(ChekError) in
-            try await client.chapters(ofSeries: seriesID, inSource: source, from: 0, to: position - 1)
-        }) else { return }
-        progress.markRead(earlier.map(chapterRef))
+        do {
+            let earlier = try await servers.request(account) { client throws(ChekError) in
+                try await client.chapters(ofSeries: seriesID, inSource: source, from: 0, to: position - 1)
+            }
+            progress.markRead(earlier.map(chapterRef))
+        } catch {
+            markFailure = DisplayError(error)
+        }
     }
 
     /// The chapter you opened last, or the one after it once it's
@@ -390,8 +399,11 @@ private struct ChaptersHeader: View {
     let statuses: [String: SourceReadingState]
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(alignment: .firstTextBaseline, spacing: 16) {
+            // The same heading as Collections and Sites one screen up.
             Text("Chapters")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(.primary)
             Spacer()
             // A menu with the current order ticked, so the label reads as
             // what's shown rather than what a tap would do.
@@ -444,7 +456,7 @@ extension SourceChapterRef {
 }
 
 extension ChekAPI.SourceChapter {
-    /// "Chapter 12" or "12 · The Title", from what the source gives.
+    /// "Chapter 12" or "Chapter 12: The Title", from what the source gives.
     var displayTitle: String {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let number, !number.isEmpty else {
@@ -453,7 +465,7 @@ extension ChekAPI.SourceChapter {
         if title.isEmpty {
             return String(localized: "Chapter \(number)")
         }
-        return title.localizedCaseInsensitiveContains(number) ? title : "\(number) · \(title)"
+        return title.localizedCaseInsensitiveContains(number) ? title : String(localized: "Chapter \(number): \(title)")
     }
 }
 
@@ -544,16 +556,19 @@ struct SourceSeriesHeader: View {
             let stacked = dynamicTypeSize.isAccessibilitySize
             let layout = stacked ? AnyLayout(VStackLayout(spacing: 12)) : AnyLayout(HStackLayout(spacing: 12))
             layout {
-                if let (chapter, status) = next {
-                    Button {
+                // There from the start, so Follow beside it never changes
+                // width when the chapter to read is worked out.
+                Button {
+                    if let chapter = next?.chapter {
                         router.open(chapter, using: sync)
-                    } label: {
-                        Text(status == .new ? "Start Reading" : "Continue \(chapter.chapterTitle)")
-                            .lineLimit(1)
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
+                } label: {
+                    Text(ContinueLabel.text(for: next?.chapter.chapterTitle, isNew: (next?.status ?? .new) == .new))
+                        .lineLimit(1)
+                        .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.borderedProminent)
+                .disabled(next == nil)
                 // Following keeps the series on Home, with its new
                 // chapters counted, so you don't have to search again.
                 Button {
@@ -605,7 +620,9 @@ struct SourceSeriesHeader: View {
     /// Whether `summary` might run past three lines at the summary's size.
     static func mayBeCutOff(_ summary: AttributedString) -> Bool {
         let text = String(summary.characters)
-        return text.count > 160 || text.contains("\n")
+        // Three lines hold about 150 characters at the summary's size on
+        // the narrowest phone, or three short paragraphs.
+        return text.count > 150 || text.components(separatedBy: "\n").count > 3
     }
 
     /// The summary with its Markdown drawn as styling, as sources such as
@@ -646,6 +663,9 @@ private struct SourceChapterRow: View {
     var isNew = false
     var download = Downloads.State.none
     var preferredGroup: String?
+    /// The series' authors, lowercased. A release credited to one of them
+    /// is the author's own, already named above the list.
+    var authors: Set<String> = []
     let open: (ChekAPI.SourceRelease) -> Void
     let prefer: (String?) -> Void
     @Environment(AppRouter.self) private var router
@@ -695,7 +715,8 @@ private struct SourceChapterRow: View {
     /// When it came out, as Podcasts dates episodes, and who released it.
     private var detail: String? {
         let date = release.publishedDate?.formatted(.dateTime.day().month(.abbreviated).year())
-        let parts = [date, release.releaseGroup].compactMap(\.self)
+        let group = release.releaseGroup.flatMap { authors.contains($0.lowercased()) ? nil : $0 }
+        let parts = [date, group].compactMap(\.self)
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -823,19 +844,31 @@ private struct SeriesDownloadsMenu: View {
         let lastOpened = statuses.values.filter { $0.lastOpenedAt != nil }.max { ($0.lastOpenedAt ?? .distantPast) < ($1.lastOpenedAt ?? .distantPast) }?.chapterID
         // The next few need only a page after where you are; all of them
         // need the rest of the series.
-        guard let candidates = try? await servers.request(account, { client throws(ChekError) in
-            if limit != nil {
-                return try await client.chapterPage(ofSeries: seriesID, inSource: source, order: .oldestFirst, after: lastOpened, limit: 50).items
+        let candidates: [ChekAPI.SourceChapter]
+        do {
+            candidates = try await servers.request(account) { client throws(ChekError) in
+                if limit != nil {
+                    return try await client.chapterPage(ofSeries: seriesID, inSource: source, order: .oldestFirst, after: lastOpened, limit: 50).items
+                }
+                let all = try await client.chapters(ofSeries: seriesID, inSource: source)
+                guard let lastOpened, let index = all.firstIndex(where: { $0.id == lastOpened }) else { return all }
+                return Array(all[all.index(after: index)...])
             }
-            let all = try await client.chapters(ofSeries: seriesID, inSource: source)
-            guard let lastOpened, let index = all.firstIndex(where: { $0.id == lastOpened }) else { return all }
-            return Array(all[all.index(after: index)...])
-        }) else { return }
+        } catch {
+            // Said, rather than a menu choice that seems to do nothing.
+            downloads.failure = DisplayError(error)
+            return
+        }
         let pending = candidates
             .filter { statuses[$0.id]?.readingStatus != .finished }
             .map { SourceChapterRef(series: series, chapter: $0, server: account, source: source) }
             .filter { downloads.state(of: $0.ref) == .none }
-        if let limit {
+        if pending.isEmpty {
+            downloads.failure = DisplayError(
+                title: String(localized: "Nothing Left to Download"),
+                message: String(localized: "Every unread chapter after the one you last opened is already on this device.")
+            )
+        } else if let limit {
             downloads.download(pending.prefix(limit).map(Downloads.Item.chapter))
         } else if pending.count > 10 {
             // A long series is a lot of space and a lot of requests to the
@@ -844,5 +877,22 @@ private struct SeriesDownloadsMenu: View {
         } else {
             downloads.download(pending.map(Downloads.Item.chapter))
         }
+    }
+}
+
+/// What the button that reads on says: "Start Reading" for something new,
+/// else "Continue" with the chapter or volume when its name is short
+/// enough to fit beside another button, as "Chapter 12" is.
+nonisolated enum ContinueLabel {
+    static func text(for title: String?, isNew: Bool) -> String {
+        if isNew { return String(localized: "Start Reading") }
+        guard var title = title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
+            return String(localized: "Continue Reading")
+        }
+        // "Chapter 12: The Title" reads on as "Chapter 12".
+        if let colon = title.firstIndex(of: ":"), title[..<colon].count <= 14 {
+            title = String(title[..<colon])
+        }
+        return title.count <= 14 ? String(localized: "Continue \(title)") : String(localized: "Continue Reading")
     }
 }
