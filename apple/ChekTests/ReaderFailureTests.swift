@@ -11,6 +11,14 @@ struct ReaderFailureTests {
         #expect(error.message == "You're signed out of this server.")
     }
 
+    @Test func aChapterTheServerNoLongerHasSaysSoAndOffersNoRetry() {
+        let error = DisplayError(reader: .network(reason: "The page source couldn't say how many pages it has: No Longer Available"), kind: .comic)
+        #expect(error.title == "No Longer Available")
+        #expect(error.message == "It may have been moved or removed from the library.")
+        #expect(error.kind == .gone)
+        #expect(!error.canRetry)
+    }
+
     @Test func networkFailureWithNoReasonSuggestsTheConnection() {
         let error = DisplayError(reader: .network(reason: ""), kind: .book)
         #expect(error.title == "Couldn't Load This Book")
