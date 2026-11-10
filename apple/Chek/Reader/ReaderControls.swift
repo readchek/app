@@ -214,8 +214,8 @@ private struct ReaderTitle: View {
         // beside it.
         if session.item.kind == .comic {
             label
-                .padding(.horizontal, 16)
-                .padding(.vertical, 6)
+                .padding(.horizontal, 14)
+                .frame(minHeight: 44)
                 .glassEffect(.regular, in: .capsule)
         } else {
             label
@@ -224,8 +224,10 @@ private struct ReaderTitle: View {
 
     private var label: some View {
         VStack(spacing: 0) {
+            // Two lines in a bar's height, as a navigation title with a
+            // subtitle is set, so more of a long chapter title shows.
             Text(session.item.title)
-                .font(.headline)
+                .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
             subtitle
                 .font(.caption.monospacedDigit())
