@@ -54,15 +54,17 @@ private struct ReaderToolbars: ViewModifier {
                 if session.item.series != nil {
                     ToolbarItem(placement: .bottomBar) {
                         SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: session.item.sourceChapter != nil, opening: opening, open: open)
+                            .dynamicTypeSize(...BottomBar.largestSize)
                     }
                 }
                 ToolbarItem(placement: .bottomBar) {
-                    ReaderScrubber(controller: session.controller, isAtChapterEnd: session.shownEdge == .end)
-                        .frame(width: min(max(width - (session.item.series == nil ? 136 : 232), 120), 500))
+                    BottomBarScrubber(session: session, screenWidth: width)
+                        .dynamicTypeSize(...BottomBar.largestSize)
                 }
                 if session.item.series != nil {
                     ToolbarItem(placement: .bottomBar) {
                         SeriesStepButton(lookup: session.next, direction: .next, isChapter: session.item.sourceChapter != nil, opening: opening, open: open)
+                            .dynamicTypeSize(...BottomBar.largestSize)
                     }
                 }
                 ToolbarSpacer(.fixed, placement: .bottomBar)
@@ -70,6 +72,7 @@ private struct ReaderToolbars: ViewModifier {
                     Button("Appearance", systemImage: session.showsTextSettings ? "textformat.size" : "slider.horizontal.3") {
                         session.show(.appearance)
                     }
+                    .dynamicTypeSize(...BottomBar.largestSize)
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -106,6 +109,35 @@ private struct ReaderToolbars: ViewModifier {
                     )
                 }
             }
+    }
+}
+
+/// The bottom bar's sizing. Its buttons grow with the text size, and a
+/// slider has no width of its own, so the scrubber is given what's left
+/// beside them. Were it given more, the bar would be wider than the screen
+/// and iOS would fold the chapter buttons and Appearance into an overflow
+/// menu.
+private enum BottomBar {
+    /// The largest accessibility sizes would leave the scrubber no room,
+    /// so the bar stops growing short of them.
+    static let largestSize = DynamicTypeSize.xxxLarge
+}
+
+/// The scrubber, as wide as the screen leaves beside the bar's buttons at
+/// the current text size.
+private struct BottomBarScrubber: View {
+    let session: ReaderSession
+    let screenWidth: CGFloat
+    /// One button's width at the default text size. It grows with the
+    /// text; the bar's margins and spacing don't.
+    @ScaledMetric(relativeTo: .body) private var button: CGFloat = 44
+
+    var body: some View {
+        // The chapter buttons either side and Appearance, or Appearance
+        // alone, and the margins and spacing around them.
+        let buttons = session.item.series == nil ? 92 + button : 100 + button * 3
+        ReaderScrubber(controller: session.controller, isAtChapterEnd: session.shownEdge == .end)
+            .frame(width: min(max(screenWidth - buttons, 96), 500))
     }
 }
 
