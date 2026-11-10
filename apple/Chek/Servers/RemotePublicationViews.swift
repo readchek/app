@@ -40,7 +40,7 @@ struct StaleNotice: View {
     let error: DisplayError
 
     var body: some View {
-        Label(error.title, systemImage: "wifi.exclamationmark")
+        Label(error.title, systemImage: error.systemImage)
             .font(.footnote)
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, alignment: .leading)

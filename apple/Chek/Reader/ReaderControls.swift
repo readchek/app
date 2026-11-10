@@ -15,6 +15,7 @@ private struct ReaderToolbars: ViewModifier {
     /// Opens another chapter or volume of the same series in place.
     let open: (ReadingTarget) -> Void
     @Environment(AppRouter.self) private var router
+    @Environment(ReaderSettings.self) private var settings
 
     func body(content: Content) -> some View {
         content
@@ -52,6 +53,10 @@ private struct ReaderToolbars: ViewModifier {
             }
             .animation(.smooth(duration: 0.25), value: session.isShowingControls)
             .sheet(item: Bindable(session).panel) { panel in
+                // Light or dark as the page is: a sheet doesn't take that
+                // from the screen under it, and stayed light over a dark page.
+                let scheme: ColorScheme? = session.item.kind == .comic ? .dark : ReaderTheme(settings.theme).colorScheme
+                Group {
                 switch panel {
                 case .contents:
                     // A book from a source has its own contents, which say
@@ -74,6 +79,8 @@ private struct ReaderToolbars: ViewModifier {
                         modeKey: session.showsTextSettings ? nil : session.item.settingsKey
                     )
                 }
+                }
+                .preferredColorScheme(scheme)
             }
     }
 }
@@ -94,20 +101,32 @@ private struct ReaderBottomBar: View {
     var body: some View {
         let inSeries = session.item.series != nil
         let isChapter = session.item.sourceChapter != nil
+        // One page has nowhere to slide to.
+        let hasSlider = ReaderPlace(session: session).count > 1
         GlassEffectContainer(spacing: 8) {
             HStack(spacing: 8) {
-                HStack(spacing: 0) {
-                    if inSeries {
-                        SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: isChapter, opening: opening, open: open)
+                // With one page and no series there's nothing to put in
+                // the capsule, so it isn't drawn empty.
+                if hasSlider || inSeries {
+                    HStack(spacing: 0) {
+                        if inSeries {
+                            SeriesStepButton(lookup: session.previous, direction: .previous, isChapter: isChapter, opening: opening, open: open)
+                        }
+                        if hasSlider {
+                            ReaderScrubber(session: session)
+                                .padding(.horizontal, inSeries ? 2 : 18)
+                        } else {
+                            Spacer(minLength: 0)
+                        }
+                        if inSeries {
+                            SeriesStepButton(lookup: session.next, direction: .next, isChapter: isChapter, opening: opening, open: open)
+                        }
                     }
-                    ReaderScrubber(session: session)
-                        .padding(.horizontal, inSeries ? 2 : 18)
-                    if inSeries {
-                        SeriesStepButton(lookup: session.next, direction: .next, isChapter: isChapter, opening: opening, open: open)
-                    }
+                    .frame(height: Self.height)
+                    .glassEffect(.regular.interactive(), in: .capsule)
+                } else {
+                    Spacer(minLength: 0)
                 }
-                .frame(height: Self.height)
-                .glassEffect(.regular.interactive(), in: .capsule)
                 // A site that shows comments keeps their place on every
                 // chapter, with or without any, so the slider beside it
                 // is the same width from one chapter to the next.
@@ -249,7 +268,7 @@ private struct ReaderTitle: View {
             }
         }
         .buttonStyle(.plain)
-        .disabled(session.controller.state != .ready)
+        .disabled(session.controller.state != .ready || !hasContents)
         .accessibilityLabel(Text("Contents"))
         .accessibilityValue(Text(session.item.title))
     }
@@ -262,10 +281,20 @@ private struct ReaderTitle: View {
                 bookLabel
             }
             // The mark of a title that opens something, as in Files.
-            Image(systemName: "chevron.down")
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.secondary)
+            if hasContents {
+                Image(systemName: "chevron.down")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(.secondary)
+            }
         }
+    }
+
+    /// Whether the title has anything to open: a site's chapters, a table
+    /// of contents, or the terms a book came with. A text file has none.
+    private var hasContents: Bool {
+        if session.item.sourceChapter != nil || session.item.rights != nil { return true }
+        guard let publication = session.controller.publication else { return true }
+        return !publication.tableOfContents.isEmpty
     }
 
     @ViewBuilder private var comicLabel: some View {
@@ -294,8 +323,21 @@ private struct ReaderTitle: View {
     @ViewBuilder private var bookSubtitle: some View {
         if session.scrubbing != nil {
             PlaceLabel(place: ReaderPlace(session: session).label)
-        } else if let chapter = session.controller.location?.title, chapter != session.item.title {
-            Text(chapter)
+        } else {
+            // The chapter you're in and how far through the book you are,
+            // whichever are known.
+            let chapter = session.controller.location?.title.flatMap { $0 == session.item.title ? nil : $0 }
+            let progress = session.controller.location?.locations.totalProgression
+            switch (chapter, progress) {
+            case let (chapter?, progress?):
+                Text("\(chapter) · \(Text(progress, format: .percent.precision(.fractionLength(0))))")
+            case let (chapter?, nil):
+                Text(chapter)
+            case let (nil, progress?):
+                Text(progress, format: .percent.precision(.fractionLength(0)))
+            case (nil, nil):
+                EmptyView()
+            }
         }
     }
 }
@@ -365,8 +407,6 @@ private struct ReaderScrubber: View {
                 }
             }
             .accessibilityLabel(Text("Position"))
-        } else {
-            ProgressView(value: session.controller.location?.locations.totalProgression ?? 0)
         }
     }
 }

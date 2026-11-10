@@ -155,8 +155,16 @@ struct ReaderScreen: View {
             }
         }
         .sensoryFeedback(.impact(weight: .light), trigger: session.item.id)
-        .alert(isPresented: Binding(get: { openingFailure != nil }, set: { if !$0 { openingFailure = nil } }), error: openingFailure) {
+        .alert(
+            openingFailure?.title ?? "",
+            isPresented: Binding(get: { openingFailure != nil }, set: { if !$0 { openingFailure = nil } }),
+            presenting: openingFailure
+        ) { _ in
             Button("OK", role: .cancel) {}
+        } message: { failure in
+            if let message = failure.message {
+                Text(message)
+            }
         }
     }
 
@@ -485,24 +493,29 @@ private struct ReaderFailureView: View {
 
     /// What went wrong and what to do, with the way out as links.
     private var message: Text {
+        let isComic = session.item.kind == .comic
         if let server = signedOutServer {
-            Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this book.")
+            if isComic {
+                return Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this comic.")
+            } else {
+                return Text("[Sign in](chek-action://signin) to \(server.name) to keep reading, or [close](chek-action://close) this book.")
+            }
         } else if isDamagedLocalFile {
-            Text("The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it.")
+            return Text("The file may be damaged or of a kind Chek doesn't support. You can [delete it](chek-action://delete) from Chek without affecting the original, or [close](chek-action://close) it.")
         } else {
-            Text("\(error.message ?? error.title) [Try again](chek-action://retry) or [close](chek-action://close) this book.")
+            return Text(ReaderFailureMessage.make(for: error, kind: session.item.kind, canRetry: isRetryable))
         }
     }
 
     var body: some View {
-        EmptyState(systemImage: signedOutServer == nil ? "book.closed" : "person.crop.circle.badge.xmark", message: message, actions: [
+        EmptyState(systemImage: signedOutServer == nil ? "book.closed" : "person.crop.circle.badge.exclamationmark", message: message, actions: [
             "signin": { session.isSigningIn = true },
             "delete": { isConfirmingRemoval = true },
             "retry": { Task { await session.open() } },
             "close": { router.closeReader() },
         ])
         .confirmationDialog("Delete “\(session.item.title)”?", isPresented: $isConfirmingRemoval, titleVisibility: .visible) {
-            Button("Delete Book", role: .destructive) {
+            Button("Delete", role: .destructive) {
                 if case .local(let id) = session.item.ref, let book = library.book(id) {
                     library.remove(book)
                 }

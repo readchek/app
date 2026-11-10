@@ -156,7 +156,7 @@ struct PublicationRow: View {
                 CoverView(source: item.cover, title: item.title, cornerRadius: Metrics.rowCoverRadius)
                     .frame(width: Metrics.rowCoverWidth)
                     .overlay {
-                        OpeningIndicator(ref: item.id)
+                        OpeningIndicator(ref: item.id, cornerRadius: Metrics.rowCoverRadius)
                     }
                     .readerTransitionSource(item.id)
                 VStack(alignment: .leading, spacing: 2) {
@@ -315,6 +315,8 @@ struct Shelf: View {
 /// A spinner over a cover while its publication gets ready to open.
 private struct OpeningIndicator: View {
     let ref: PublicationRef
+    /// The cover's own corners, so the shade doesn't square them off.
+    var cornerRadius: CGFloat = 6
     @Environment(AppRouter.self) private var router
 
     var body: some View {
@@ -324,6 +326,7 @@ private struct OpeningIndicator: View {
                 ProgressView()
                     .tint(.white)
             }
+            .clipShape(.rect(cornerRadius: cornerRadius))
         }
     }
 }

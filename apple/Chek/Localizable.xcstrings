@@ -1,28 +1,16 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "[Add a library](chek-action://add) someone shares with you to read its books and comics here, or [open the sample library](chek-action://sample) to look around." : {
+    "" : {
 
     },
-    "[Add books](chek-action://add) and comics from Files or iCloud Drive, or [add a library](chek-action://library) someone shares with you. You can also [open the sample library](chek-action://sample) to look around." : {
+    " · " : {
 
     },
-    "[Add books](chek-action://add) and comics from Files or iCloud Drive. They're stored on this device." : {
-
-    },
-    "[Sign in](chek-action://signin) to %@ to keep reading, or [add books](chek-action://add) from Files." : {
-
-    },
-    "[Sign in](chek-action://signin) to %@ to keep reading, or [close](chek-action://close) this book." : {
-
-    },
-    "[Sign in](chek-action://signin) to %@ to keep reading." : {
+    " · %@" : {
 
     },
     "%@" : {
-
-    },
-    "%@ [Try again](chek-action://retry) or [close](chek-action://close) this book." : {
 
     },
     "%@ is further along, saved %@." : {
@@ -37,6 +25,26 @@
     "%@ was at %@." : {
 
     },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "%@ → %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ → %2$@"
+          }
+        }
+      }
+    },
     "%lld chapters" : {
 
     },
@@ -46,37 +54,17 @@
     "%lld of %lld" : {
       "comment" : "The reading position and the number of positions, like a page number: 12 of 300"
     },
+    "%lld on %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld on %2$@"
+          }
+        }
+      }
+    },
     "%lld–%lld" : {
-
-    },
-    "%lld+ books" : {
-
-    },
-    "^[%lld book](inflect: true)" : {
-
-    },
-    "^[%lld chapter](inflect: true)" : {
-
-    },
-    "^[%lld new chapter](inflect: true)" : {
-
-    },
-    "^[%lld page](inflect: true)" : {
-
-    },
-    "^[%lld release](inflect: true)" : {
-
-    },
-    "^[%lld Selected](inflect: true)" : {
-
-    },
-    "^[%lld site](inflect: true) · Added by the administrator" : {
-
-    },
-    "^[%lld site](inflect: true) · Added by you" : {
-
-    },
-    "^[%lld update](inflect: true)" : {
 
     },
     "1 chapter" : {
@@ -100,9 +88,6 @@
     "Add" : {
 
     },
-    "Add a shared library of your own to add repositories." : {
-
-    },
     "Add Books" : {
 
     },
@@ -118,10 +103,16 @@
     "Add Sites" : {
 
     },
+    "Add a shared library of your own to add repositories." : {
+
+    },
     "Added" : {
 
     },
     "Adding ^[%lld book](inflect: true)" : {
+
+    },
+    "Adding ^[%lld book](inflect: true)…" : {
 
     },
     "Address" : {
@@ -160,19 +151,13 @@
     "Applies to search and sites in this library, on all your devices. Mature series, for adults only, can be turned on from the web." : {
 
     },
-    "Applies to this series. Manga reads right to left. Automatic follows the file or site." : {
-
-    },
     "Ask them to turn on “Anyone Can Add Repositories”." : {
 
     },
     "Author" : {
 
     },
-    "Automatic" : {
-      "comment" : "Lets the file or source decide"
-    },
-    "Automatic scrolls webtoons and other tall comics and turns pages for the rest." : {
+    "Auto" : {
 
     },
     "Books" : {
@@ -214,6 +199,16 @@
     "Chapter %@" : {
 
     },
+    "Chapter %@: %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Chapter %1$@: %2$@"
+          }
+        }
+      }
+    },
     "Chapters" : {
 
     },
@@ -250,6 +245,9 @@
     "Checks again." : {
 
     },
+    "Chek %@ is on the App Store." : {
+
+    },
     "Chek checks for new chapters in series you follow a few times a day and notifies you." : {
 
     },
@@ -263,9 +261,6 @@
 
     },
     "Chek replaces Chibi Manga. To report a problem by email instead, write to support@chek.page." : {
-
-    },
-    "chek.page" : {
 
     },
     "Chibi Manga Look" : {
@@ -286,13 +281,22 @@
     "Collections" : {
 
     },
-    "Comic Layout" : {
+    "Comic" : {
 
     },
     "Comics" : {
 
     },
     "Comics you add appear here." : {
+
+    },
+    "Comments" : {
+
+    },
+    "Comments come from each site and are read-only. To report one, use its menu to open it on its site." : {
+
+    },
+    "Comments from %@ hidden ·" : {
 
     },
     "Compact" : {
@@ -337,16 +341,13 @@
     "Couldn't Add This File" : {
 
     },
-    "Couldn't check what's next" : {
-
-    },
     "Couldn't Connect" : {
 
     },
-    "Couldn't Download “%@”" : {
+    "Couldn't Download This Book" : {
 
     },
-    "Couldn't Download This Book" : {
+    "Couldn't Download “%@”" : {
 
     },
     "Couldn't Find a Library" : {
@@ -365,6 +366,15 @@
 
     },
     "Couldn't Read Repository" : {
+
+    },
+    "Couldn't check what's next" : {
+
+    },
+    "Couldn't load more. Try Again" : {
+
+    },
+    "Couldn't load the replies. Try Again" : {
 
     },
     "Couldn't search %@" : {
@@ -394,13 +404,10 @@
     "Delete" : {
 
     },
-    "Delete “%@”?" : {
-
-    },
     "Delete ^[%lld Book](inflect: true)?" : {
 
     },
-    "Delete Book" : {
+    "Delete “%@”?" : {
 
     },
     "Delete…" : {
@@ -415,13 +422,13 @@
     "Download" : {
 
     },
+    "Download All" : {
+
+    },
     "Download ^[%lld Chapter](inflect: true)?" : {
 
     },
     "Download ^[%lld Comic](inflect: true)?" : {
-
-    },
-    "Download All" : {
 
     },
     "Downloaded" : {
@@ -433,13 +440,19 @@
     "Downloads" : {
 
     },
+    "Edited" : {
+
+    },
     "Enter the address you were given, such as books.example.com." : {
 
     },
-    "Enter the address you were given. A name helps tell libraries apart and is only shown on this device." : {
+    "Enter the address you were given. A name helps tell libraries apart and is only shown on this device. Without one, the library goes by its address." : {
 
     },
     "Erotica" : {
+
+    },
+    "Every unread chapter after the one you last opened is already on this device." : {
 
     },
     "Everyone" : {
@@ -463,6 +476,9 @@
     "Following" : {
       "comment" : "Series the reader follows for new chapters"
     },
+    "Follows the file or site, then the shape of the pages. Applies to this series." : {
+
+    },
     "Font" : {
 
     },
@@ -478,6 +494,9 @@
     "Freeing up space clears copies of recently read books from shared libraries and cover images. They're fetched again as you read. Your library, downloads, and reading positions are kept." : {
 
     },
+    "From %@ · Read-only" : {
+
+    },
     "Go to Chapters" : {
 
     },
@@ -490,10 +509,22 @@
     "Headers" : {
 
     },
+    "Hidden Commenters" : {
+
+    },
+    "Hide Comments from %@" : {
+
+    },
+    "Hide Replies" : {
+
+    },
     "Home" : {
 
     },
     "Incorrect User Name or Password" : {
+
+    },
+    "It may have been moved or removed from the library." : {
 
     },
     "It may have been removed from this library." : {
@@ -517,9 +548,6 @@
     "Larger Text" : {
 
     },
-    "Left to Right" : {
-
-    },
     "Less" : {
 
     },
@@ -528,6 +556,12 @@
     },
     "Library" : {
       "comment" : "Tab for the books on this device"
+    },
+    "Library Name" : {
+
+    },
+    "Library Name (Optional)" : {
+
     },
     "License" : {
 
@@ -547,19 +581,22 @@
     "Manage Sites" : {
 
     },
+    "Manga" : {
+
+    },
     "Margins" : {
 
     },
     "Mark All as Seen" : {
 
     },
+    "Mark Previous as Finished" : {
+
+    },
     "Mark as Finished" : {
 
     },
     "Mark as Unread" : {
-
-    },
-    "Mark Previous as Finished" : {
 
     },
     "Mature" : {
@@ -571,13 +608,22 @@
     "More" : {
 
     },
+    "More Replies" : {
+
+    },
+    "More for %@'s comment" : {
+
+    },
     "Name" : {
       "comment" : "A server's friendly name, or the account's user name"
     },
-    "Name (Optional)" : {
+    "Narrow" : {
 
     },
-    "Narrow" : {
+    "Needs Chek %@ or newer" : {
+
+    },
+    "Needs a newer Chek" : {
 
     },
     "New" : {
@@ -586,22 +632,19 @@
     "New Chapter Notifications" : {
 
     },
-    "New chapters of series you follow appear here." : {
+    "New Chapters" : {
 
     },
     "New York" : {
+
+    },
+    "Newest" : {
 
     },
     "Newest First" : {
 
     },
     "Next" : {
-
-    },
-    "Next: %@" : {
-
-    },
-    "Next in Series" : {
 
     },
     "Next %lld Unread" : {
@@ -613,7 +656,7 @@
     "Next Chapter" : {
 
     },
-    "No collections are shared with you yet. Ask the library's administrator for access." : {
+    "Next in Series" : {
 
     },
     "No Longer Available" : {
@@ -625,25 +668,52 @@
     "No Longer Updated" : {
 
     },
-    "No new chapters. Chek checks a few times a day, or you can [check now](chek-action://check)." : {
-
-    },
     "No Pages in This Chapter" : {
 
     },
     "No Pages to Download" : {
 
     },
-    "None" : {
+    "No collections are shared with you yet. Ask the library's administrator for access." : {
 
     },
-    "Not checked yet. Pull down to refresh." : {
+    "No comments yet. What people write on %@ shows here." : {
+
+    },
+    "No new chapters. Pull down to check now." : {
+
+    },
+    "Nobody is hidden. Hide someone from a comment's menu, and they're listed here." : {
+
+    },
+    "None" : {
 
     },
     "Not Now" : {
 
     },
+    "Not checked yet. Pull down to refresh." : {
+
+    },
+    "Nothing Left to Download" : {
+
+    },
     "Nothing here matches your search." : {
+
+    },
+    "Nothing matches “%@”." : {
+
+    },
+    "Nothing stored yet." : {
+
+    },
+    "Nothing to read here yet. Look through your libraries in [Shared](chek-action://shared), or [add books](chek-action://add) from Files." : {
+
+    },
+    "Notification Settings" : {
+
+    },
+    "OK" : {
 
     },
     "Off" : {
@@ -652,7 +722,7 @@
     "Official" : {
 
     },
-    "OK" : {
+    "Oldest" : {
 
     },
     "Oldest First" : {
@@ -676,7 +746,7 @@
     "Open Sample Library" : {
 
     },
-    "Open Settings" : {
+    "Open Thread" : {
 
     },
     "Opening Stopped" : {
@@ -691,10 +761,19 @@
     "Page Turn" : {
 
     },
-    "Pages" : {
-      "comment" : "Comic layout: one page at a time"
+    "Pages scroll down in one column. Applies to this series." : {
+
+    },
+    "Pages turn left to right. Applies to this series." : {
+
+    },
+    "Pages turn right to left. Applies to this series." : {
+
     },
     "Password" : {
+
+    },
+    "Picture" : {
 
     },
     "Pornographic" : {
@@ -727,10 +806,10 @@
     "Read" : {
       "comment" : "Button on a book that opens it"
     },
-    "Reading" : {
+    "Read As" : {
 
     },
-    "Reading Direction" : {
+    "Reading" : {
 
     },
     "Reading tips. Double-tap to dismiss." : {
@@ -757,13 +836,7 @@
     "Remove" : {
 
     },
-    "Remove “%@”?" : {
-
-    },
     "Remove %@ Filter" : {
-
-    },
-    "Remove ^[%lld Download](inflect: true)" : {
 
     },
     "Remove All Downloads" : {
@@ -787,6 +860,12 @@
     "Remove Repository" : {
 
     },
+    "Remove ^[%lld Download](inflect: true)" : {
+
+    },
+    "Remove “%@”?" : {
+
+    },
     "Remove…" : {
 
     },
@@ -800,6 +879,9 @@
 
     },
     "Report a Problem" : {
+
+    },
+    "Report on %@" : {
 
     },
     "Repositories" : {
@@ -829,9 +911,6 @@
     "Reset Appearance" : {
 
     },
-    "Right to Left" : {
-
-    },
     "Safe" : {
 
     },
@@ -845,6 +924,12 @@
 
     },
     "Save" : {
+
+    },
+    "Score %lld" : {
+
+    },
+    "Scroll to read. Tap the middle for controls." : {
 
     },
     "Search" : {
@@ -871,7 +956,16 @@
     "Select All" : {
 
     },
+    "Select Items" : {
+
+    },
     "Sepia" : {
+
+    },
+    "Series" : {
+
+    },
+    "Series you follow appear here, with their new chapters." : {
 
     },
     "Settings" : {
@@ -889,6 +983,9 @@
     "Show" : {
 
     },
+    "Show Comments" : {
+
+    },
     "Show Earlier Chapters" : {
 
     },
@@ -904,13 +1001,16 @@
     "Sign In" : {
 
     },
+    "Sign In With" : {
+
+    },
+    "Sign Out" : {
+
+    },
     "Sign in to keep reading." : {
 
     },
     "Sign in to your libraries in [Shared](chek-action://shared) to keep reading, or [add books](chek-action://add) from Files." : {
-
-    },
-    "Sign In With" : {
 
     },
     "Sign in with a token. For a private GitHub repository, use a fine-grained token that can read its contents." : {
@@ -920,9 +1020,6 @@
 
     },
     "Sign in with the headers its host asks for, such as a Cloudflare Access service token's ID and secret." : {
-
-    },
-    "Sign Out" : {
 
     },
     "Sign-In Details" : {
@@ -952,13 +1049,13 @@
     "Sites Can't Be Added to the Sample Library" : {
 
     },
+    "Sites Not Available" : {
+
+    },
     "Sites from it are removed for everyone." : {
 
     },
     "Sites from it are removed too." : {
-
-    },
-    "Sites Not Available" : {
 
     },
     "Sites you add appear on Home and in Search on all your devices." : {
@@ -971,6 +1068,12 @@
 
     },
     "Sort By" : {
+
+    },
+    "Spoiler" : {
+
+    },
+    "Spoiler · Tap to Show" : {
 
     },
     "Start Reading" : {
@@ -1024,10 +1127,10 @@
     "The site hasn't published it yet." : {
 
     },
-    "Their files and reading positions are deleted from this device." : {
+    "Their comments stay hidden on this device. Swipe to show them again." : {
 
     },
-    "There are no books in this series yet." : {
+    "Their files and reading positions are deleted from this device." : {
 
     },
     "There are no series here yet." : {
@@ -1042,19 +1145,19 @@
     "This Book" : {
 
     },
-    "This book doesn't have a table of contents." : {
+    "This Book Is No Longer in Your Library" : {
 
     },
-    "This Book Is No Longer in Your Library" : {
+    "This Comic" : {
+
+    },
+    "This book doesn't have a table of contents." : {
 
     },
     "This book is shared openly by the site it comes from, on these terms." : {
 
     },
     "This book opens once it has finished downloading." : {
-
-    },
-    "This Comic" : {
 
     },
     "This library has been removed." : {
@@ -1064,6 +1167,9 @@
 
     },
     "This name is only shown on this device." : {
+
+    },
+    "This series is empty." : {
 
     },
     "This site doesn't have chapters for this series. Licensed series are often available only from their publisher." : {
@@ -1081,10 +1187,13 @@
     "Too Many Attempts" : {
 
     },
-    "try again" : {
+    "Top" : {
 
     },
     "Try Again" : {
+
+    },
+    "Try again" : {
 
     },
     "Try again later." : {
@@ -1111,16 +1220,13 @@
     "Update" : {
 
     },
-    "Update ^[%lld Site](inflect: true)" : {
-
-    },
     "Update Available" : {
 
     },
     "Update Sites Automatically" : {
 
     },
-    "Updates" : {
+    "Update ^[%lld Site](inflect: true)" : {
 
     },
     "User Name" : {
@@ -1135,8 +1241,38 @@
     "Version" : {
 
     },
-    "Vertical Scroll" : {
+    "Version %@" : {
 
+    },
+    "Version %@ needs Chek %@ or newer" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ needs Chek %2$@ or newer"
+          }
+        }
+      }
+    },
+    "Version %@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "Version %@, update to %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Version %1$@, update to %2$@"
+          }
+        }
+      }
     },
     "View" : {
 
@@ -1150,7 +1286,16 @@
     "Waiting to Download" : {
 
     },
+    "Webtoon" : {
+
+    },
     "Wide" : {
+
+    },
+    "You can also [close](chek-action://close) this book." : {
+
+    },
+    "You can also [close](chek-action://close) this comic." : {
 
     },
     "You can download them again any time." : {
@@ -1166,6 +1311,78 @@
 
     },
     "Your password is sent only to this library." : {
+
+    },
+    "[Add a library](chek-action://add) someone shares with you to read its books and comics here, or [open the sample library](chek-action://sample) to look around." : {
+
+    },
+    "[Add books](chek-action://add) and comics from Files or iCloud Drive, or [add a library](chek-action://library) someone shares with you. You can also [open the sample library](chek-action://sample) to look around." : {
+
+    },
+    "[Add books](chek-action://add) and comics from Files or iCloud Drive. They're stored on this device." : {
+
+    },
+    "[Close](chek-action://close) this book." : {
+
+    },
+    "[Close](chek-action://close) this comic." : {
+
+    },
+    "[Sign in](chek-action://signin) to %@ to keep reading, or [add books](chek-action://add) from Files." : {
+
+    },
+    "[Sign in](chek-action://signin) to %@ to keep reading, or [close](chek-action://close) this book." : {
+
+    },
+    "[Sign in](chek-action://signin) to %@ to keep reading, or [close](chek-action://close) this comic." : {
+
+    },
+    "[Sign in](chek-action://signin) to %@ to keep reading." : {
+
+    },
+    "^[%lld Selected](inflect: true)" : {
+
+    },
+    "^[%lld book](inflect: true)" : {
+
+    },
+    "^[%lld chapter](inflect: true)" : {
+
+    },
+    "^[%lld comic](inflect: true)" : {
+
+    },
+    "^[%lld comment](inflect: true)" : {
+
+    },
+    "^[%lld new chapter](inflect: true)" : {
+
+    },
+    "^[%lld page](inflect: true)" : {
+
+    },
+    "^[%lld release](inflect: true)" : {
+
+    },
+    "^[%lld reply](inflect: true)" : {
+
+    },
+    "^[%lld site](inflect: true) · Added by the administrator" : {
+
+    },
+    "^[%lld site](inflect: true) · Added by you" : {
+
+    },
+    "^[%lld update](inflect: true)" : {
+
+    },
+    "chek.page" : {
+
+    },
+    "to %@" : {
+
+    },
+    "try again" : {
 
     }
   },

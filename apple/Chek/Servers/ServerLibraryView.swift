@@ -148,9 +148,9 @@ private struct LibrarySearchResults: View {
         .listStyle(.plain)
         .overlay {
             if found.phase == .complete, found.items.isEmpty {
-                ContentUnavailableView.search(text: query)
+                EmptyState("Nothing matches “\(query)”.", systemImage: "magnifyingglass")
             } else {
-                PagedListOverlay(phase: found.phase, isEmpty: found.items.isEmpty, emptyMessage: "Nothing here matches your search.") {
+                PagedListOverlay(phase: found.phase, isEmpty: found.items.isEmpty, emptyMessage: "Nothing here matches your search.", placeholder: .spinner) {
                     Task { await found.reload() }
                 }
             }
@@ -166,7 +166,7 @@ private struct SeriesCell: View {
     @Environment(ServerStore.self) private var servers
 
     var body: some View {
-        NavigationLink(value: Route.series(account, seriesID: series.id, title: series.displayTitle)) {
+        NavigationLink(value: Route.series(account, seriesID: series.id, title: series.displayTitle, count: Int(series.publicationCount))) {
             VStack(alignment: .leading, spacing: Metrics.captionSpacing) {
                 CoverView(
                     source: series.coverPublicationId.map { servers.cover(of: $0, on: account) } ?? .none,

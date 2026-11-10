@@ -78,14 +78,17 @@ struct ReaderAppearanceForm: View {
                     }
                 }
             }
-            Section("Page Turn") {
-                Picker("Page Turn", selection: $settings.pageTransition) {
-                    // The default first.
-                    Text("Slide").tag(ReaderPreferences.PageTransition.slide)
-                    Text("Curl").tag(ReaderPreferences.PageTransition.curl)
+            // A webtoon scrolls, so there's no page turn to choose.
+            if modeKey.map({ settings.readingMode(for: $0) }) != .webtoon {
+                Section("Page Turn") {
+                    Picker("Page Turn", selection: $settings.pageTransition) {
+                        // The default first.
+                        Text("Slide").tag(ReaderPreferences.PageTransition.slide)
+                        Text("Curl").tag(ReaderPreferences.PageTransition.curl)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
                 }
-                .pickerStyle(.segmented)
-                .labelsHidden()
             }
             if showsTextSettings {
                 Section("Text") {
@@ -114,7 +117,11 @@ struct ReaderAppearanceForm: View {
                         HiddenCommentersView()
                     } label: {
                         LabeledContent("Hidden Commenters") {
-                            Text(settings.hiddenCommenters.values.reduce(0) { $0 + $1.count }, format: .number)
+                            // A count only when there's someone to count.
+                            let hidden = settings.hiddenCommenters.values.reduce(0) { $0 + $1.count }
+                            if hidden > 0 {
+                                Text(hidden, format: .number)
+                            }
                         }
                     }
                 } header: {

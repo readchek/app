@@ -40,7 +40,7 @@ struct AddServerView: View {
                         .focused($focus, equals: .address)
                         .submitLabel(.next)
                         .onSubmit { focus = .displayName }
-                    TextField("Name", text: $displayName, prompt: Text(Self.suggestedName(for: address) ?? String(localized: "Name (Optional)")))
+                    TextField("Library Name", text: $displayName, prompt: Text("Library Name (Optional)"))
                         .focused($focus, equals: .displayName)
                         .submitLabel(.next)
                         .onSubmit { focus = .name }
@@ -49,7 +49,7 @@ struct AddServerView: View {
                     if case .failed(let error) = phase, !Self.isCredentialError(error) {
                         FormError(error: error)
                     } else {
-                        Text("Enter the address you were given. A name helps tell libraries apart and is only shown on this device.")
+                        Text("Enter the address you were given. A name helps tell libraries apart and is only shown on this device. Without one, the library goes by its address.")
                     }
                 }
                 Section {
@@ -123,15 +123,6 @@ struct AddServerView: View {
     /// the address.
     private static func isCredentialError(_ error: DisplayError) -> Bool {
         error.title == String(localized: "Incorrect User Name or Password")
-    }
-}
-
-extension AddServerView {
-    /// The host name a server is called by when no name is given, shown as
-    /// the name field's placeholder.
-    static func suggestedName(for address: String) -> String? {
-        guard let host = ServerStore.baseURL(from: address)?.host(), host.contains(".") || host == "localhost" else { return nil }
-        return host
     }
 }
 

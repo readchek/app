@@ -11,9 +11,17 @@ extension DisplayError {
         let what = kind == .comic ? String(localized: "This Comic") : String(localized: "This Book")
         switch error {
         case .network(let reason):
+            // A server's own answer arrives as its title, the innermost
+            // reason. Its full message says what to do, and whether trying
+            // again could help.
+            if let known = Self.serverFailure(titled: Self.innermostReason(reason)) {
+                self = known
+                return
+            }
             self.init(
                 title: String(localized: "Couldn't Load \(what)"),
-                message: Self.innermostReason(reason) ?? String(localized: "Check your internet connection and try again.")
+                message: Self.innermostReason(reason) ?? String(localized: "Check your internet connection and try again."),
+                kind: .connection
             )
         case .unsupportedFormat, .formatNotIncluded, .notYetImplemented:
             self.init(
@@ -39,11 +47,43 @@ extension DisplayError {
         }
     }
 
+    /// The server failure whose title is `title`, if it's one the app has
+    /// words for. The engine passes failures on as text, so the title is
+    /// all there is to tell them by.
+    private static func serverFailure(titled title: String?) -> DisplayError? {
+        let known: [ChekError] = [
+            .notFound,
+            .unauthorized,
+            .server(status: 502, code: "source_failed"),
+            .server(status: 404, code: "source_unavailable"),
+            .server(status: 500, code: nil),
+        ]
+        return known.first { $0.errorDescription == title }.map { DisplayError($0) }
+    }
+
     /// The last reason in a chain such as "A failed: B failed: C", which
     /// is the one closest to what went wrong, and the only one worth
     /// showing.
     private static func innermostReason(_ reason: String) -> String? {
         let last = reason.components(separatedBy: ": ").last?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return last.isEmpty ? nil : last
+    }
+}
+
+/// The sentence on the reader's failure page: what went wrong, then the
+/// ways out as links. Trying again is offered once, and only when it can
+/// help; closing always is.
+enum ReaderFailureMessage {
+    static func make(for error: DisplayError, kind: PublicationKind, canRetry: Bool) -> AttributedString {
+        let retries = canRetry && error.canRetry
+        var text = FailureState.message(for: error, canRetry: retries)
+        let close: AttributedString = switch (kind, retries) {
+        case (.comic, true): AttributedString(localized: "You can also [close](chek-action://close) this comic.")
+        case (.book, true): AttributedString(localized: "You can also [close](chek-action://close) this book.")
+        case (.comic, false): AttributedString(localized: "[Close](chek-action://close) this comic.")
+        case (.book, false): AttributedString(localized: "[Close](chek-action://close) this book.")
+        }
+        text += AttributedString(" ") + close
+        return text
     }
 }

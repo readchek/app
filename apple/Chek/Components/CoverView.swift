@@ -28,6 +28,9 @@ struct CoverView: View {
     var isFramed = true
 
     @State private var image: UIImage?
+    /// Whether there's no picture to wait for: the publication has none,
+    /// or it couldn't be loaded.
+    @State private var isMissing = false
 
     var body: some View {
         Color.clear
@@ -42,8 +45,13 @@ struct CoverView: View {
                             // a wider image to 2:3 instead of following it.
                             .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                             .transition(.opacity)
-                    } else {
+                    } else if isMissing || source == .none {
                         CoverPlaceholder(title: title)
+                    } else {
+                        // Still loading: a plain fill, so a grid doesn't
+                        // flash every title before its picture.
+                        Rectangle()
+                            .fill(.quaternary)
                     }
                 }
                 .clipShape(.rect(cornerRadius: isFramed ? cornerRadius : 0))
@@ -65,8 +73,10 @@ struct CoverView: View {
     private func load() async {
         guard let key = source.cacheKey else {
             image = nil
+            isMissing = true
             return
         }
+        isMissing = false
         if let cached = ImagePipeline.shared.cachedImage(for: key) {
             image = cached
             return
@@ -93,25 +103,44 @@ struct CoverView: View {
         guard !Task.isCancelled else { return }
         withAnimation(.easeOut(duration: 0.2)) {
             image = loaded
+            isMissing = loaded == nil
         }
     }
 }
 
-/// A plain cover with the title set small on a neutral fill: quiet enough
-/// to sit among real covers, and never mistaken for one.
+/// A plain cover for a publication without one: a book's mark and the
+/// title set small on a neutral fill. Quiet enough to sit among real
+/// covers, and plainly a book rather than a picture that didn't load.
 private struct CoverPlaceholder: View {
     let title: String
 
     var body: some View {
         ZStack {
             Rectangle()
-                .fill(.quaternary)
-            Text(title)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .lineLimit(4)
-                .padding(10)
+                .fill(.fill.tertiary)
+            // A small cover, as in a list row, has room for the mark alone.
+            GeometryReader { proxy in
+                Group {
+                    if proxy.size.width < 70 {
+                        Image(systemName: "book.closed")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    } else {
+                        VStack(spacing: 8) {
+                            Image(systemName: "book.closed")
+                                .font(.title3)
+                                .foregroundStyle(.tertiary)
+                            Text(title)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(3)
+                        }
+                        .padding(10)
+                    }
+                }
+                .frame(width: proxy.size.width, height: proxy.size.height)
+            }
         }
     }
 }

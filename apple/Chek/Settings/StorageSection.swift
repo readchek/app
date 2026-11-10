@@ -17,24 +17,34 @@ struct StorageSection: View {
 
     var body: some View {
         Section {
-            // "0 KB", not the formatter's "Zero KB".
-            LabeledContent("Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
-            LabeledContent("Downloads", value: sizes.map { $0.chapters.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
-            LabeledContent("Recently Read", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
-            LabeledContent("Cover Images", value: sizes.map { $0.covers.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
-            Button("Free Up Space") {
-                isClearing = true
-                Task {
-                    await Self.clearCaches()
-                    sizes = await Self.measure()
-                    isClearing = false
+            if let sizes, sizes.library + sizes.chapters + sizes.downloads + sizes.covers == 0 {
+                // One line rather than four zeros over two dead buttons.
+                Text("Nothing stored yet.")
+                    .foregroundStyle(.secondary)
+            } else {
+                // "0 KB", not the formatter's "Zero KB".
+                LabeledContent("Library", value: sizes.map { $0.library.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
+                LabeledContent("Downloads", value: sizes.map { $0.chapters.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
+                LabeledContent("Recently Read", value: sizes.map { $0.downloads.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
+                LabeledContent("Cover Images", value: sizes.map { $0.covers.formatted(.byteCount(style: .file, spellsOutZero: false)) } ?? "…")
+                // Each action only while it has something to act on.
+                if let sizes, sizes.downloads + sizes.covers > 0 {
+                    Button("Free Up Space") {
+                        isClearing = true
+                        Task {
+                            await Self.clearCaches()
+                            self.sizes = await Self.measure()
+                            isClearing = false
+                        }
+                    }
+                    .disabled(isClearing)
+                }
+                if !downloads.isEmpty {
+                    Button("Remove All Downloads", role: .destructive) {
+                        isConfirmingChapterRemoval = true
+                    }
                 }
             }
-            .disabled(isClearing || sizes.map { $0.downloads + $0.covers == 0 } ?? true)
-            Button("Remove All Downloads", role: .destructive) {
-                isConfirmingChapterRemoval = true
-            }
-            .disabled(downloads.isEmpty)
         } header: {
             Text("Storage")
         } footer: {

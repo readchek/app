@@ -21,7 +21,7 @@ struct TitlesTests {
 
     @Test func chapterTitlesCombineNumberAndTitle() {
         #expect(ChekAPI.SourceChapter(id: "a", title: "", number: "12", published: nil).displayTitle == "Chapter 12")
-        #expect(ChekAPI.SourceChapter(id: "a", title: "The Title", number: "12", published: nil).displayTitle == "12 · The Title")
+        #expect(ChekAPI.SourceChapter(id: "a", title: "The Title", number: "12", published: nil).displayTitle == "Chapter 12: The Title")
         #expect(ChekAPI.SourceChapter(id: "a", title: "Chapter 12: Loki", number: "12", published: nil).displayTitle == "Chapter 12: Loki")
         #expect(ChekAPI.SourceChapter(id: "a", title: "  ", number: nil, published: nil).displayTitle == "Chapter")
     }

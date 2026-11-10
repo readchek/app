@@ -7,6 +7,8 @@ struct SeriesView: View {
     let account: UUID
     let seriesID: Int64
     let title: String
+    /// How many books the library said the series has.
+    let count: Int
     @State private var isHeaderVisible = true
     @Environment(ServerStore.self) private var servers
     @State private var publications: PagedList<RemotePublication>?
@@ -14,7 +16,7 @@ struct SeriesView: View {
     var body: some View {
         Group {
             if let publications {
-                SeriesContent(account: account, seriesID: seriesID, title: title, publications: publications)
+                SeriesContent(account: account, seriesID: seriesID, title: title, count: count, publications: publications)
             } else {
                 LoadingState()
             }
@@ -50,14 +52,16 @@ private struct SeriesContent: View {
     @State private var headerVisible = true
     let account: UUID
     let title: String
+    let count: Int
     let publications: PagedList<RemotePublication>
     @Query private var states: [RemoteReadingState]
     @Environment(ServerStore.self) private var servers
     @Environment(Downloads.self) private var downloads
 
-    init(account: UUID, seriesID: Int64, title: String, publications: PagedList<RemotePublication>) {
+    init(account: UUID, seriesID: Int64, title: String, count: Int, publications: PagedList<RemotePublication>) {
         self.account = account
         self.title = title
+        self.count = count
         self.publications = publications
         _states = Query(filter: #Predicate<RemoteReadingState> { $0.serverID == account && $0.seriesID == seriesID })
     }
@@ -74,8 +78,10 @@ private struct SeriesContent: View {
                 Section {
                     SeriesHeader(
                         title: title,
-                        count: publications.items.count,
-                        isComplete: publications.phase == .complete,
+                        // What's loaded once that's all of it, since books may
+                        // have been added since the library was listed.
+                        count: publications.phase == .complete ? publications.items.count : max(count, publications.items.count),
+                        areComics: publications.items.allSatisfy { $0.kind == .comic },
                         cover: servers.cover(of: first.id, on: first.server),
                         next: nextToRead(statuses: statuses),
                         comics: publications.items.filter { $0.kind == .comic && $0.isAvailable },
@@ -108,22 +114,12 @@ private struct SeriesContent: View {
         }
         .listStyle(.plain)
         .overlay {
-            PagedListOverlay(phase: publications.phase, isEmpty: publications.items.isEmpty, emptyMessage: "There are no books in this series yet.", placeholder: .spinner) {
+            PagedListOverlay(phase: publications.phase, isEmpty: publications.items.isEmpty, emptyMessage: "This series is empty.", placeholder: .spinner) {
                 Task { await publications.reload() }
             }
         }
         .refreshable {
             await publications.reload()
-        }
-        .alert(
-            downloads.failure?.title ?? "",
-            isPresented: Binding { downloads.failure != nil } set: { if !$0 { downloads.failure = nil } }
-        ) {
-            Button("OK") {}
-        } message: {
-            if let message = downloads.failure?.message {
-                Text(message)
-            }
         }
     }
 
@@ -145,7 +141,8 @@ private struct SeriesContent: View {
 private struct SeriesHeader: View {
     let title: String
     let count: Int
-    let isComplete: Bool
+    /// Whether every book of it seen so far is a comic.
+    let areComics: Bool
     let cover: CoverSource
     let next: (RemotePublication, ReadingStatus)?
     /// The comics in the series, which can be kept on the device.
@@ -169,7 +166,7 @@ private struct SeriesHeader: View {
                     Text(title)
                         .font(.title2.weight(.bold))
                         .lineLimit(3)
-                    Text(isComplete ? "^[\(count) book](inflect: true)" : "\(count)+ books")
+                    Text(count: count, areComics: areComics)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -182,7 +179,7 @@ private struct SeriesHeader: View {
                     Button {
                         router.open(publication, using: sync)
                     } label: {
-                        Text(status == .new ? "Start Reading" : "Continue \(publication.displayTitle)")
+                        Text(ContinueLabel.text(for: publication.displayTitle, isNew: status == .new))
                             .lineLimit(1)
                             .frame(maxWidth: .infinity)
                     }
@@ -205,10 +202,15 @@ private struct SeriesHeader: View {
         let pending = unreadComics.filter { downloads.state(of: $0.ref) == .none }
         return Menu {
             Section("Download") {
-                Button("Next \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
-                    downloads.download(pending.prefix(5).map(Downloads.Item.comic))
+                if pending.isEmpty {
+                    // Read or already here, every one of them.
+                    Button("Nothing Left to Download", systemImage: "checkmark.circle") {}
+                        .disabled(true)
+                } else {
+                    Button("Next \(min(pending.count, 5)) Unread", systemImage: "arrow.down.circle") {
+                        downloads.download(pending.prefix(5).map(Downloads.Item.comic))
+                    }
                 }
-                .disabled(pending.isEmpty)
                 Button("All Unread", systemImage: "arrow.down.circle.fill") {
                     if pending.count > 10 {
                         isConfirmingAll = true
@@ -237,6 +239,18 @@ private struct SeriesHeader: View {
             }
         } message: {
             Text("They download one at a time while Chek is open and stay on this device until you remove them.")
+        }
+    }
+}
+
+extension Text {
+    /// "12 comics" for a series of comics, "12 books" for one of books or
+    /// of both.
+    init(count: Int, areComics: Bool) {
+        if areComics {
+            self.init("^[\(count) comic](inflect: true)")
+        } else {
+            self.init("^[\(count) book](inflect: true)")
         }
     }
 }

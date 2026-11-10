@@ -1,9 +1,9 @@
 import SwiftData
 import SwiftUI
 
-/// Every chapter in a followed series that you haven't seen yet, newest
-/// first across all of them, so what's new is one list rather than a
-/// series at a time.
+/// The series you follow: every chapter of theirs you haven't seen yet,
+/// newest first across all of them, then the series themselves, so the
+/// Following shelf's header leads to all of what it shows a row of.
 struct UpdatesView: View {
     @Query(sort: \FollowedSeries.followedAt, order: .reverse) private var follows: [FollowedSeries]
     @Environment(FollowStore.self) private var followStore
@@ -11,6 +11,7 @@ struct UpdatesView: View {
     @Environment(ServerSync.self) private var sync
     @Environment(AppRouter.self) private var router
     @State private var entries: LoadState<[Entry]> = .idle
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// One new chapter, with the series it's in.
     struct Entry: Identifiable {
@@ -43,37 +44,50 @@ struct UpdatesView: View {
                 FailureState(error: error) {
                     await load()
                 }
-            case .loaded(let entries) where entries.isEmpty:
-                if follows.isEmpty {
-                    EmptyState("New chapters of series you follow appear here.", systemImage: "checkmark.circle")
-                } else if followStore.isChecking {
-                    EmptyState("Checking for new chapters…", systemImage: "checkmark.circle")
-                } else {
-                    EmptyState(
-                        "No new chapters. Chek checks a few times a day, or you can [check now](chek-action://check).",
-                        systemImage: "checkmark.circle",
-                        actions: ["check": { Task { await followStore.checkForNewChapters(force: true) } }]
-                    )
-                }
+            case .loaded where follows.isEmpty:
+                EmptyState("Series you follow appear here, with their new chapters.", systemImage: "bell")
             case .loaded(let entries):
-                List(entries) { entry in
-                    UpdateRow(entry: entry) {
-                        // Opening it is seeing it.
-                        followStore.markSeen(chapterID: entry.chapter.id, in: entry.follow)
-                        router.open(entry.ref, using: sync)
+                List {
+                    if entries.isEmpty {
+                        Text(followStore.isChecking ? "Checking for new chapters…" : "No new chapters. Pull down to check now.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .listRowSeparator(.hidden)
+                    } else {
+                        SectionHeader(title: "New Chapters")
+                            .headerRow()
+                        ForEach(entries) { entry in
+                            UpdateRow(entry: entry) {
+                                // Opening it is seeing it.
+                                followStore.markSeen(chapterID: entry.chapter.id, in: entry.follow)
+                                router.open(entry.ref, using: sync)
+                            }
+                        }
                     }
+                    SectionHeader(title: "Series")
+                        .headerRow()
+                    LazyVGrid(columns: Metrics.gridColumns(regular: sizeClass == .regular), spacing: Metrics.gridRowSpacing) {
+                        ForEach(follows) { follow in
+                            FollowedSeriesCell(follow: follow)
+                        }
+                    }
+                    .padding(.horizontal, Metrics.margin)
+                    .listRowInsets(EdgeInsets(top: 8, leading: 0, bottom: 24, trailing: 0))
+                    .listRowSeparator(.hidden)
                 }
                 .listStyle(.plain)
                 .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        Button("Mark All as Seen", systemImage: "checkmark.circle") {
-                            followStore.markAllSeen()
+                    if !entries.isEmpty {
+                        ToolbarItem(placement: .primaryAction) {
+                            Button("Mark All as Seen", systemImage: "checkmark.circle") {
+                                followStore.markAllSeen()
+                            }
                         }
                     }
                 }
             }
         }
-        .navigationTitle("Updates")
+        .navigationTitle("Following")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
             await followStore.checkForNewChapters(force: true)
@@ -119,7 +133,7 @@ private struct UpdateRow: View {
     var body: some View {
         Button(action: open) {
             HStack(spacing: 12) {
-                CoverView(source: servers.sourceImage(entry.follow.coverPath, on: entry.follow.serverID), title: entry.follow.title)
+                CoverView(source: servers.sourceImage(entry.follow.coverPath, on: entry.follow.serverID), title: entry.follow.title, cornerRadius: Metrics.rowCoverRadius)
                     .frame(width: Metrics.rowCoverWidth)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(entry.chapter.displayTitle)

@@ -83,19 +83,29 @@ struct PlaceholderCoverCell: View {
 struct PlaceholderShelf: View {
     /// Off for a shelf that's empty rather than loading.
     var isLoading = true
+    /// A bar where the shelf's heading will be, for a page of shelves, so
+    /// the covers don't move down when the headings arrive.
+    var showsHeading = false
 
     var body: some View {
-        ScrollView(.horizontal) {
-            HStack(alignment: .top, spacing: Metrics.coverSpacing) {
-                ForEach(0..<6, id: \.self) { _ in
-                    PlaceholderCoverCell()
-                        .shelfCell()
+        VStack(alignment: .leading, spacing: 10) {
+            if showsHeading {
+                TextBar(width: 150, height: 20)
+                    .padding(.horizontal, Metrics.margin)
+                    .padding(.vertical, 4)
+            }
+            ScrollView(.horizontal) {
+                HStack(alignment: .top, spacing: Metrics.coverSpacing) {
+                    ForEach(0..<6, id: \.self) { _ in
+                        PlaceholderCoverCell()
+                            .shelfCell()
+                    }
                 }
             }
+            .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
+            .scrollDisabled(true)
+            .scrollIndicators(.hidden)
         }
-        .contentMargins(.horizontal, Metrics.margin, for: .scrollContent)
-        .scrollDisabled(true)
-        .scrollIndicators(.hidden)
         .modifier(ShimmerIf(isOn: isLoading))
     }
 }

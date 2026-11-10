@@ -24,14 +24,16 @@ struct CommentsPanel: View {
                         }
                         .accessibilityElement(children: .combine)
                     }
-                    if comments.orders.count > 1 {
-                        ToolbarItem(placement: .topBarLeading) {
-                            OrderMenu(comments: comments)
+                    // The same Close, in the same corner, as the reader's
+                    // other panels, so one reach closes any of them.
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close", systemImage: "xmark") {
+                            dismiss()
                         }
                     }
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done", role: .confirm) {
-                            dismiss()
+                    if comments.orders.count > 1 {
+                        ToolbarItem(placement: .primaryAction) {
+                            OrderMenu(comments: comments)
                         }
                     }
                 }
@@ -62,7 +64,7 @@ struct CommentsPanel: View {
             }
         case .loaded, .loadingMore:
             if comments.items.isEmpty {
-                ContentUnavailableView("No Comments Yet", systemImage: "bubble", description: Text("Comments people leave on \(comments.site) show here."))
+                EmptyState("No comments yet. What people write on \(comments.site) shows here.", systemImage: "bubble")
             } else {
                 list
             }
@@ -400,11 +402,11 @@ private struct CommentMenu: View {
                 settings.setHidden(true, comment.author.name, on: comments.chapter.source, siteName: comments.site)
             }
             if let url = comment.url.flatMap(ChapterComments.safeLink) {
+                // Its page on the site is where it's reported, and the one
+                // row says so: a second row to the same page read as a
+                // second thing to do.
                 Link(destination: url) {
                     Label("Report on \(comments.site)", systemImage: "flag")
-                }
-                Link(destination: url) {
-                    Label("Open on \(comments.site)", systemImage: "arrow.up.right")
                 }
             }
         } label: {
@@ -509,8 +511,9 @@ struct HiddenCommentersView: View {
     var body: some View {
         List {
             if settings.hiddenCommenters.isEmpty {
-                ContentUnavailableView("No Hidden Commenters", systemImage: "eye.slash", description: Text("Hide someone from a comment's menu, and they're listed here."))
+                EmptyState("Nobody is hidden. Hide someone from a comment's menu, and they're listed here.", systemImage: "eye.slash")
                     .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
             }
             ForEach(settings.hiddenCommenters.keys.sorted(), id: \.self) { site in
                 Section {
