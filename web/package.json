@@ -33,7 +33,7 @@
     "@cloudflare/build-output-utils": "0.9.6",
     "@tailwindcss/vite": "4.3.3",
     "@types/bun": "latest",
-    "cf": "^1.0.0-beta.26",
+    "cf": "^1.0.0-beta.28",
     "oxfmt": "^0.75.0",
     "oxlint": "^1.90.0",
     "tailwindcss": "4.3.3",
